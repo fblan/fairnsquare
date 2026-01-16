@@ -1,0 +1,77 @@
+# Java / Maven
+target/
+!.claude/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+!_bmad/
+
+# Quarkus
+.quarkus/
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# IDE - Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IDE - VS Code
+.vscode/
+
+# Node / Frontend (Svelte)
+node_modules/
+dist/
+build/
+.svelte-kit/
+.env
+.env.*
+!.env.example
+
+# Quinoa build output
+src/main/webui/dist/
+src/main/webui/build/
+src/main/webui/.svelte-kit/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test output
+test-output/
+coverage/
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JaCoCo
+jacoco.exec
+
+# Local environment
+.env.local
+.env.*.local
+*.local.properties
+
+# Secrets (never commit)
+credentials.json
+secrets.yaml
+*.pem
+*.key
