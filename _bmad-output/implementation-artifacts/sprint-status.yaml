@@ -45,7 +45,7 @@ development_status:
   1-1-initialize-quarkus-backend-project: done
   1-2-initialize-svelte-5-frontend: done
   1-3-configure-opentelemetry-dev-experience: done
-  1-4-add-shadcn-components: backlog
+  1-4-add-shadcn-components: done
   epic-1-retrospective: optional
 
   # Epic 2: Split Creation & Access (stories pending)
