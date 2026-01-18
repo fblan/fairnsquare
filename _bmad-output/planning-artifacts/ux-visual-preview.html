@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairNSquare - Visual Foundation Preview</title>
+    <style>
+        :root {
+            /* Primary Colors */
+            --color-primary: #0D9488;
+            --color-primary-light: #14B8A6;
+            --color-primary-dark: #0F766E;
+
+            /* Secondary */
+            --color-secondary: #475569;
+            --color-secondary-light: #64748B;
+
+            /* Semantic Colors */
+            --color-success: #16A34A;
+            --color-success-light: #22C55E;
+            --color-warning: #F59E0B;
+            --color-warning-light: #FBBF24;
+            --color-danger: #DC2626;
+            --color-danger-light: #EF4444;
+
+            /* Neutrals */
+            --color-background: #F8FAFC;
+            --color-surface: #FFFFFF;
+            --color-border: #E2E8F0;
+            --color-text: #1E293B;
+            --color-text-muted: #64748B;
+
+            /* Spacing */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-6: 24px;
+            --space-8: 32px;
+
+            /* Typography */
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.5;
+            padding: var(--space-4);
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        h1 { font-size: 24px; font-weight: 600; margin-bottom: var(--space-2); }
+        h2 { font-size: 20px; font-weight: 600; margin-bottom: var(--space-2); }
+        h3 { font-size: 18px; font-weight: 600; margin-bottom: var(--space-2); }
+
+        .section {
+            margin-bottom: var(--space-8);
+        }
+
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted);
+            margin-bottom: var(--space-3);
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        /* Color Swatches */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+
+        .color-swatch {
+            aspect-ratio: 1;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: flex-end;
+            padding: var(--space-1);
+        }
+
+        .color-swatch span {
+            font-size: 10px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* Card */
+        .card {
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            padding: var(--space-4);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: var(--space-4);
+        }
+
+        /* Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius);
+            font-size: 16px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            min-height: 44px;
+            transition: background 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-success {
+            background: var(--color-success);
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        /* Input */
+        .input-group {
+            margin-bottom: var(--space-4);
+        }
+
+        .input-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: var(--space-1);
+            color: var(--color-secondary);
+        }
+
+        .input {
+            width: 100%;
+            padding: var(--space-3);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            font-size: 16px;
+            min-height: 44px;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+        }
+
+        /* Participant Row */
+        .participant-row {
+            display: flex;
+            align-items: center;
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .participant-row:last-child {
+            border-bottom: none;
+        }
+
+        .participant-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--color-primary-light);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: var(--space-3);
+        }
+
+        .participant-info {
+            flex: 1;
+        }
+
+        .participant-name {
+            font-weight: 500;
+        }
+
+        .participant-nights {
+            font-size: 14px;
+            color: var(--color-text-muted);
+        }
+
+        .participant-balance {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .participant-balance.owes {
+            color: var(--color-danger);
+        }
+
+        .participant-balance.owed {
+            color: var(--color-success);
+        }
+
+        /* Expense Item */
+        .expense-item {
+            display: flex;
+            align-items: center;
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .expense-item:last-child {
+            border-bottom: none;
+        }
+
+        .expense-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            background: var(--color-background);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: var(--space-3);
+            font-size: 18px;
+        }
+
+        .expense-info {
+            flex: 1;
+        }
+
+        .expense-desc {
+            font-weight: 500;
+        }
+
+        .expense-meta {
+            font-size: 14px;
+            color: var(--color-text-muted);
+        }
+
+        .expense-amount {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background: rgba(13, 148, 136, 0.1);
+            color: var(--color-primary-dark);
+        }
+
+        .badge-success {
+            background: rgba(22, 163, 74, 0.1);
+            color: var(--color-success);
+        }
+
+        /* Settlement */
+        .settlement-card {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+            color: white;
+            border-radius: var(--radius);
+            padding: var(--space-6);
+            text-align: center;
+            margin-bottom: var(--space-4);
+        }
+
+        .settlement-title {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: var(--space-2);
+        }
+
+        .settlement-amount {
+            font-size: 32px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .settlement-to {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: var(--space-1);
+        }
+
+        /* Transfer Item */
+        .transfer-item {
+            display: flex;
+            align-items: center;
+            padding: var(--space-3);
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            margin-bottom: var(--space-2);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .transfer-from, .transfer-to {
+            flex: 1;
+        }
+
+        .transfer-arrow {
+            padding: 0 var(--space-3);
+            color: var(--color-text-muted);
+        }
+
+        .transfer-amount {
+            font-weight: 600;
+            color: var(--color-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Optimizer */
+        .optimizer-result {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-3);
+            padding: var(--space-4);
+            background: rgba(22, 163, 74, 0.1);
+            border-radius: var(--radius);
+            color: var(--color-success);
+            font-weight: 500;
+            margin-bottom: var(--space-4);
+        }
+
+        .optimizer-old {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-4) 0;
+            margin-bottom: var(--space-4);
+        }
+
+        .app-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .split-name {
+            font-size: 14px;
+            color: var(--color-text-muted);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--color-surface);
+            border-radius: var(--radius);
+            padding: var(--space-1);
+            margin-bottom: var(--space-4);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: var(--space-2) var(--space-3);
+            text-align: center;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            cursor: pointer;
+        }
+
+        .tab.active {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        /* FAB */
+        .fab {
+            position: fixed;
+            bottom: var(--space-6);
+            right: var(--space-4);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+            cursor: pointer;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--color-border);
+            margin: var(--space-6) 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Color Palette Section -->
+    <div class="section">
+        <div class="section-title">Color Palette</div>
+        <div class="color-grid">
+            <div class="color-swatch" style="background: var(--color-primary)"><span>Primary</span></div>
+            <div class="color-swatch" style="background: var(--color-secondary)"><span>Secondary</span></div>
+            <div class="color-swatch" style="background: var(--color-success)"><span>Success</span></div>
+            <div class="color-swatch" style="background: var(--color-danger)"><span>Danger</span></div>
+        </div>
+    </div>
+
+    <!-- App Header -->
+    <div class="section">
+        <div class="section-title">App Header</div>
+        <div class="card" style="padding: 0;">
+            <div class="app-header" style="padding: var(--space-4);">
+                <div>
+                    <div class="app-logo">FairNSquare</div>
+                    <div class="split-name">Bordeaux Weekend 2026</div>
+                </div>
+                <button class="btn btn-secondary" style="padding: var(--space-2) var(--space-3); min-height: auto; font-size: 14px;">Share</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="section">
+        <div class="section-title">Navigation</div>
+        <div class="tabs">
+            <div class="tab">Participants</div>
+            <div class="tab active">Expenses</div>
+            <div class="tab">Settlement</div>
+        </div>
+    </div>
+
+    <!-- Participants List -->
+    <div class="section">
+        <div class="section-title">Participants</div>
+        <div class="card" style="padding: 0;">
+            <div class="participant-row">
+                <div class="participant-avatar">S</div>
+                <div class="participant-info">
+                    <div class="participant-name">Sophie</div>
+                    <div class="participant-nights">4 nights</div>
+                </div>
+                <div class="participant-balance owed">+€127.50</div>
+            </div>
+            <div class="participant-row">
+                <div class="participant-avatar">M</div>
+                <div class="participant-info">
+                    <div class="participant-name">Marc</div>
+                    <div class="participant-nights">2 nights</div>
+                </div>
+                <div class="participant-balance owes">-€47.25</div>
+            </div>
+            <div class="participant-row">
+                <div class="participant-avatar">J</div>
+                <div class="participant-info">
+                    <div class="participant-name">Julie</div>
+                    <div class="participant-nights">4 nights</div>
+                </div>
+                <div class="participant-balance owed">+€23.00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses List -->
+    <div class="section">
+        <div class="section-title">Expenses</div>
+        <div class="card" style="padding: 0;">
+            <div class="expense-item">
+                <div class="expense-icon">🏠</div>
+                <div class="expense-info">
+                    <div class="expense-desc">Accommodation</div>
+                    <div class="expense-meta">Sophie • <span class="badge badge-primary">by night</span></div>
+                </div>
+                <div class="expense-amount">€650.00</div>
+            </div>
+            <div class="expense-item">
+                <div class="expense-icon">🛒</div>
+                <div class="expense-info">
+                    <div class="expense-desc">Groceries Day 1</div>
+                    <div class="expense-meta">Marc • <span class="badge badge-primary">by night</span></div>
+                </div>
+                <div class="expense-amount">€85.00</div>
+            </div>
+            <div class="expense-item">
+                <div class="expense-icon">🍽️</div>
+                <div class="expense-info">
+                    <div class="expense-desc">Restaurant dinner</div>
+                    <div class="expense-meta">Julie • <span class="badge badge-success">equal</span></div>
+                </div>
+                <div class="expense-amount">€180.00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Expense Form -->
+    <div class="section">
+        <div class="section-title">Add Expense Form</div>
+        <div class="card">
+            <div class="input-group">
+                <label class="input-label">Description</label>
+                <input type="text" class="input" placeholder="What was it for?">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Amount (€)</label>
+                <input type="number" class="input" placeholder="0.00" style="font-variant-numeric: tabular-nums;">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Split Mode</label>
+                <div class="tabs" style="margin-bottom: 0;">
+                    <div class="tab active">By Night</div>
+                    <div class="tab">Equal</div>
+                    <div class="tab">Free</div>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary">Cancel</button>
+                <button class="btn btn-primary">Add Expense</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settlement View -->
+    <div class="section">
+        <div class="section-title">Settlement View</div>
+
+        <div class="settlement-card">
+            <div class="settlement-title">You owe</div>
+            <div class="settlement-amount">€47.25</div>
+            <div class="settlement-to">to Sophie</div>
+        </div>
+
+        <div class="optimizer-result">
+            <span class="optimizer-old">6 transfers</span>
+            <span>→</span>
+            <span>3 transfers</span>
+            <span>✓ Optimized!</span>
+        </div>
+
+        <div class="transfer-item">
+            <div class="transfer-from">Marc</div>
+            <div class="transfer-arrow">→</div>
+            <div class="transfer-to">Sophie</div>
+            <div class="transfer-amount">€47.25</div>
+        </div>
+        <div class="transfer-item">
+            <div class="transfer-from">Thomas</div>
+            <div class="transfer-arrow">→</div>
+            <div class="transfer-to">Sophie</div>
+            <div class="transfer-amount">€32.00</div>
+        </div>
+        <div class="transfer-item">
+            <div class="transfer-from">Lucas</div>
+            <div class="transfer-arrow">→</div>
+            <div class="transfer-to">Julie</div>
+            <div class="transfer-amount">€23.00</div>
+        </div>
+
+        <button class="btn btn-success" style="width: 100%; margin-top: var(--space-4);">Mark All as Settled</button>
+    </div>
+
+    <!-- Buttons -->
+    <div class="section">
+        <div class="section-title">Buttons</div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+            <button class="btn btn-primary" style="width: 100%;">Primary Action</button>
+            <button class="btn btn-secondary" style="width: 100%;">Secondary Action</button>
+            <button class="btn btn-success" style="width: 100%;">Success / Confirm</button>
+        </div>
+    </div>
+
+    <!-- Success State -->
+    <div class="section">
+        <div class="section-title">Success State</div>
+        <div class="card" style="text-align: center; padding: var(--space-8);">
+            <div style="font-size: 48px; margin-bottom: var(--space-4);">✓</div>
+            <h2 style="color: var(--color-success);">All Settled!</h2>
+            <p style="color: var(--color-text-muted); margin-top: var(--space-2);">Everyone has been paid back.</p>
+            <div style="margin-top: var(--space-6);">
+                <button class="btn btn-primary">Thanks!</button>
+                <button class="btn btn-secondary" style="margin-left: var(--space-2);">Improvement Idea</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB Button -->
+    <button class="fab">+</button>
+</body>
+</html>
