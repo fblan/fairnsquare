@@ -1,6 +1,6 @@
 # Story 1.1: Initialize Quarkus Backend Project
 
-Status: review
+Status: done
 
 ## Story
 
@@ -115,5 +115,28 @@ Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Completion Notes List
 
+- Project created as multi-module Maven project with parent POM for centralized dependency management
+- Used Quarkus 3.30.6 with Java 25 (verified working with Temurin 25.0.1)
+- Extensions: quarkus-rest, quarkus-rest-jackson (replaces resteasy-reactive-jackson in Quarkus 3.x), quinoa, opentelemetry, smallrye-health, smallrye-openapi
+- Package structure created per Architecture spec with sharedkernel/ and subdirectories
+- Health endpoint tests written using @QuarkusTest and REST-assured
+- All 3 health tests passing: /q/health, /q/health/live, /q/health/ready
+
+**Code Review Fixes Applied (2026-01-18):**
+- Removed HelloRest.java (violated --no-code requirement)
+- Fixed CORS config: `quarkus.http.cors` → `quarkus.http.cors.enabled`
+- Created src/test/resources/ directory
+- Populated File List section
+
 ### File List
+
+- `pom.xml` - Parent POM with Java 25 config, dependency management, Quarkus BOM
+- `fairnsquare-app/pom.xml` - App module POM with Quarkus extensions
+- `fairnsquare-app/src/main/resources/application.properties` - Application configuration
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/package-info.java` - Shared kernel package documentation
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/error/package-info.java` - Error handling package
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/persistence/package-info.java` - Persistence package
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/validation/package-info.java` - Validation package
+- `fairnsquare-app/src/test/java/org/asymetrik/web/fairnsquare/HealthCheckTest.java` - Health endpoint integration tests
+- `fairnsquare-app/src/test/resources/.gitkeep` - Test resources directory placeholder
 
