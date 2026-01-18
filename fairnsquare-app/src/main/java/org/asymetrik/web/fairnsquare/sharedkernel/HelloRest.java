@@ -8,13 +8,9 @@ import jakarta.ws.rs.GET;
 @ApplicationPath("/api")
 public class HelloRest {
 
-
-	@GET
-	public String sayHello() {
-		return "Hello from Fair n Square!";
-	}
-
-
-
+    @GET
+    public String sayHello() {
+        return "Hello from Fair n Square!";
+    }
 
 }
