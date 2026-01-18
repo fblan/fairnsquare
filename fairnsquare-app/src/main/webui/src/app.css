@@ -1,83 +1,201 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* FairNSquare Theme - CSS Custom Properties for White-Label Support */
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* FairNSquare Theme - Based on UX Specification */
+/* Primary: Teal #0D9488, Secondary: Slate #475569 */
 :root {
-  /* Primary Colors - Teal */
-  --color-primary: #0D9488;
-  --color-primary-light: #14B8A6;
-  --color-primary-dark: #0F766E;
+  --radius: 0.5rem;
 
-  /* Secondary Colors - Slate */
-  --color-secondary: #475569;
-  --color-secondary-light: #64748B;
+  /* FairNSquare Light Theme */
+  --background: oklch(0.985 0.003 248);      /* #F8FAFC - Background */
+  --foreground: oklch(0.237 0.03 262);       /* #1E293B - Text */
 
-  /* Semantic Colors */
-  --color-success: #16A34A;
-  --color-success-light: #22C55E;
-  --color-warning: #F59E0B;
-  --color-warning-light: #FBBF24;
-  --color-danger: #DC2626;
-  --color-danger-light: #EF4444;
+  --card: oklch(1 0 0);                       /* #FFFFFF - Surface */
+  --card-foreground: oklch(0.237 0.03 262);  /* #1E293B - Text */
 
-  /* Neutral Colors */
-  --color-background: #F8FAFC;
-  --color-surface: #FFFFFF;
-  --color-text: #1E293B;
-  --color-text-muted: #64748B;
-  --color-border: #E2E8F0;
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.237 0.03 262);
 
-  /* Typography */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* Primary - Teal */
+  --primary: oklch(0.555 0.127 181);          /* #0D9488 */
+  --primary-foreground: oklch(1 0 0);         /* White text on primary */
 
-  /* Rendering */
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Secondary - Slate */
+  --secondary: oklch(0.968 0.007 248);        /* Light slate background */
+  --secondary-foreground: oklch(0.416 0.031 256); /* #475569 */
+
+  --muted: oklch(0.968 0.007 248);
+  --muted-foreground: oklch(0.464 0.043 258); /* #64748B - Text muted */
+
+  --accent: oklch(0.643 0.142 181);           /* #14B8A6 - Primary light */
+  --accent-foreground: oklch(0.237 0.03 262);
+
+  /* Danger/Destructive - Red */
+  --destructive: oklch(0.577 0.245 27);       /* #DC2626 */
+  --destructive-foreground: oklch(1 0 0);     /* White text on destructive */
+
+  /* Borders and inputs */
+  --border: oklch(0.929 0.013 255);           /* #E2E8F0 */
+  --input: oklch(0.929 0.013 255);
+  --ring: oklch(0.555 0.127 181);             /* Primary teal for focus rings */
+
+  /* Chart colors */
+  --chart-1: oklch(0.555 0.127 181);          /* Teal */
+  --chart-2: oklch(0.643 0.142 181);          /* Teal light */
+  --chart-3: oklch(0.416 0.031 256);          /* Slate */
+  --chart-4: oklch(0.596 0.145 163);          /* #16A34A - Success */
+  --chart-5: oklch(0.769 0.188 70);           /* #F59E0B - Warning */
+
+  /* Sidebar (same as main) */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.237 0.03 262);
+  --sidebar-primary: oklch(0.555 0.127 181);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.968 0.007 248);
+  --sidebar-accent-foreground: oklch(0.237 0.03 262);
+  --sidebar-border: oklch(0.929 0.013 255);
+  --sidebar-ring: oklch(0.555 0.127 181);
+
+  /* FairNSquare custom semantic colors */
+  --success: oklch(0.596 0.145 163);          /* #16A34A */
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.769 0.188 70);           /* #F59E0B */
+  --warning-foreground: oklch(0.237 0.03 262);
+  --danger: var(--destructive);
+  --danger-foreground: oklch(1 0 0);
 }
 
-/* Base styles */
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: var(--color-background);
-  color: var(--color-text);
+.dark {
+  --background: oklch(0.237 0.03 262);        /* Dark background */
+  --foreground: oklch(0.985 0.003 248);       /* Light text */
+
+  --card: oklch(0.279 0.035 262);
+  --card-foreground: oklch(0.985 0.003 248);
+
+  --popover: oklch(0.279 0.035 262);
+  --popover-foreground: oklch(0.985 0.003 248);
+
+  --primary: oklch(0.643 0.142 181);          /* Lighter teal in dark mode */
+  --primary-foreground: oklch(0.237 0.03 262);
+
+  --secondary: oklch(0.279 0.035 262);
+  --secondary-foreground: oklch(0.985 0.003 248);
+
+  --muted: oklch(0.279 0.035 262);
+  --muted-foreground: oklch(0.704 0.04 257);
+
+  --accent: oklch(0.555 0.127 181);
+  --accent-foreground: oklch(0.985 0.003 248);
+
+  --destructive: oklch(0.704 0.191 22);
+  --destructive-foreground: oklch(1 0 0);     /* White text on destructive */
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.643 0.142 181);
+
+  --chart-1: oklch(0.643 0.142 181);
+  --chart-2: oklch(0.555 0.127 181);
+  --chart-3: oklch(0.704 0.04 257);
+  --chart-4: oklch(0.696 0.17 163);
+  --chart-5: oklch(0.828 0.189 84);
+
+  --sidebar: oklch(0.279 0.035 262);
+  --sidebar-foreground: oklch(0.985 0.003 248);
+  --sidebar-primary: oklch(0.643 0.142 181);
+  --sidebar-primary-foreground: oklch(0.985 0.003 248);
+  --sidebar-accent: oklch(0.279 0.035 262);
+  --sidebar-accent-foreground: oklch(0.985 0.003 248);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.643 0.142 181);
+
+  --success: oklch(0.696 0.17 163);
+  --success-foreground: oklch(0.237 0.03 262);
+  --warning: oklch(0.828 0.189 84);
+  --warning-foreground: oklch(0.237 0.03 262);
+  --danger: var(--destructive);
+  --danger-foreground: oklch(0.985 0.003 248);
 }
 
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* Custom semantic colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Mobile-first: app container */
 #app {
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
   padding: 1rem;
+  min-height: 100vh;
 }
 
-/* Mobile-first: ensure touch targets are at least 44px */
-button,
-a,
-input,
-select,
-textarea {
-  min-height: 44px;
-}
+/* Note: Touch target sizing is handled by shadcn components (h-9 = 36px default)
+   For custom elements needing 44px touch targets, use class="min-h-11" */
 
 /* Focus states for accessibility */
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
-}
-
-/* Link styles */
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-a:hover {
-  color: var(--color-primary-dark);
-  text-decoration: underline;
 }
