@@ -42,7 +42,7 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   # Epic 1: Project Foundation
   epic-1: in-progress
-  1-1-initialize-quarkus-backend-project: in-progress
+  1-1-initialize-quarkus-backend-project: done
   1-2-initialize-svelte-5-frontend: backlog
   1-3-configure-opentelemetry-dev-experience: backlog
   epic-1-retrospective: optional
