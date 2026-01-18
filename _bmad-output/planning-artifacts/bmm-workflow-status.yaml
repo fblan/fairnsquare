@@ -28,12 +28,12 @@ workflow_status:
   product-brief: "_bmad-output/planning-artifacts/product-brief-FairNSquare-2026-01-16.md"
 
   # Phase 2: Planning
-  prd: required
-  create-ux-design: conditional  # if_has_ui - determined after PRD
+  prd: "_bmad-output/planning-artifacts/prd.md"
+  create-ux-design: "_bmad-output/planning-artifacts/ux-design-specification.md"
 
   # Phase 3: Solutioning
-  create-architecture: required
-  create-epics-and-stories: required
+  create-architecture: "_bmad-output/planning-artifacts/architecture.md"
+  create-epics-and-stories: "_bmad-output/planning-artifacts/epics.md"  # Epic 1 stories complete, Epics 2-6 pending
   test-design: optional
   implementation-readiness: required
 

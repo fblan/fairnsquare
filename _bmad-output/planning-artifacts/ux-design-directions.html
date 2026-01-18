@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FairNSquare - Design Directions</title>
+    <style>
+        :root {
+            --color-primary: #0D9488;
+            --color-primary-light: #14B8A6;
+            --color-primary-dark: #0F766E;
+            --color-success: #16A34A;
+            --color-warning: #F59E0B;
+            --color-danger: #DC2626;
+            --color-background: #F8FAFC;
+            --color-surface: #FFFFFF;
+            --color-border: #E2E8F0;
+            --color-text: #1E293B;
+            --color-text-muted: #64748B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1E293B;
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav button {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .nav button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .nav button.active {
+            background: var(--color-primary);
+        }
+
+        /* Directions Container */
+        .directions {
+            padding-top: 80px;
+        }
+
+        .direction {
+            display: none;
+            min-height: calc(100vh - 80px);
+            padding: 24px;
+        }
+
+        .direction.active {
+            display: block;
+        }
+
+        .direction-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .direction-header h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .direction-header p {
+            color: var(--color-text-muted);
+            font-size: 16px;
+        }
+
+        /* Phone Frame */
+        .phone-frame {
+            max-width: 375px;
+            margin: 0 auto;
+            background: var(--color-background);
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+
+        .phone-screen {
+            background: var(--color-background);
+            border-radius: 32px;
+            overflow: hidden;
+            min-height: 700px;
+        }
+
+        /* ========================================
+           DIRECTION 1: Clean Minimalist
+           ======================================== */
+        .d1 .phone-screen {
+            background: #FFFFFF;
+        }
+
+        .d1 .app-header {
+            padding: 20px 24px;
+            background: white;
+        }
+
+        .d1 .app-title {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .d1 .split-name {
+            font-size: 24px;
+            font-weight: 300;
+            color: var(--color-text);
+        }
+
+        .d1 .content {
+            padding: 0 24px 24px;
+        }
+
+        .d1 .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--color-text-muted);
+            margin: 24px 0 12px;
+        }
+
+        .d1 .balance-card {
+            background: var(--color-background);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .d1 .balance-amount {
+            font-size: 36px;
+            font-weight: 200;
+            color: var(--color-text);
+        }
+
+        .d1 .balance-label {
+            font-size: 13px;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+        }
+
+        .d1 .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .d1 .expense-item:last-child {
+            border-bottom: none;
+        }
+
+        .d1 .expense-desc {
+            font-size: 15px;
+            color: var(--color-text);
+        }
+
+        .d1 .expense-meta {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-top: 2px;
+        }
+
+        .d1 .expense-amount {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--color-text);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .d1 .add-btn {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-text);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* ========================================
+           DIRECTION 2: Vibrant Card-Based
+           ======================================== */
+        .d2 .phone-screen {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+        }
+
+        .d2 .app-header {
+            padding: 24px;
+            color: white;
+        }
+
+        .d2 .app-title {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .d2 .split-name {
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        .d2 .content {
+            padding: 0 16px 24px;
+        }
+
+        .d2 .balance-card {
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+        }
+
+        .d2 .balance-amount {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--color-primary);
+        }
+
+        .d2 .balance-label {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+        }
+
+        .d2 .expense-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .d2 .expense-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--color-primary-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .d2 .expense-info {
+            flex: 1;
+        }
+
+        .d2 .expense-desc {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d2 .expense-meta {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        .d2 .expense-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .d2 .add-btn {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            width: 60px;
+            height: 60px;
+            background: white;
+            color: var(--color-primary);
+            border: none;
+            border-radius: 50%;
+            font-size: 28px;
+            font-weight: 300;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        /* ========================================
+           DIRECTION 3: Compact List View
+           ======================================== */
+        .d3 .phone-screen {
+            background: var(--color-background);
+        }
+
+        .d3 .app-header {
+            background: white;
+            padding: 16px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .d3 .split-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d3 .header-balance {
+            font-size: 15px;
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .d3 .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .d3 .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--color-text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .d3 .tab.active {
+            color: var(--color-primary);
+            border-bottom: 2px solid var(--color-primary);
+            font-weight: 600;
+        }
+
+        .d3 .list-section {
+            background: white;
+            margin-top: 8px;
+        }
+
+        .d3 .list-header {
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--color-background);
+        }
+
+        .d3 .list-item {
+            display: flex;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--color-border);
+            align-items: center;
+        }
+
+        .d3 .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .d3 .item-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--color-primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-right: 12px;
+        }
+
+        .d3 .item-info {
+            flex: 1;
+        }
+
+        .d3 .item-primary {
+            font-size: 14px;
+            color: var(--color-text);
+        }
+
+        .d3 .item-secondary {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        .d3 .item-amount {
+            font-size: 14px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .d3 .item-amount.positive { color: var(--color-success); }
+        .d3 .item-amount.negative { color: var(--color-danger); }
+
+        .d3 .bottom-bar {
+            position: fixed;
+            bottom: 70px;
+            left: 12px;
+            right: 12px;
+            max-width: 351px;
+            margin: 0 auto;
+            background: white;
+            padding: 12px 16px;
+            display: flex;
+            gap: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .d3 .bottom-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .d3 .bottom-btn.primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .d3 .bottom-btn.secondary {
+            background: var(--color-background);
+            color: var(--color-text);
+        }
+
+        /* ========================================
+           DIRECTION 4: Conversational Flow
+           ======================================== */
+        .d4 .phone-screen {
+            background: white;
+        }
+
+        .d4 .app-header {
+            background: var(--color-primary);
+            color: white;
+            padding: 20px;
+            border-radius: 0 0 24px 24px;
+        }
+
+        .d4 .app-title {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .d4 .split-name {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .d4 .chat-container {
+            padding: 20px;
+        }
+
+        .d4 .message {
+            max-width: 85%;
+            margin-bottom: 16px;
+        }
+
+        .d4 .message.system {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            max-width: 100%;
+        }
+
+        .d4 .message.system .bubble {
+            background: none;
+            color: var(--color-text-muted);
+            font-size: 13px;
+        }
+
+        .d4 .message.expense {
+            margin-right: auto;
+        }
+
+        .d4 .bubble {
+            background: var(--color-background);
+            padding: 14px 18px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .d4 .message.right .bubble {
+            background: var(--color-primary);
+            color: white;
+            border-bottom-left-radius: 18px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .d4 .expense-bubble {
+            background: white;
+            border: 2px solid var(--color-border);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .d4 .expense-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .d4 .expense-desc {
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d4 .expense-amount {
+            font-weight: 700;
+            color: var(--color-primary);
+            font-size: 18px;
+        }
+
+        .d4 .expense-meta {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        .d4 .sender-name {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+            padding-left: 4px;
+        }
+
+        .d4 .input-area {
+            position: fixed;
+            bottom: 70px;
+            left: 12px;
+            right: 12px;
+            max-width: 351px;
+            margin: 0 auto;
+            background: white;
+            padding: 12px;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .d4 .input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .d4 .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--color-border);
+            border-radius: 24px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .d4 .send-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* ========================================
+           DIRECTION 5: Dashboard-Style
+           ======================================== */
+        .d5 .phone-screen {
+            background: var(--color-background);
+        }
+
+        .d5 .app-header {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .d5 .split-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d5 .content {
+            padding: 16px;
+        }
+
+        .d5 .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .d5 .stat-card {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .d5 .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-text);
+        }
+
+        .d5 .stat-label {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+        }
+
+        .d5 .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .d5 .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text);
+            margin-bottom: 16px;
+        }
+
+        .d5 .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .d5 .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .d5 .bar-label {
+            width: 60px;
+            font-size: 13px;
+            color: var(--color-text);
+        }
+
+        .d5 .bar-track {
+            flex: 1;
+            height: 24px;
+            background: var(--color-background);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .d5 .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .d5 .bar-fill.positive {
+            background: var(--color-success);
+        }
+
+        .d5 .bar-fill.negative {
+            background: var(--color-danger);
+        }
+
+        .d5 .bar-value {
+            width: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .d5 .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .d5 .action-btn {
+            background: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .d5 .action-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .d5 .action-label {
+            font-size: 13px;
+            color: var(--color-text);
+            font-weight: 500;
+        }
+
+        /* ========================================
+           DIRECTION 6: Floating Action
+           ======================================== */
+        .d6 .phone-screen {
+            background: var(--color-background);
+        }
+
+        .d6 .app-header {
+            background: var(--color-primary);
+            color: white;
+            padding: 20px;
+            padding-bottom: 60px;
+        }
+
+        .d6 .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .d6 .split-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .d6 .share-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .d6 .balance-summary {
+            text-align: center;
+        }
+
+        .d6 .balance-amount {
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .d6 .balance-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .d6 .content {
+            margin-top: -40px;
+            padding: 0 16px 120px;
+        }
+
+        .d6 .card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+        }
+
+        .d6 .card-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .d6 .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d6 .card-action {
+            font-size: 13px;
+            color: var(--color-primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .d6 .expense-row {
+            display: flex;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--color-border);
+            align-items: center;
+            gap: 12px;
+        }
+
+        .d6 .expense-row:last-child {
+            border-bottom: none;
+        }
+
+        .d6 .expense-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--color-primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .d6 .expense-info {
+            flex: 1;
+        }
+
+        .d6 .expense-desc {
+            font-size: 15px;
+            color: var(--color-text);
+            font-weight: 500;
+        }
+
+        .d6 .expense-meta {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        .d6 .expense-amount {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .d6 .fab {
+            position: fixed;
+            bottom: 90px;
+            right: 32px;
+            width: 56px;
+            height: 56px;
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 28px;
+            box-shadow: 0 8px 24px rgba(13, 148, 136, 0.4);
+            cursor: pointer;
+        }
+
+        .d6 .bottom-sheet-hint {
+            position: fixed;
+            bottom: 70px;
+            left: 12px;
+            right: 12px;
+            max-width: 351px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px 24px 0 0;
+            padding: 12px;
+            text-align: center;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        }
+
+        .d6 .sheet-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--color-border);
+            border-radius: 2px;
+            margin: 0 auto 8px;
+        }
+
+        .d6 .sheet-hint-text {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        /* Comparison View */
+        .comparison {
+            display: none;
+            padding: 24px;
+        }
+
+        .comparison.active {
+            display: block;
+        }
+
+        .comparison h2 {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .comparison-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .comparison-card h3 {
+            margin-bottom: 12px;
+            color: var(--color-primary-light);
+        }
+
+        .comparison-card p {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin-bottom: 16px;
+        }
+
+        .mini-preview {
+            background: var(--color-background);
+            border-radius: 20px;
+            height: 350px;
+            overflow: hidden;
+            transform: scale(0.9);
+        }
+
+        .traits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .trait {
+            background: rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <button class="active" onclick="showDirection(1)">1. Minimalist</button>
+        <button onclick="showDirection(2)">2. Vibrant</button>
+        <button onclick="showDirection(3)">3. Compact</button>
+        <button onclick="showDirection(4)">4. Conversational</button>
+        <button onclick="showDirection(5)">5. Dashboard</button>
+        <button onclick="showDirection(6)">6. Floating Action</button>
+        <button onclick="showComparison()">Compare All</button>
+    </nav>
+
+    <div class="directions">
+        <!-- Direction 1: Clean Minimalist -->
+        <div class="direction d1 active" id="d1">
+            <div class="direction-header">
+                <h2>Direction 1: Clean Minimalist</h2>
+                <p>Maximum whitespace, ultra-simple cards, subtle typography hierarchy</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="app-title">FairNSquare</div>
+                        <div class="split-name">Bordeaux Weekend 2026</div>
+                    </div>
+                    <div class="content">
+                        <div class="balance-card">
+                            <div class="balance-amount">+47.00</div>
+                            <div class="balance-label">You are owed</div>
+                        </div>
+
+                        <div class="section-label">Recent Expenses</div>
+
+                        <div class="expense-item">
+                            <div>
+                                <div class="expense-desc">Accommodation</div>
+                                <div class="expense-meta">Sophie paid by night</div>
+                            </div>
+                            <div class="expense-amount">650.00</div>
+                        </div>
+
+                        <div class="expense-item">
+                            <div>
+                                <div class="expense-desc">Train tickets</div>
+                                <div class="expense-meta">Marc paid equal</div>
+                            </div>
+                            <div class="expense-amount">240.00</div>
+                        </div>
+
+                        <div class="expense-item">
+                            <div>
+                                <div class="expense-desc">Groceries</div>
+                                <div class="expense-meta">Julie paid by night</div>
+                            </div>
+                            <div class="expense-amount">89.50</div>
+                        </div>
+                    </div>
+                    <button class="add-btn">Add expense</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 2: Vibrant Card-Based -->
+        <div class="direction d2" id="d2">
+            <div class="direction-header">
+                <h2>Direction 2: Vibrant Card-Based</h2>
+                <p>Bold color blocks, prominent shadows, playful and inviting feel</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="app-title">Bordeaux Weekend 2026</div>
+                        <div class="split-name">6 friends 18 nights</div>
+                    </div>
+                    <div class="content">
+                        <div class="balance-card">
+                            <div class="balance-amount">+47.00</div>
+                            <div class="balance-label">You are owed</div>
+                        </div>
+
+                        <div class="expense-card">
+                            <div class="expense-icon">🏠</div>
+                            <div class="expense-info">
+                                <div class="expense-desc">Accommodation</div>
+                                <div class="expense-meta">Sophie paid by night</div>
+                            </div>
+                            <div class="expense-amount">650.00</div>
+                        </div>
+
+                        <div class="expense-card">
+                            <div class="expense-icon">🚂</div>
+                            <div class="expense-info">
+                                <div class="expense-desc">Train tickets</div>
+                                <div class="expense-meta">Marc paid equal</div>
+                            </div>
+                            <div class="expense-amount">240.00</div>
+                        </div>
+
+                        <div class="expense-card">
+                            <div class="expense-icon">🛒</div>
+                            <div class="expense-info">
+                                <div class="expense-desc">Groceries</div>
+                                <div class="expense-meta">Julie paid by night</div>
+                            </div>
+                            <div class="expense-amount">89.50</div>
+                        </div>
+                    </div>
+                    <button class="add-btn">+</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 3: Compact List View -->
+        <div class="direction d3" id="d3">
+            <div class="direction-header">
+                <h2>Direction 3: Compact List View</h2>
+                <p>Dense information display, efficient vertical space, familiar list patterns</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="split-name">Bordeaux Weekend</div>
+                        <div class="header-balance">+47.00</div>
+                    </div>
+                    <div class="tabs">
+                        <button class="tab active">Expenses</button>
+                        <button class="tab">People</button>
+                        <button class="tab">Settle</button>
+                    </div>
+
+                    <div class="list-section">
+                        <div class="list-header">Today</div>
+                        <div class="list-item">
+                            <div class="item-avatar">S</div>
+                            <div class="item-info">
+                                <div class="item-primary">Accommodation</div>
+                                <div class="item-secondary">Sophie by night</div>
+                            </div>
+                            <div class="item-amount">650.00</div>
+                        </div>
+                    </div>
+
+                    <div class="list-section">
+                        <div class="list-header">Yesterday</div>
+                        <div class="list-item">
+                            <div class="item-avatar">M</div>
+                            <div class="item-info">
+                                <div class="item-primary">Train tickets</div>
+                                <div class="item-secondary">Marc equal</div>
+                            </div>
+                            <div class="item-amount">240.00</div>
+                        </div>
+                        <div class="list-item">
+                            <div class="item-avatar">J</div>
+                            <div class="item-info">
+                                <div class="item-primary">Groceries</div>
+                                <div class="item-secondary">Julie by night</div>
+                            </div>
+                            <div class="item-amount">89.50</div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-bar">
+                        <button class="bottom-btn secondary">Settlement</button>
+                        <button class="bottom-btn primary">+ Add Expense</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 4: Conversational Flow -->
+        <div class="direction d4" id="d4">
+            <div class="direction-header">
+                <h2>Direction 4: Conversational Flow</h2>
+                <p>Chat-like expense entry, friendly and informal, WhatsApp-familiar</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="app-title">FairNSquare</div>
+                        <div class="split-name">Bordeaux Weekend 2026</div>
+                    </div>
+                    <div class="chat-container">
+                        <div class="message system">
+                            <div class="bubble">Sophie created this split</div>
+                        </div>
+
+                        <div class="message expense">
+                            <div class="sender-name">Sophie</div>
+                            <div class="expense-bubble">
+                                <div class="expense-top">
+                                    <div class="expense-desc">Accommodation</div>
+                                    <div class="expense-amount">650.00</div>
+                                </div>
+                                <div class="expense-meta">Split by nights stayed</div>
+                            </div>
+                        </div>
+
+                        <div class="message expense">
+                            <div class="sender-name">Marc</div>
+                            <div class="expense-bubble">
+                                <div class="expense-top">
+                                    <div class="expense-desc">Train tickets</div>
+                                    <div class="expense-amount">240.00</div>
+                                </div>
+                                <div class="expense-meta">Split equally</div>
+                            </div>
+                        </div>
+
+                        <div class="message expense">
+                            <div class="sender-name">Julie</div>
+                            <div class="expense-bubble">
+                                <div class="expense-top">
+                                    <div class="expense-desc">Groceries</div>
+                                    <div class="expense-amount">89.50</div>
+                                </div>
+                                <div class="expense-meta">Split by nights stayed</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <div class="input-row">
+                            <input type="text" class="chat-input" placeholder="Add expense...">
+                            <button class="send-btn">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 5: Dashboard-Style -->
+        <div class="direction d5" id="d5">
+            <div class="direction-header">
+                <h2>Direction 5: Dashboard-Style</h2>
+                <p>Data-forward with visual summaries, analytics feel, information-rich</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="split-name">Bordeaux Weekend 2026</div>
+                    </div>
+                    <div class="content">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">979.50</div>
+                                <div class="stat-label">Total Spent</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">6</div>
+                                <div class="stat-label">Participants</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">3</div>
+                                <div class="stat-label">Expenses</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">18</div>
+                                <div class="stat-label">Total Nights</div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-title">Balance per Person</div>
+                            <div class="bar-chart">
+                                <div class="bar-row">
+                                    <div class="bar-label">Sophie</div>
+                                    <div class="bar-track">
+                                        <div class="bar-fill positive" style="width: 100%"></div>
+                                    </div>
+                                    <div class="bar-value" style="color: var(--color-success)">+520</div>
+                                </div>
+                                <div class="bar-row">
+                                    <div class="bar-label">Marc</div>
+                                    <div class="bar-track">
+                                        <div class="bar-fill positive" style="width: 30%"></div>
+                                    </div>
+                                    <div class="bar-value" style="color: var(--color-success)">+156</div>
+                                </div>
+                                <div class="bar-row">
+                                    <div class="bar-label">Julie</div>
+                                    <div class="bar-track">
+                                        <div class="bar-fill negative" style="width: 20%"></div>
+                                    </div>
+                                    <div class="bar-value" style="color: var(--color-danger)">-47</div>
+                                </div>
+                                <div class="bar-row">
+                                    <div class="bar-label">Thomas</div>
+                                    <div class="bar-track">
+                                        <div class="bar-fill negative" style="width: 40%"></div>
+                                    </div>
+                                    <div class="bar-value" style="color: var(--color-danger)">-89</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-grid">
+                            <button class="action-btn">
+                                <div class="action-icon">+</div>
+                                <div class="action-label">Add Expense</div>
+                            </button>
+                            <button class="action-btn">
+                                <div class="action-icon">✓</div>
+                                <div class="action-label">Settlement</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Direction 6: Floating Action -->
+        <div class="direction d6" id="d6">
+            <div class="direction-header">
+                <h2>Direction 6: Floating Action</h2>
+                <p>Bottom sheet patterns, prominent FAB, gesture-friendly mobile-first</p>
+            </div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="app-header">
+                        <div class="header-top">
+                            <div class="split-name">Bordeaux Weekend</div>
+                            <button class="share-btn">Share link</button>
+                        </div>
+                        <div class="balance-summary">
+                            <div class="balance-amount">+47.00</div>
+                            <div class="balance-label">You are owed</div>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Recent Expenses</div>
+                                <button class="card-action">See all</button>
+                            </div>
+                            <div class="expense-row">
+                                <div class="expense-avatar">S</div>
+                                <div class="expense-info">
+                                    <div class="expense-desc">Accommodation</div>
+                                    <div class="expense-meta">By night 4 nights ago</div>
+                                </div>
+                                <div class="expense-amount">650.00</div>
+                            </div>
+                            <div class="expense-row">
+                                <div class="expense-avatar">M</div>
+                                <div class="expense-info">
+                                    <div class="expense-desc">Train tickets</div>
+                                    <div class="expense-meta">Equal 3 days ago</div>
+                                </div>
+                                <div class="expense-amount">240.00</div>
+                            </div>
+                            <div class="expense-row">
+                                <div class="expense-avatar">J</div>
+                                <div class="expense-info">
+                                    <div class="expense-desc">Groceries</div>
+                                    <div class="expense-meta">By night 2 days ago</div>
+                                </div>
+                                <div class="expense-amount">89.50</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Participants</div>
+                                <button class="card-action">Manage</button>
+                            </div>
+                            <div class="expense-row">
+                                <div class="expense-avatar">S</div>
+                                <div class="expense-info">
+                                    <div class="expense-desc">Sophie</div>
+                                    <div class="expense-meta">4 nights</div>
+                                </div>
+                                <div class="expense-amount" style="color: var(--color-success)">+520</div>
+                            </div>
+                            <div class="expense-row">
+                                <div class="expense-avatar">M</div>
+                                <div class="expense-info">
+                                    <div class="expense-desc">Marc</div>
+                                    <div class="expense-meta">2 nights</div>
+                                </div>
+                                <div class="expense-amount" style="color: var(--color-success)">+156</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="fab">+</button>
+                    <div class="bottom-sheet-hint">
+                        <div class="sheet-handle"></div>
+                        <div class="sheet-hint-text">Swipe up for settlement</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison View -->
+        <div class="comparison" id="comparison">
+            <div class="direction-header">
+                <h2>Compare All Directions</h2>
+                <p>Side-by-side evaluation of all design approaches</p>
+            </div>
+            <div class="comparison-grid">
+                <div class="comparison-card">
+                    <h3>1. Clean Minimalist</h3>
+                    <p>Ultra-simple, maximum breathing room</p>
+                    <div class="traits">
+                        <span class="trait">Elegant</span>
+                        <span class="trait">Premium feel</span>
+                        <span class="trait">Content-first</span>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <h3>2. Vibrant Card-Based</h3>
+                    <p>Bold colors, playful shadows</p>
+                    <div class="traits">
+                        <span class="trait">Energetic</span>
+                        <span class="trait">Approachable</span>
+                        <span class="trait">Fun</span>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <h3>3. Compact List View</h3>
+                    <p>Dense, efficient, familiar patterns</p>
+                    <div class="traits">
+                        <span class="trait">Efficient</span>
+                        <span class="trait">Familiar</span>
+                        <span class="trait">Scannable</span>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <h3>4. Conversational Flow</h3>
+                    <p>Chat-like, WhatsApp-familiar feel</p>
+                    <div class="traits">
+                        <span class="trait">Friendly</span>
+                        <span class="trait">Social</span>
+                        <span class="trait">Informal</span>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <h3>5. Dashboard-Style</h3>
+                    <p>Data visualization, analytics feel</p>
+                    <div class="traits">
+                        <span class="trait">Informative</span>
+                        <span class="trait">Professional</span>
+                        <span class="trait">Complete</span>
+                    </div>
+                </div>
+                <div class="comparison-card">
+                    <h3>6. Floating Action</h3>
+                    <p>Mobile-native gestures, bottom sheets</p>
+                    <div class="traits">
+                        <span class="trait">Modern</span>
+                        <span class="trait">Gesture-friendly</span>
+                        <span class="trait">Native feel</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDirection(num) {
+            // Hide all directions and comparison
+            document.querySelectorAll('.direction, .comparison').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+
+            // Show selected direction
+            document.getElementById('d' + num).classList.add('active');
+            document.querySelectorAll('.nav button')[num - 1].classList.add('active');
+        }
+
+        function showComparison() {
+            // Hide all directions
+            document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+
+            // Show comparison
+            document.getElementById('comparison').classList.add('active');
+            document.querySelectorAll('.nav button')[6].classList.add('active');
+        }
+    </script>
+</body>
+</html>
