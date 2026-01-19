@@ -1,9 +1,9 @@
 ---
-stepsCompleted: [1, 2, '3-partial']
+stepsCompleted: [1, 2, 3]
 storiesComplete:
   - epic1
-storiesPending:
   - epic2
+storiesPending:
   - epic3
   - epic4
   - epic5
@@ -335,4 +335,185 @@ This document provides the complete epic and story breakdown for FairNSquare, de
 
 ---
 
-<!-- Stories for Epics 2-6 pending - to be created after Epic 1 implementation -->
+### Story 1.4: Add shadcn-svelte Components
+
+**As a** developer,
+**I want** shadcn-svelte UI components installed and configured,
+**So that** I can build accessible, consistent UI components with the design system.
+
+**Acceptance Criteria:**
+
+**Given** the Svelte 5 frontend from Story 1.2
+**When** shadcn-svelte is initialized
+**Then** the CLI completes without errors
+**And** base components are available: Button, Input, Card, Label
+**And** components use the project's CSS custom properties for theming
+**And** components follow the UX spec color palette (Teal primary #0D9488)
+**And** all components are accessible (keyboard navigation, focus states)
+**And** components work with Svelte 5 runes syntax
+**And** the project builds successfully with `npm run build`
+
+---
+
+## Epic 2: Split Creation & Access - Stories
+
+### Story 2.1: Create Split Backend API
+
+**As a** developer integrating with FairNSquare,
+**I want** a REST API to create splits with automatic NanoID generation and JSON file persistence,
+**So that** splits can be created and stored reliably with proper tenant isolation.
+
+**Acceptance Criteria:**
+
+**Given** the API is running
+**When** a POST request is sent to `/api/splits` with body `{"name": "Bordeaux Weekend 2026"}`
+**Then** the response status is 201 Created
+**And** the response body contains:
+  - `id`: a 21-character NanoID (URL-safe characters only)
+  - `name`: the provided split name
+  - `createdAt`: ISO 8601 timestamp
+  - `participants`: empty array
+  - `expenses`: empty array
+
+**Given** a split is created successfully
+**When** the file system is checked
+**Then** a JSON file exists at `data/default/{splitId}.json`
+**And** the file contains the complete split data with all fields
+
+**Given** an invalid request with empty name `{"name": ""}`
+**When** POST is sent to `/api/splits`
+**Then** the response status is 400 Bad Request
+**And** the response follows Problem Details (RFC 9457) format with:
+  - `type`: error type URI
+  - `title`: "Validation Error"
+  - `status`: 400
+  - `detail`: description of the validation failure
+
+**Given** an invalid request with missing name `{}`
+**When** POST is sent to `/api/splits`
+**Then** the response status is 400 Bad Request
+**And** the response follows Problem Details format
+
+**Given** the data directory does not exist
+**When** a split is created
+**Then** the directory structure `data/default/` is created automatically
+**And** the split file is persisted successfully
+
+**Given** the `FAIRNSQUARE_DATA_PATH` environment variable is set to `/custom/path`
+**When** a split is created
+**Then** the split file is stored at `/custom/path/default/{splitId}.json`
+
+---
+
+### Story 2.2: Create Split Frontend
+
+**As a** user,
+**I want** to create a new split by entering a name and instantly receive a shareable link,
+**So that** I can start tracking expenses for my group with zero friction.
+
+**Acceptance Criteria:**
+
+**Given** I am on the home page
+**When** the page loads
+**Then** I see a form with:
+  - A text input for split name with placeholder "e.g., Bordeaux Weekend 2026"
+  - A "Create Split" button
+  - The button uses the primary teal color (#0D9488)
+
+**Given** I am on the home page
+**When** I enter a split name "Beach Trip 2026" and click "Create Split"
+**Then** a loading state is shown on the button
+**And** the API is called to create the split
+**And** on success, I am shown the shareable link prominently
+
+**Given** a split was just created successfully
+**When** the success state is displayed
+**Then** I see the full shareable URL (e.g., `https://app.fairnsquare.com/splits/{splitId}`)
+**And** I see a "Copy Link" button next to the URL
+**And** clicking "Copy Link" copies the URL to clipboard and shows confirmation
+**And** I see a "Go to Split" button to navigate to the split overview
+
+**Given** I try to create a split with an empty name
+**When** I click "Create Split"
+**Then** the form shows a validation error "Split name is required"
+**And** the API is not called
+
+**Given** the API returns an error
+**When** creating a split
+**Then** an error toast is displayed with the error message
+**And** the form remains editable for retry
+
+**Given** I am on a mobile device (< 768px)
+**When** viewing the create split form
+**Then** the form is centered with max-width 420px
+**And** touch targets are at least 44px in height
+**And** the input and button are full-width
+
+---
+
+### Story 2.3: Access Split via Link & View Overview
+
+**As a** user with a shared link,
+**I want** to access the split directly and see an overview of the split state,
+**So that** I can immediately understand who's participating and what expenses exist.
+
+**Acceptance Criteria:**
+
+**Given** I have a valid split link `https://app.fairnsquare.com/splits/{splitId}`
+**When** I navigate to that URL
+**Then** the split overview page loads
+**And** I see the split name as the page title/header
+**And** I see a "Share" button to copy the link
+
+**Given** I am viewing a split overview
+**When** the page loads
+**Then** I see the following sections:
+  - **Header**: Split name + share button
+  - **Participants**: List showing "No participants yet" or participant names with nights
+  - **Expenses**: List showing "No expenses yet" or expense summaries
+  - **Balance Summary**: Shows "Add participants and expenses to see balances"
+
+**Given** the split has participants (from future epic)
+**When** viewing the overview
+**Then** each participant card shows: name, number of nights, running balance
+**And** participants are displayed in a vertical list
+
+**Given** the split has expenses (from future epic)
+**When** viewing the overview
+**Then** each expense shows: description, amount, payer name, split mode badge
+**And** expenses are displayed in chronological order (newest first)
+
+**Given** I navigate to a split that doesn't exist
+**When** the page attempts to load
+**Then** I see a 404 error page with message "Split not found"
+**And** I see a link to "Create a new split" that goes to the home page
+
+**Given** the API call to fetch the split fails (network error)
+**When** loading the split page
+**Then** I see an error message "Failed to load split. Please try again."
+**And** I see a "Retry" button to attempt loading again
+
+**Given** I am viewing the split on mobile (< 768px)
+**When** the page renders
+**Then** the layout is single-column
+**And** cards have 16px padding and 8px border radius
+**And** the max content width is 420px, centered
+
+**Given** the split URL uses sv-router
+**When** I navigate to `/splits/{splitId}`
+**Then** the route parameter `splitId` is extracted
+**And** the split data is fetched from `GET /api/splits/{splitId}`
+
+**Given** a GET request is made to `/api/splits/{splitId}`
+**When** the split exists
+**Then** the response status is 200 OK
+**And** the response contains the full split data (id, name, createdAt, participants, expenses)
+
+**Given** a GET request is made to `/api/splits/{splitId}`
+**When** the split does not exist
+**Then** the response status is 404 Not Found
+**And** the response follows Problem Details format
+
+---
+
+<!-- Stories for Epics 3-6 pending -->
