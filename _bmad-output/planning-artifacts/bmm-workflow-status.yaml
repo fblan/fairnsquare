@@ -33,9 +33,9 @@ workflow_status:
 
   # Phase 3: Solutioning
   create-architecture: "_bmad-output/planning-artifacts/architecture.md"
-  create-epics-and-stories: "_bmad-output/planning-artifacts/epics.md"  # Epic 1 stories complete, Epics 2-6 pending
+  create-epics-and-stories: "_bmad-output/planning-artifacts/epics.md"  # Epic 1-2 stories complete, Epics 3-6 pending
   test-design: optional
-  implementation-readiness: required
+  implementation-readiness: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-01-20.md"
 
   # Phase 4: Implementation
   sprint-planning: required
