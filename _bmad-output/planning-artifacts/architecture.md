@@ -337,6 +337,105 @@ let data = $state<Split | null>(null);
 - Format: Structured JSON in production, readable in development
 - Context: Include `splitId`/`tenantId` via MDC
 
+### Domain Model Patterns
+
+**Value Objects Over Primitives:**
+
+Domain object fields should use value objects, not raw primitives. Value objects encapsulate validation, provide type safety, and make the domain language explicit.
+
+| Primitive | Value Object | Benefits |
+|-----------|--------------|----------|
+| `String name` | `Name name` | Validation (non-blank, max length), domain semantics |
+| `String id` | `SplitId id` | Format validation (NanoID), type safety |
+| `BigDecimal amount` | `Money amount` | Currency handling, rounding rules |
+| `int nights` | `NightCount nights` | Non-negative validation, domain meaning |
+
+**Implementation Pattern - Inner Record Classes:**
+```java
+public class Split {
+    // Value objects as inner records
+    public record Name(String value) {
+        public Name {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("Split name cannot be blank");
+            }
+            if (value.length() > 100) {
+                throw new IllegalArgumentException("Split name cannot exceed 100 characters");
+            }
+        }
+    }
+
+    private final SplitId id;
+    private Name name;  // Value object, not String
+    private final Instant createdAt;
+    // ...
+}
+```
+
+**When to Use Inner vs Top-Level Value Objects:**
+- Inner record: Used only by one aggregate (e.g., `Split.Name`)
+- Top-level class: Shared across modules (e.g., `SplitId`, `Money`)
+
+**Rich Domain Models (No Anemic Objects):**
+
+Domain objects like `Split`, `Participant`, and `Expense` must encapsulate behavior, not just data. Setters expose internal state and invite procedural code that belongs inside the domain.
+
+| Principle | Do | Don't |
+|-----------|-----|-------|
+| Construction | Factory methods, builders, or constructors with validation | Public no-arg constructor + setters |
+| State changes | Intention-revealing methods (`addParticipant()`, `recordExpense()`) | `setParticipants(list)` |
+| Invariants | Enforce in domain object | Validate in service layer |
+| Collections | Return unmodifiable views | Expose mutable collections |
+
+**Example - Split Aggregate:**
+```java
+public class Split {
+    // Inner value object
+    public record Name(String value) {
+        public Name {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("Split name cannot be blank");
+            }
+        }
+    }
+
+    private final SplitId id;          // Value object (top-level, shared)
+    private Name name;                  // Value object (inner record)
+    private final Instant createdAt;
+    private final List<Participant> participants = new ArrayList<>();
+    private final List<Expense> expenses = new ArrayList<>();
+
+    // Factory method for creation
+    public static Split create(String name) {
+        return new Split(SplitId.generate(), new Name(name), Instant.now());
+    }
+
+    // Behavior methods - not setters
+    public void rename(String newName) {
+        this.name = new Name(newName);  // Validation in value object
+    }
+
+    public void addParticipant(Participant participant) {
+        // Invariant: no duplicate names
+        participants.add(participant);
+    }
+
+    // Immutable view
+    public List<Participant> getParticipants() {
+        return Collections.unmodifiableList(participants);
+    }
+
+    // Getters return value objects, not primitives
+    public Name getName() { return name; }
+    public SplitId getId() { return id; }
+
+    // NO setters - state changes through behavior methods only
+}
+```
+
+**Exceptions for DTOs:**
+Request/Response DTOs (e.g., `CreateSplitRequest`) may use setters or records for Jackson deserialization. These are data carriers, not domain objects.
+
 ### Enforcement Guidelines
 
 **All AI Agents MUST:**
@@ -352,6 +451,10 @@ let data = $state<Split | null>(null);
 - ❌ `splitService.java` (use `SplitService.java`)
 - ❌ Global loading state store
 - ❌ Custom error response formats
+- ❌ Anemic domain models with public setters (use behavior methods)
+- ❌ `setParticipants(list)` (use `addParticipant()`)
+- ❌ Exposing mutable collections (return `Collections.unmodifiableList()`)
+- ❌ Primitive obsession in domain objects (`String name` → use `Name name`)
 
 ## Project Structure & Boundaries
 
