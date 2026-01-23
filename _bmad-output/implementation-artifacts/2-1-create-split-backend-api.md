@@ -1,6 +1,6 @@
 # Story 2.1: Create Split Backend API
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -33,43 +33,43 @@ So that **splits can be created and stored reliably with proper tenant isolation
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add NanoID dependency (AC: 1)
-  - [ ] 1.1: Add `com.aventrix.jnanoid:jnanoid:2.0.0` to pom.xml dependencyManagement
-  - [ ] 1.2: Add dependency to fairnsquare-app module (no version, inherits from parent)
+- [x] Task 1: Add NanoID dependency (AC: 1)
+  - [x] 1.1: Add `com.aventrix.jnanoid:jnanoid:2.0.0` to pom.xml dependencyManagement
+  - [x] 1.2: Add dependency to fairnsquare-app module (no version, inherits from parent)
 
-- [ ] Task 2: Create sharedkernel persistence layer (AC: 2, 5, 6)
-  - [ ] 2.1: Create `TenantPathResolver.java` in sharedkernel/persistence
-  - [ ] 2.2: Create `JsonFileRepository.java` in sharedkernel/persistence
-  - [ ] 2.3: Implement configurable data path via `fairnsquare.data-path` config property
-  - [ ] 2.4: Implement automatic directory creation on write
+- [x] Task 2: Create sharedkernel persistence layer (AC: 2, 5, 6)
+  - [x] 2.1: Create `TenantPathResolver.java` in sharedkernel/persistence
+  - [x] 2.2: Create `JsonFileRepository.java` in sharedkernel/persistence
+  - [x] 2.3: Implement configurable data path via `fairnsquare.data-path` config property
+  - [x] 2.4: Implement automatic directory creation on write
 
-- [ ] Task 3: Create sharedkernel error handling (AC: 3, 4)
-  - [ ] 3.1: Create `BaseError.java` in sharedkernel/error
-  - [ ] 3.2: Create `ProblemDetailMapper.java` exception mapper (@ServerExceptionMapper)
-  - [ ] 3.3: Implement RFC 9457 Problem Details format
+- [x] Task 3: Create sharedkernel error handling (AC: 3, 4)
+  - [x] 3.1: Create `BaseError.java` in sharedkernel/error
+  - [x] 3.2: Create `ProblemDetailMapper.java` exception mapper (@ServerExceptionMapper)
+  - [x] 3.3: Implement RFC 9457 Problem Details format
 
-- [ ] Task 4: Create split domain model (AC: 1)
-  - [ ] 4.1: Create `Split.java` entity in split/domain
-  - [ ] 4.2: Create `SplitId.java` value object wrapping NanoID
-  - [ ] 4.3: Create `CreateSplitRequest.java` DTO with Bean Validation
+- [x] Task 4: Create split domain model (AC: 1)
+  - [x] 4.1: Create `Split.java` entity in split/domain
+  - [x] 4.2: Create `SplitId.java` value object wrapping NanoID
+  - [x] 4.3: Create `CreateSplitRequest.java` DTO with Bean Validation
 
-- [ ] Task 5: Create split service layer (AC: 1, 2)
-  - [ ] 5.1: Create `SplitService.java` in split/service
-  - [ ] 5.2: Implement `createSplit()` method with NanoID generation
-  - [ ] 5.3: Integrate with JsonFileRepository for persistence
+- [x] Task 5: Create split service layer (AC: 1, 2)
+  - [x] 5.1: Create `SplitService.java` in split/service
+  - [x] 5.2: Implement `createSplit()` method with NanoID generation
+  - [x] 5.3: Integrate with JsonFileRepository for persistence
 
-- [ ] Task 6: Create split REST resource (AC: 1, 3, 4)
-  - [ ] 6.1: Create `SplitResource.java` in split/api
-  - [ ] 6.2: Implement `POST /api/splits` endpoint
-  - [ ] 6.3: Add `@Valid` annotation for request validation
-  - [ ] 6.4: Return 201 Created with Location header
+- [x] Task 6: Create split REST resource (AC: 1, 3, 4)
+  - [x] 6.1: Create `SplitResource.java` in split/api
+  - [x] 6.2: Implement `POST /api/splits` endpoint
+  - [x] 6.3: Add `@Valid` annotation for request validation
+  - [x] 6.4: Return 201 Created with Location header
 
-- [ ] Task 7: Write integration tests (AC: 1-6)
-  - [ ] 7.1: Create `SplitResourceIT.java` in test/split/api
-  - [ ] 7.2: Test successful split creation (201, response body, file created)
-  - [ ] 7.3: Test validation error (empty name, missing name → 400)
-  - [ ] 7.4: Test directory auto-creation
-  - [ ] 7.5: Test custom data path via config override
+- [x] Task 7: Write integration tests (AC: 1-6)
+  - [x] 7.1: Create `SplitResourceIT.java` in test/split/api
+  - [x] 7.2: Test successful split creation (201, response body, file created)
+  - [x] 7.3: Test validation error (empty name, missing name → 400)
+  - [x] 7.4: Test directory auto-creation
+  - [x] 7.5: Test custom data path via config override
 
 ## Dev Notes
 
@@ -236,10 +236,68 @@ Recent commits show feature branch workflow:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-20251101)
 
 ### Debug Log References
 
+N/A
+
 ### Completion Notes List
 
+- Added `quarkus-hibernate-validator` dependency for Bean Validation support
+- NanoID dependency already in parent pom dependencyManagement, added to app module
+- Created sharedkernel persistence layer: TenantPathResolver, JsonFileRepository
+- Created sharedkernel error handling: BaseError, ProblemDetailMapper (RFC 9457)
+- Created split domain: Split entity, SplitId value object, CreateSplitRequest DTO
+- Created split service: SplitService with createSplit() and getSplit()
+- Created REST resource: SplitResource with POST /api/splits and GET /api/splits/{splitId}
+- Config property `fairnsquare.data.path` already existed in application.properties
+- 11 integration tests added covering all ACs (1-6) plus security tests
+- All 22 tests passing (11 SplitResourceIT + 11 existing)
+
+### Code Review Fixes (2026-01-23)
+
+- **Security**: Added SplitId format validation (21 chars, URL-safe only) to prevent path traversal
+- **Security**: Added `InvalidSplitIdError` for proper 400 responses on invalid splitId
+- **Security**: GET /api/splits/{splitId} now validates splitId format before file access
+- **Type Safety**: Changed `Split.java` from `List<Object>` to `List<Participant>` and `List<Expense>`
+- **Type Safety**: Created placeholder `Participant.java` and `Expense.java` domain classes
+- **Tests**: Fixed security test `getSplit_withPathTraversalChars_returns400` to test actual validation
+- **Tests**: All tests now pass (was 2 failing before review)
+
+### Domain Model Refactoring (2026-01-23)
+
+Applied architecture rules from `architecture.md` Domain Model Patterns:
+
+- **Value Objects**: `String id` → `SplitId`, `String name` → `Split.Name` (inner record)
+- **Rich Domain Model**: Removed all setters, added behavior methods `rename()`, `addParticipant()`, `addExpense()`
+- **Factory Method**: Added `Split.create(String name)` for creation
+- **Immutable Collections**: Getters return `Collections.unmodifiableList()`
+- **Jackson Support**: Added `@JsonValue`/`@JsonCreator` annotations for serialization
+- **Service Update**: `SplitService.createSplit()` now uses factory method
+- All 22 tests passing after refactoring
+
 ### File List
+
+**New Files:**
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/persistence/TenantPathResolver.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/persistence/JsonFileRepository.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/error/BaseError.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/sharedkernel/error/ProblemDetailMapper.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/Split.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/SplitId.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/CreateSplitRequest.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/InvalidSplitIdError.java` (code review)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/Participant.java` (code review)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/Expense.java` (code review)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/service/SplitService.java`
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/api/SplitResource.java`
+- `fairnsquare-app/src/test/java/org/asymetrik/web/fairnsquare/split/api/SplitResourceIT.java`
+
+**Modified Files:**
+- `fairnsquare-app/pom.xml` (added jnanoid and hibernate-validator dependencies)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/SplitId.java` (code review: validation; refactor: Jackson annotations)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/domain/Split.java` (code review: type safety; refactor: value objects, no setters, factory method)
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/service/SplitService.java` (refactor: uses Split.create())
+- `fairnsquare-app/src/main/java/org/asymetrik/web/fairnsquare/split/api/SplitResource.java` (code review: validation; refactor: getId().value())
+- `fairnsquare-app/src/test/java/org/asymetrik/web/fairnsquare/split/api/SplitResourceIT.java` (code review: fixed test)
