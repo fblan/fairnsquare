@@ -51,7 +51,7 @@ development_status:
   # Epic 2: Split Creation & Access
   epic-2: in-progress
   2-1-create-split-backend-api: done
-  2-2-create-split-frontend: backlog
+  2-2-create-split-frontend: done
   2-3-access-split-via-link-view-overview: backlog
   epic-2-retrospective: optional
 
