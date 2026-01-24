@@ -49,14 +49,17 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2: Split Creation & Access
-  epic-2: in-progress
+  epic-2: done
   2-1-create-split-backend-api: done
   2-2-create-split-frontend: done
   2-3-access-split-via-link-view-overview: done
   epic-2-retrospective: optional
 
-  # Epic 3: Participant Management (stories pending in epics.md)
-  epic-3: backlog
+  # Epic 3: Participant Management
+  epic-3: in-progress
+  3-1-add-participant-with-smart-defaults: ready-for-dev
+  3-2-edit-participant-inline: backlog
+  3-3-remove-participant-with-expense-constraint: backlog
   epic-3-retrospective: optional
 
   # Epic 4: Expense Tracking (stories pending in epics.md)
