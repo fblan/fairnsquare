@@ -151,11 +151,13 @@ class SplitResourceIT {
     }
 
     /**
-     * GET endpoint returns 404 for non-existent split.
+     * GET endpoint returns 404 with Problem Details for non-existent split (Story 2.3 AC 5).
      */
     @Test
-    void getSplit_nonExistent_returns404() {
-        given().when().get("/api/splits/nonexistentid12345678").then().statusCode(404);
+    void getSplit_nonExistent_returns404WithProblemDetails() {
+        given().when().get("/api/splits/nonexistentid12345678").then().statusCode(404)
+                .body("type", containsString("not-found")).body("title", equalTo("Not Found"))
+                .body("status", equalTo(404)).body("detail", containsString("Split not found"));
     }
 
     /**

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -34,7 +35,7 @@ public class Split {
         }
     }
 
-    private final SplitId id;
+    private final Id id;
     private Name name;
     private final Instant createdAt;
     private final List<Participant> participants;
@@ -44,14 +45,14 @@ public class Split {
      * Factory method to create a new Split with generated ID.
      */
     public static Split create(String name) {
-        return new Split(SplitId.generate(), new Name(name), Instant.now());
+        return new Split(Id.generate(), new Name(name), Instant.now());
     }
 
     /**
      * Constructor for creating Split with all fields (used by factory and Jackson).
      */
     @JsonCreator
-    public Split(@JsonProperty("id") SplitId id, @JsonProperty("name") Name name,
+    public Split(@JsonProperty("id") Id id, @JsonProperty("name") Name name,
             @JsonProperty("createdAt") Instant createdAt) {
         this.id = id;
         this.name = name;
@@ -64,7 +65,7 @@ public class Split {
      * Full constructor including collections (for Jackson deserialization).
      */
     @JsonCreator
-    public static Split fromJson(@JsonProperty("id") SplitId id, @JsonProperty("name") Name name,
+    public static Split fromJson(@JsonProperty("id") Id id, @JsonProperty("name") Name name,
             @JsonProperty("createdAt") Instant createdAt, @JsonProperty("participants") List<Participant> participants,
             @JsonProperty("expenses") List<Expense> expenses) {
         Split split = new Split(id, name, createdAt);
@@ -108,7 +109,7 @@ public class Split {
 
     // Getters - return value objects and unmodifiable collections
 
-    public SplitId getId() {
+    public Id getId() {
         return id;
     }
 
@@ -126,5 +127,71 @@ public class Split {
 
     public List<Expense> getExpenses() {
         return Collections.unmodifiableList(expenses);
+    }
+
+    /**
+     * Value object wrapping a NanoID for split identification. Generates cryptographically secure, URL-safe
+     * identifiers.
+     */
+    public record Id(@JsonValue String value) {
+
+        @JsonCreator
+        public static Id fromJson(String value) {
+            return new Id(value);
+        }
+
+        private static final int NANOID_LENGTH = 21;
+        private static final String NANOID_PATTERN = "^[A-Za-z0-9_-]+$";
+
+        public Id {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("Split ID cannot be null or blank");
+            }
+            if (!value.matches(NANOID_PATTERN)) {
+                throw new IllegalArgumentException("Split ID contains invalid characters");
+            }
+            if (value.length() != NANOID_LENGTH) {
+                throw new IllegalArgumentException("Split ID must be exactly " + NANOID_LENGTH + " characters");
+            }
+        }
+
+        /**
+         * Validates if a string is a valid SplitId format without throwing.
+         *
+         * @param value
+         *            the string to validate
+         *
+         * @return true if valid NanoID format, false otherwise
+         */
+        public static boolean isValid(String value) {
+            return value != null && !value.isBlank() && value.length() == NANOID_LENGTH
+                    && value.matches(NANOID_PATTERN);
+        }
+
+        /**
+         * Generates a new random SplitId using NanoID.
+         *
+         * @return a new SplitId with a 21-character URL-safe identifier
+         */
+        public static Id generate() {
+            return new Id(NanoIdUtils.randomNanoId());
+        }
+
+        /**
+         * Creates a SplitId from an existing string value.
+         *
+         * @param value
+         *            the existing split ID string
+         *
+         * @return a SplitId wrapping the provided value
+         */
+        public static Id of(String value) {
+            return new Id(value);
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
     }
 }

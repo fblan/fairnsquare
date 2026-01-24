@@ -16,7 +16,7 @@ import jakarta.ws.rs.core.Response;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.domain.SplitId;
+import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.service.SplitService;
 
 /**
@@ -62,11 +62,11 @@ public class SplitResource {
     @GET
     @Path("/{splitId}")
     public Response getSplit(@PathParam("splitId") String splitId) {
-        if (!SplitId.isValid(splitId)) {
+        if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
 
         return splitService.getSplit(splitId).map(split -> Response.ok(split).build())
-                .orElse(Response.status(Response.Status.NOT_FOUND).build());
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

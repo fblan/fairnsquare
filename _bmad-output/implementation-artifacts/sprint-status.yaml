@@ -52,7 +52,7 @@ development_status:
   epic-2: in-progress
   2-1-create-split-backend-api: done
   2-2-create-split-frontend: done
-  2-3-access-split-via-link-view-overview: backlog
+  2-3-access-split-via-link-view-overview: done
   epic-2-retrospective: optional
 
   # Epic 3: Participant Management (stories pending in epics.md)

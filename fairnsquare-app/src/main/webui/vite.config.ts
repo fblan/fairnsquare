@@ -12,5 +12,26 @@ export default defineConfig({
     alias: {
       $lib: path.resolve(__dirname, './src/lib'),
     },
+    // Ensure browser conditions are used (important for Svelte 5)
+    conditions: ['browser', 'development'],
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{js,ts}'],
+    setupFiles: ['src/test/setup.ts'],
+    alias: {
+      $lib: path.resolve(__dirname, './src/lib'),
+    },
+    // Ensure browser conditions for Svelte 5 in tests
+    server: {
+      deps: {
+        inline: [/svelte/],
+      },
+    },
+    // Force browser export conditions
+    resolve: {
+      conditions: ['browser', 'development'],
+    },
   },
 })
