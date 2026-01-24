@@ -1,12 +1,14 @@
 <script lang="ts">
   // FairNSquare - Root Application Component
-  // Router will be added in a future story when sv-router is integrated
+  // Router configured in Story 2.3
 
-  import Home from './routes/Home.svelte';
+  import { Router } from 'sv-router';
+  // Import router config to initialize routes
+  import '$lib/router';
 </script>
 
 <main class="min-h-screen bg-background">
   <div class="max-w-content mx-auto px-4 py-6">
-    <Home />
+    <Router />
   </div>
 </main>

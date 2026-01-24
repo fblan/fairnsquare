@@ -76,3 +76,4 @@ credentials.json
 secrets.yaml
 *.pem
 *.key
+/nextstepforfred.md

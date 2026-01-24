@@ -8,12 +8,27 @@ export interface CreateSplitRequest {
   name: string;
 }
 
+export interface Participant {
+  id: string;
+  name: string;
+  nights: number;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  payerId: string;
+  splitMode: 'BY_NIGHT' | 'EQUAL' | 'FREE';
+  createdAt: string;
+}
+
 export interface Split {
   id: string;
   name: string;
   createdAt: string;
-  participants: unknown[];
-  expenses: unknown[];
+  participants: Participant[];
+  expenses: Expense[];
 }
 
 /**

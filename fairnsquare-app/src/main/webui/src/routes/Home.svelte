@@ -8,6 +8,7 @@
   import { createSplit, type Split } from '$lib/api/splits';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import type { ApiError } from '$lib/api/client';
+  import { p, navigate } from '$lib/router';
 
   // State using Svelte 5 runes
   let splitName = $state('');
@@ -74,6 +75,12 @@
     }
   }
 
+  function handleGoToSplit() {
+    if (createdSplit) {
+      navigate('/splits/:splitId', { params: { splitId: createdSplit.id } });
+    }
+  }
+
   function handleCreateAnother() {
     splitName = '';
     createdSplit = null;
@@ -119,7 +126,7 @@
 
           <div class="flex flex-col gap-2">
             <Button
-              href={`/splits/${createdSplit.id}`}
+              onclick={handleGoToSplit}
               class="w-full min-h-[44px]"
             >
               Go to Split
