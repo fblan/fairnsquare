@@ -68,6 +68,9 @@ jacoco.exec
 .env.*.local
 *.local.properties
 
+# Application data (JSON file storage)
+fairnsquare-app/data/
+
 # Secrets (never commit)
 credentials.json
 secrets.yaml

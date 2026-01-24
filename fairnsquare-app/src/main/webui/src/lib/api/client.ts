@@ -18,16 +18,38 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  } catch (networkError) {
+    // Network failure (no connection, DNS failure, etc.)
+    throw {
+      type: 'https://fairnsquare.app/errors/network-error',
+      title: 'Network Error',
+      status: 0,
+      detail: 'Unable to connect to the server. Please check your connection and try again.',
+    } satisfies ApiError;
+  }
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
+    let error: ApiError;
+    try {
+      error = await response.json();
+    } catch {
+      // Server returned non-JSON error response
+      error = {
+        type: 'https://fairnsquare.app/errors/server-error',
+        title: 'Server Error',
+        status: response.status,
+        detail: `Server returned status ${response.status}. Please try again later.`,
+      };
+    }
     throw error;
   }
 
