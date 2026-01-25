@@ -57,7 +57,7 @@ development_status:
 
   # Epic 3: Participant Management
   epic-3: in-progress
-  3-1-add-participant-with-smart-defaults: ready-for-dev
+  3-1-add-participant-with-smart-defaults: done
   3-2-edit-participant-inline: backlog
   3-3-remove-participant-with-expense-constraint: backlog
   epic-3-retrospective: optional

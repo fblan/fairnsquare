@@ -1,10 +1,13 @@
 <script lang="ts">
   // Split Overview Page
   // Story 2.3: Access Split via Link & View Overview
+  // Story 3.1: Add Participant with Smart Defaults
 
-  import { getSplit, type Split, type Participant, type Expense } from '$lib/api/splits';
+  import { getSplit, addParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
   import * as Card from '$lib/components/ui/card';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
@@ -18,6 +21,31 @@
   let error = $state<string | null>(null);
   let notFound = $state(false);
   let copyConfirmation = $state(false);
+
+  // Add Participant form state (Story 3.1)
+  let showAddForm = $state(false);
+  let formName = $state('');
+  let formNights = $state(1);
+  let isSubmitting = $state(false);
+  let validationErrors = $state<{name?: string; nights?: string}>({});
+
+  // Validation constants (must match backend)
+  const MAX_NIGHTS = 365;
+
+  // Smart default for nights - persist to localStorage (Story 3.1 AC 3, 4)
+  const NIGHTS_STORAGE_KEY = 'fairnsquare_lastParticipantNights';
+
+  function getSmartDefaultNights(): number {
+    if (typeof window === 'undefined') return 1;
+    const stored = localStorage.getItem(NIGHTS_STORAGE_KEY);
+    return stored ? parseInt(stored, 10) : 1;
+  }
+
+  function saveSmartDefaultNights(nights: number): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(NIGHTS_STORAGE_KEY, nights.toString());
+    }
+  }
 
   // Shareable URL
   const shareableUrl = $derived(
@@ -79,6 +107,76 @@
 
   function handleGoHome() {
     navigate('/');
+  }
+
+  // Add Participant handlers (Story 3.1)
+  function handleShowAddForm() {
+    showAddForm = true;
+    formName = '';
+    formNights = getSmartDefaultNights();
+    validationErrors = {};
+  }
+
+  function handleCancelAddForm() {
+    showAddForm = false;
+    formName = '';
+    formNights = 1;
+    validationErrors = {};
+  }
+
+  function validateAddForm(): boolean {
+    const errors: {name?: string; nights?: string} = {};
+
+    if (!formName.trim()) {
+      errors.name = 'Name is required';
+    }
+
+    if (formNights < 1) {
+      errors.nights = 'Nights must be at least 1';
+    } else if (formNights > MAX_NIGHTS) {
+      errors.nights = 'Nights cannot exceed 365';
+    }
+
+    validationErrors = errors;
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleAddParticipant() {
+    if (!validateAddForm()) return;
+    if (!splitId) return;
+
+    isSubmitting = true;
+
+    try {
+      await addParticipant(splitId, {
+        name: formName.trim(),
+        nights: formNights,
+      });
+
+      // Save smart default
+      saveSmartDefaultNights(formNights);
+
+      // Refresh split data
+      await loadSplit(splitId);
+
+      // Close form and show success
+      showAddForm = false;
+      formName = '';
+      addToast({
+        type: 'success',
+        message: 'Participant added',
+        duration: 3000,
+      });
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast({
+        type: 'error',
+        message: apiError.detail || 'Failed to add participant. Please try again.',
+      });
+      // Keep form open for retry (AC 8)
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   // Helper function to get payer name for an expense
@@ -175,16 +273,91 @@
       </Card.Root>
     </header>
 
-    <!-- Participants Section (AC 2, 3) -->
+    <!-- Participants Section (AC 2, 3) + Add Participant (Story 3.1) -->
     <section class="w-full">
       <Card.Root>
-        <Card.Header class="pb-2">
+        <Card.Header class="pb-2 flex flex-row items-center justify-between">
           <Card.Title class="text-lg">Participants</Card.Title>
+          {#if !showAddForm}
+            <Button
+              onclick={handleShowAddForm}
+              variant="outline"
+              size="sm"
+              class="min-h-[44px]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+              </svg>
+              Add Participant
+            </Button>
+          {/if}
         </Card.Header>
         <Card.Content>
-          {#if split.participants.length === 0}
+          <!-- Add Participant Form (Story 3.1 AC 1, 2) -->
+          {#if showAddForm}
+            <form onsubmit={(e) => { e.preventDefault(); handleAddParticipant(); }} class="space-y-4 mb-4 p-4 bg-secondary/30 rounded-lg">
+              <div class="space-y-2">
+                <Label for="participant-name">Name</Label>
+                <Input
+                  id="participant-name"
+                  type="text"
+                  placeholder="Enter name"
+                  bind:value={formName}
+                  class="min-h-[44px]"
+                  disabled={isSubmitting}
+                />
+                {#if validationErrors.name}
+                  <p class="text-sm text-destructive">{validationErrors.name}</p>
+                {/if}
+              </div>
+
+              <div class="space-y-2">
+                <Label for="participant-nights">Nights</Label>
+                <Input
+                  id="participant-nights"
+                  type="number"
+                  bind:value={formNights}
+                  class="min-h-[44px]"
+                  disabled={isSubmitting}
+                />
+                {#if validationErrors.nights}
+                  <p class="text-sm text-destructive">{validationErrors.nights}</p>
+                {/if}
+              </div>
+
+              <div class="flex gap-2">
+                <Button
+                  type="submit"
+                  class="flex-1 min-h-[44px]"
+                  disabled={isSubmitting}
+                >
+                  {#if isSubmitting}
+                    <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Adding...
+                  {:else}
+                    Add
+                  {/if}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onclick={handleCancelAddForm}
+                  class="min-h-[44px]"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          {/if}
+
+          <!-- Participants List -->
+          {#if split.participants.length === 0 && !showAddForm}
             <p class="text-muted-foreground text-center py-4">No participants yet</p>
-          {:else}
+          {:else if split.participants.length > 0}
             <div class="space-y-3">
               {#each split.participants as participant}
                 <div class="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">

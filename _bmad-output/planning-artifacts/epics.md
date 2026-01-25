@@ -3,8 +3,8 @@ stepsCompleted: [1, 2, 3]
 storiesComplete:
   - epic1
   - epic2
-storiesPending:
   - epic3
+storiesPending:
   - epic4
   - epic5
   - epic6
@@ -516,4 +516,197 @@ This document provides the complete epic and story breakdown for FairNSquare, de
 
 ---
 
-<!-- Stories for Epics 3-6 pending -->
+## Epic 3: Participant Management - Stories
+
+### Story 3.1: Add Participant with Smart Defaults
+
+**As a** user managing a split,
+**I want** to add participants with their name and number of nights,
+**So that** expenses can be fairly calculated based on stay duration.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split overview
+**When** I look at the Participants section
+**Then** I see an "Add Participant" button with a plus icon
+**And** the button uses touch-friendly sizing (min 44px height)
+
+**Given** I click "Add Participant"
+**When** the add form appears
+**Then** I see input fields for:
+  - Name (text input, required)
+  - Nights (number input, required, min 1)
+**And** the form appears inline or as a slide-up panel on mobile
+**And** the Nights field is pre-filled with the smart default value
+
+**Given** no participants have been added to this split yet
+**When** adding the first participant
+**Then** the Nights field defaults to 1
+
+**Given** I previously added a participant with 3 nights
+**When** I add another participant
+**Then** the Nights field defaults to 3 (last entered value)
+
+**Given** I enter a valid name "Alice" and nights "2"
+**When** I click "Add" or submit the form
+**Then** the API is called POST `/api/splits/{splitId}/participants`
+**And** a loading indicator appears on the submit button
+**And** on success, the new participant appears in the list
+**And** the form clears and closes
+**And** a success toast shows "Participant added"
+
+**Given** I try to add a participant with empty name
+**When** I submit the form
+**Then** validation error "Name is required" is shown inline
+**And** the API is not called
+
+**Given** I try to add a participant with nights less than 1
+**When** I submit the form
+**Then** validation error "Nights must be at least 1" is shown inline
+**And** the API is not called
+
+**Given** the API returns an error
+**When** adding a participant
+**Then** an error toast displays the error message
+**And** the form remains open for retry
+
+**Given** a POST request to `/api/splits/{splitId}/participants` with body `{"name": "Alice", "nights": 2}`
+**When** the split exists
+**Then** response status is 201 Created
+**And** response body contains:
+  - `id`: generated NanoID (21 chars)
+  - `name`: "Alice"
+  - `nights`: 2
+**And** the participant is persisted in the split's JSON file
+
+**Given** a POST request with invalid data
+**When** name is empty or nights < 1
+**Then** response status is 400 Bad Request
+**And** response follows Problem Details format
+
+**Given** a POST request to a non-existent split
+**When** the splitId is invalid
+**Then** response status is 404 Not Found
+
+---
+
+### Story 3.2: Edit Participant Inline
+
+**As a** user managing a split,
+**I want** to edit a participant's name or nights inline,
+**So that** I can correct mistakes without navigating away.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split with participants
+**When** I tap/click on a participant card
+**Then** the card enters edit mode inline
+**And** the name becomes an editable text input
+**And** the nights becomes an editable number input
+**And** I see "Save" and "Cancel" buttons
+
+**Given** I am in edit mode for a participant
+**When** I change the name to "Bob" and nights to 4
+**And** I click "Save"
+**Then** the API is called PUT `/api/splits/{splitId}/participants/{participantId}`
+**And** a loading indicator appears
+**And** on success, the card shows updated values
+**And** edit mode closes
+**And** a success toast shows "Participant updated"
+
+**Given** I am in edit mode
+**When** I click "Cancel"
+**Then** edit mode closes
+**And** original values are restored
+**And** no API call is made
+
+**Given** I try to save with empty name
+**When** I click "Save"
+**Then** validation error "Name is required" is shown
+**And** the API is not called
+
+**Given** I try to save with nights less than 1
+**When** I click "Save"
+**Then** validation error "Nights must be at least 1" is shown
+**And** the API is not called
+
+**Given** a PUT request to `/api/splits/{splitId}/participants/{participantId}` with body `{"name": "Bob", "nights": 4}`
+**When** the participant exists
+**Then** response status is 200 OK
+**And** response body contains the updated participant
+**And** the split's JSON file is updated
+
+**Given** a PUT request to a non-existent participant
+**When** the participantId is invalid
+**Then** response status is 404 Not Found
+**And** response follows Problem Details format
+
+**Given** I am viewing on mobile (< 768px)
+**When** editing a participant
+**Then** the edit inputs are full-width within the card
+**And** touch targets are at least 44px
+**And** the keyboard appears with appropriate input type (text/number)
+
+---
+
+### Story 3.3: Remove Participant with Expense Constraint
+
+**As a** user managing a split,
+**I want** to remove a participant who has no expenses,
+**So that** I can correct the participant list without breaking expense records.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split with participants
+**When** I look at a participant card
+**Then** I see a delete/remove button (trash icon)
+**And** the button is styled as a subtle secondary action
+
+**Given** I click delete on a participant with NO associated expenses
+**When** the confirmation dialog appears
+**Then** I see "Remove [Name]?" with the participant's name
+**And** I see "This cannot be undone" warning
+**And** I see "Remove" (destructive) and "Cancel" buttons
+
+**Given** I confirm deletion of a participant with no expenses
+**When** I click "Remove"
+**Then** the API is called DELETE `/api/splits/{splitId}/participants/{participantId}`
+**And** on success, the participant is removed from the list
+**And** a success toast shows "Participant removed"
+
+**Given** I click "Cancel" on the confirmation dialog
+**When** the dialog closes
+**Then** the participant remains in the list
+**And** no API call is made
+
+**Given** I click delete on a participant WITH associated expenses
+**When** the API returns 409 Conflict
+**Then** an error message is shown: "Cannot remove [Name] - they have associated expenses"
+**And** the message suggests: "Remove or reassign their expenses first"
+**And** the participant remains in the list
+
+**Given** a DELETE request to `/api/splits/{splitId}/participants/{participantId}`
+**When** the participant has NO expenses (payerId or share allocations)
+**Then** response status is 204 No Content
+**And** the participant is removed from the split's JSON file
+
+**Given** a DELETE request to `/api/splits/{splitId}/participants/{participantId}`
+**When** the participant HAS associated expenses
+**Then** response status is 409 Conflict
+**And** response follows Problem Details format with:
+  - `type`: participant-has-expenses
+  - `title`: "Participant Has Expenses"
+  - `detail`: "Cannot remove participant with associated expenses. Remove or reassign expenses first."
+
+**Given** a DELETE request to a non-existent participant
+**When** the participantId is invalid
+**Then** response status is 404 Not Found
+
+**Given** I am viewing on mobile
+**When** interacting with delete
+**Then** the confirmation dialog is a bottom sheet or centered modal
+**And** buttons are full-width and touch-friendly (min 44px)
+
+---
+
+<!-- Stories for Epics 4-6 pending -->

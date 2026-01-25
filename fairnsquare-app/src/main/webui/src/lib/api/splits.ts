@@ -8,6 +8,11 @@ export interface CreateSplitRequest {
   name: string;
 }
 
+export interface AddParticipantRequest {
+  name: string;
+  nights: number;
+}
+
 export interface Participant {
   id: string;
   name: string;
@@ -50,4 +55,20 @@ export async function createSplit(request: CreateSplitRequest): Promise<Split> {
  */
 export async function getSplit(splitId: string): Promise<Split> {
   return apiRequest<Split>(`/splits/${splitId}`);
+}
+
+/**
+ * Adds a participant to a split.
+ * @param splitId The split identifier
+ * @param request The add participant request
+ * @returns The created participant
+ */
+export async function addParticipant(
+  splitId: string,
+  request: AddParticipantRequest
+): Promise<Participant> {
+  return apiRequest<Participant>(`/splits/${splitId}/participants`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
 }
