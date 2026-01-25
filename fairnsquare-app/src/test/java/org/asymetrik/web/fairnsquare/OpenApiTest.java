@@ -11,7 +11,7 @@ import static org.hamcrest.CoreMatchers.containsString;
  * Experience AC5: GET /q/swagger-ui displays the OpenAPI documentation
  */
 @QuarkusTest
-class OpenApiIT {
+class OpenApiTest {
 
     /**
      * AC5: Verifies Swagger UI is accessible and returns the interactive documentation page.
