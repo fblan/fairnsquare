@@ -13,6 +13,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
@@ -67,6 +68,28 @@ public class SplitResource {
         }
 
         return splitService.getSplit(splitId).map(split -> Response.ok(split).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds a participant to a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add participant request
+     *
+     * @return 201 Created with the created participant, or 404 Not Found, or 400 Bad Request
+     */
+    @POST
+    @Path("/{splitId}/participants")
+    public Response addParticipant(@PathParam("splitId") String splitId, @Valid AddParticipantRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addParticipant(splitId, request)
+                .map(participant -> Response.status(Response.Status.CREATED).entity(participant).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

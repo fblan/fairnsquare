@@ -6,7 +6,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
+import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
+import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
@@ -60,5 +62,24 @@ public class SplitService {
      */
     public boolean exists(String splitId) {
         return repository.exists(splitId);
+    }
+
+    /**
+     * Adds a participant to an existing split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add participant request
+     *
+     * @return an Optional containing the created participant if the split exists, empty otherwise
+     */
+    public Optional<Participant> addParticipant(String splitId, AddParticipantRequest request) {
+        return repository.load(splitId, Split.class).map(split -> {
+            Participant participant = Participant.create(request.name(), request.nights());
+            split.addParticipant(participant);
+            repository.save(splitId, split);
+            return participant;
+        });
     }
 }

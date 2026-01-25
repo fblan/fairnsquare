@@ -23,7 +23,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
 /**
- * Integration tests for SplitResource REST API. Tests AC 1-6 for Story 2.1.
+ * Integration tests for SplitResource REST API. Story 2.1: Create Split Backend API (AC 1-6) Story 2.3: Access Split
+ * via Link (GET endpoint) Story 3.1: Add Participant with Smart Defaults (AC 9-11)
  */
 @QuarkusTest
 class SplitResourceIT {
@@ -211,5 +212,161 @@ class SplitResourceIT {
         given().when().get("/api/splits/invalid..id").then().statusCode(400);
         given().when().get("/api/splits/has/slash").then().statusCode(404); // Different path
         given().when().get("/api/splits/has%00null").then().statusCode(400);
+    }
+
+    // ========== Story 3.1: Add Participant Tests ==========
+
+    /**
+     * Story 3.1 AC 9: POST returns 201 with valid participant data.
+     */
+    @Test
+    void addParticipant_withValidData_returns201WithParticipantDetails() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Participant Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Add a participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201)
+                .body("id", notNullValue()).body("id", matchesPattern("^[A-Za-z0-9_-]{21}$"))
+                .body("name", equalTo("Alice")).body("nights", equalTo(2));
+    }
+
+    /**
+     * Story 3.1 AC 9: Participant is persisted in the split's JSON file.
+     */
+    @Test
+    void addParticipant_persistsInJsonFile() throws IOException {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Persistence Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Add a participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Verify file contains participant
+        Path splitFile = pathResolver.resolve(splitId);
+        String content = Files.readString(splitFile);
+        assertTrue(content.contains("\"Bob\""), "File should contain participant name");
+        assertTrue(content.contains("\"nights\""), "File should contain nights field");
+    }
+
+    /**
+     * Story 3.1 AC 9: Multiple participants can be added.
+     */
+    @Test
+    void addParticipant_multipleParticipants_allPersisted() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Multi Participant Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Add first participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Add second participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 5}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Verify split contains both participants
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("participants", hasSize(2));
+    }
+
+    /**
+     * Story 3.1 AC 10: POST returns 400 for empty name.
+     */
+    @Test
+    void addParticipant_withEmptyName_returns400() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Empty Name Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to add participant with empty name
+        given().contentType(ContentType.JSON).body("""
+                {"name": "", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.1 AC 10: POST returns 400 for nights less than 1.
+     */
+    @Test
+    void addParticipant_withNightsLessThan1_returns400() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Nights Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to add participant with nights = 0
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Charlie", "nights": 0}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.1 AC 11: POST returns 404 for non-existent split.
+     */
+    @Test
+    void addParticipant_toNonExistentSplit_returns404() {
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/nonexistentid12345678/participants").then().statusCode(404)
+                .body("type", containsString("not-found")).body("status", equalTo(404));
+    }
+
+    /**
+     * Story 3.1 AC 11: POST returns 400 for invalid splitId format.
+     */
+    @Test
+    void addParticipant_withInvalidSplitId_returns400() {
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/invalid..id/participants").then().statusCode(400);
+    }
+
+    /**
+     * Story 3.1 AC 10: POST returns 400 for nights greater than 365.
+     */
+    @Test
+    void addParticipant_withNightsGreaterThan365_returns400() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Max Nights Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to add participant with nights = 366
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 366}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.1 AC 10: POST returns 400 for name exceeding 50 characters.
+     */
+    @Test
+    void addParticipant_withNameExceeding50Chars_returns400() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Long Name Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to add participant with name > 50 chars
+        String longName = "A".repeat(51);
+        given().contentType(ContentType.JSON).body("""
+                {"name": "%s", "nights": 2}
+                """.formatted(longName)).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
     }
 }
