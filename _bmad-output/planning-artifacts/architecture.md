@@ -288,7 +288,7 @@ src/main/webui/src/
 
 **Test Organization:**
 - Location: `src/test/java/` (Maven convention)
-- Naming: `*IT.java` for integration tests
+- Naming: `*Test.java` for normal test and integration tests
 - Structure: Mirrors main source tree
 
 ### Format Patterns
@@ -343,12 +343,17 @@ let data = $state<Split | null>(null);
 
 Domain object fields should use value objects, not raw primitives. Value objects encapsulate validation, provide type safety, and make the domain language explicit.
 
-| Primitive | Value Object | Benefits |
-|-----------|--------------|----------|
-| `String name` | `Name name` | Validation (non-blank, max length), domain semantics |
-| `String id` | `SplitId id` | Format validation (NanoID), type safety |
-| `BigDecimal amount` | `Money amount` | Currency handling, rounding rules |
+| Primitive | Value Object        | Benefits |
+|-----------|---------------------|----------|
+| `String name` | `Name name`         | Validation (non-blank, max length), domain semantics |
+| `String id` | `Split.Id id`       | Format validation (NanoID), type safety |
+| `BigDecimal amount` | `Money amount`      | Currency handling, rounding rules |
 | `int nights` | `NightCount nights` | Non-negative validation, domain meaning |
+
+All data in domain object must be bounded and protected against invalid data injection:
+
+- String : length and format constraints (one line or mutli-line, wich characters allowed, pattern, etc)
+- Numeric : range constraints
 
 **Implementation Pattern - Inner Record Classes:**
 ```java
@@ -455,6 +460,7 @@ Request/Response DTOs (e.g., `CreateSplitRequest`) may use setters or records fo
 - ❌ `setParticipants(list)` (use `addParticipant()`)
 - ❌ Exposing mutable collections (return `Collections.unmodifiableList()`)
 - ❌ Primitive obsession in domain objects (`String name` → use `Name name`)
+
 
 ## Project Structure & Boundaries
 

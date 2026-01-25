@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
@@ -27,7 +28,7 @@ import io.restassured.http.ContentType;
  * via Link (GET endpoint) Story 3.1: Add Participant with Smart Defaults (AC 9-11)
  */
 @QuarkusTest
-class SplitResourceIT {
+class SplitResourceTest {
 
     @Inject
     TenantPathResolver pathResolver;
@@ -40,10 +41,10 @@ class SplitResourceIT {
         // Clean up any existing test data
         Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
         if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted((a, b) -> b.compareTo(a)).forEach(path -> {
+            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.deleteIfExists(path);
-                } catch (IOException e) {
+                } catch (IOException _) {
                     // Ignore cleanup errors
                 }
             });
@@ -118,10 +119,10 @@ class SplitResourceIT {
         // Ensure directory doesn't exist
         Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
         if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted((a, b) -> b.compareTo(a)).forEach(path -> {
+            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.deleteIfExists(path);
-                } catch (IOException e) {
+                } catch (IOException _) {
                     // Ignore
                 }
             });

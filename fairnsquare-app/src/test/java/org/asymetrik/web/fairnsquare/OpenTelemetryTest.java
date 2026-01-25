@@ -15,7 +15,7 @@ import static org.hamcrest.Matchers.matchesPattern;
  * Experience AC1: Traces are generated for all REST endpoint calls AC2: Trace IDs appear in log output
  */
 @QuarkusTest
-class OpenTelemetryIT {
+class OpenTelemetryTest {
 
     /**
      * AC1: Verifies OpenTelemetry extension is active by checking installed features. The health endpoint confirms the
