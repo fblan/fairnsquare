@@ -20,6 +20,7 @@ vi.mock('$lib/api/splits', () => ({
   getSplit: vi.fn(),
   addParticipant: vi.fn(),
   updateParticipant: vi.fn(),
+  deleteParticipant: vi.fn(),
 }));
 
 // Mock the toast store
@@ -27,7 +28,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSplit, addParticipant, updateParticipant } from '$lib/api/splits';
+import { getSplit, addParticipant, updateParticipant, deleteParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -753,6 +754,231 @@ describe('Split', () => {
       // Should show loading state
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Saving/i })).toBeInTheDocument();
+      });
+    });
+  });
+
+  // Story 3.3: Delete Participant Tests
+  describe('Delete Participant (Story 3.3)', () => {
+    const mockSplitWithParticipants = {
+      id: 'test-split-id',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-24T12:00:00Z',
+      participants: [
+        { id: 'p1', name: 'Alice', nights: 2 },
+        { id: 'p2', name: 'Bob', nights: 3 },
+      ],
+      expenses: [],
+    };
+
+    it('shows delete button on participant card (AC 1)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Should have delete buttons (one for each participant)
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      expect(deleteButtons.length).toBe(2);
+    });
+
+    it('shows confirmation dialog when delete button is clicked (AC 2)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click delete on Alice
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      await fireEvent.click(deleteButtons[0]);
+
+      // Should show confirmation dialog with participant name
+      await waitFor(() => {
+        expect(screen.getByText('Remove Alice?')).toBeInTheDocument();
+      });
+      expect(screen.getByText('This cannot be undone.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+
+    it('closes dialog without API call when Cancel is clicked (AC 4)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Open delete dialog
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      await fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByText('Remove Alice?')).toBeInTheDocument();
+      });
+
+      // Click Cancel
+      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+      await fireEvent.click(cancelButton);
+
+      // Dialog should be closed
+      await waitFor(() => {
+        expect(screen.queryByText('Remove Alice?')).not.toBeInTheDocument();
+      });
+
+      // Delete API should not have been called
+      expect(deleteParticipant).not.toHaveBeenCalled();
+
+      // Participant should still be in the list
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    it('calls API and removes participant on confirm (AC 3)', async () => {
+      const updatedSplit = {
+        ...mockSplitWithParticipants,
+        participants: [{ id: 'p2', name: 'Bob', nights: 3 }],
+      };
+
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(mockSplitWithParticipants)
+        .mockResolvedValueOnce(updatedSplit);
+
+      vi.mocked(deleteParticipant).mockResolvedValue(undefined);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Open delete dialog
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      await fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByText('Remove Alice?')).toBeInTheDocument();
+      });
+
+      // Click Remove
+      const removeButton = screen.getByRole('button', { name: 'Remove' });
+      await fireEvent.click(removeButton);
+
+      await waitFor(() => {
+        expect(deleteParticipant).toHaveBeenCalledWith('test-split-id', 'p1');
+      });
+
+      // Participant should be removed from list
+      await waitFor(() => {
+        expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
+
+    it('shows success toast after deletion (AC 3)', async () => {
+      const updatedSplit = {
+        ...mockSplitWithParticipants,
+        participants: [{ id: 'p2', name: 'Bob', nights: 3 }],
+      };
+
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(mockSplitWithParticipants)
+        .mockResolvedValueOnce(updatedSplit);
+
+      vi.mocked(deleteParticipant).mockResolvedValue(undefined);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Open and confirm delete
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      await fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'Participant removed',
+          duration: 3000,
+        });
+      });
+    });
+
+    it('shows error toast for 409 Conflict (participant has expenses) (AC 5)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+      vi.mocked(deleteParticipant).mockRejectedValue({
+        status: 409,
+        detail: 'Cannot remove participant with associated expenses.',
+      });
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Open and confirm delete
+      const deleteButtons = screen.getAllByRole('button', { name: /Delete/i });
+      await fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Cannot remove Alice - they have associated expenses. Remove or reassign their expenses first.',
+        });
+      });
+
+      // Dialog should be closed
+      await waitFor(() => {
+        expect(screen.queryByText('Remove Alice?')).not.toBeInTheDocument();
+      });
+
+      // Participant should still be in the list
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    it('disables delete button during edit mode (AC 10)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Enter edit mode for Alice
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      });
+
+      // Bob's delete button should be disabled
+      // Note: During edit mode, all delete buttons should be disabled
+      const deleteButtons = screen.queryAllByRole('button', { name: /Delete/i });
+      deleteButtons.forEach(button => {
+        expect(button).toBeDisabled();
       });
     });
   });

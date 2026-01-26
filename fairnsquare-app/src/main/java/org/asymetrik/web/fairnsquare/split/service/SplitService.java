@@ -106,4 +106,25 @@ public class SplitService {
             return updated;
         });
     }
+
+    /**
+     * Removes a participant from a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param participantId
+     *            the participant identifier
+     *
+     * @return true if the split exists and participant was removed, false if split not found. Throws
+     *         ParticipantNotFoundError if the participant doesn't exist within the split. Throws
+     *         ParticipantHasExpensesError if the participant has associated expenses.
+     */
+    public boolean removeParticipant(String splitId, String participantId) {
+        return repository.load(splitId, Split.class).map(split -> {
+            Participant.Id partId = Participant.Id.of(participantId);
+            split.removeParticipant(partId);
+            repository.save(splitId, split);
+            return true;
+        }).orElse(false);
+    }
 }

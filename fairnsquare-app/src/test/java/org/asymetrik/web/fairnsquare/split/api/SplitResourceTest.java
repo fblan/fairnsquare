@@ -15,7 +15,11 @@ import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.split.domain.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,9 @@ class SplitResourceTest {
 
     @Inject
     TenantPathResolver pathResolver;
+
+    @Inject
+    JsonFileRepository repository;
 
     @ConfigProperty(name = "fairnsquare.data.path")
     String configuredDataPath;
@@ -542,5 +549,155 @@ class SplitResourceTest {
         given().contentType(ContentType.JSON).body("""
                 {"name": "Bob", "nights": 4}
                 """).when().put("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
+    }
+
+    // ========== Story 3.3: Delete Participant Tests ==========
+
+    /**
+     * Story 3.3 AC 6: DELETE returns 204 when participant has no expenses.
+     */
+    @Test
+    void deleteParticipant_withNoExpenses_returns204() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Delete the participant
+        given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(204);
+    }
+
+    /**
+     * Story 3.3 AC 6: Participant is removed from JSON file after deletion.
+     */
+    @Test
+    void deleteParticipant_removesFromJsonFile() throws IOException {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete Persistence Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "ToBeDeleted", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Verify participant exists
+        Path splitFile = pathResolver.resolve(splitId);
+        String contentBefore = Files.readString(splitFile);
+        assertTrue(contentBefore.contains("\"ToBeDeleted\""), "File should contain participant before deletion");
+
+        // Delete the participant
+        given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(204);
+
+        // Verify participant is removed from file
+        String contentAfter = Files.readString(splitFile);
+        org.junit.jupiter.api.Assertions.assertFalse(contentAfter.contains("\"ToBeDeleted\""),
+                "File should not contain participant after deletion");
+    }
+
+    /**
+     * Story 3.3 AC 7: DELETE returns 409 when participant is a payer on an expense.
+     */
+    @Test
+    void deleteParticipant_withExpenses_returns409() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete With Expenses Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "HasExpenses", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Load split, add expense, and save back using repository
+        Split split = repository.load(splitId, Split.class).orElseThrow();
+        Expense expense = new Expense(Participant.Id.of(participantId));
+        split.addExpense(expense);
+        repository.save(splitId, split);
+
+        // Try to delete the participant - should return 409
+        given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(409);
+    }
+
+    /**
+     * Story 3.3 AC 7: 409 response follows Problem Details format with correct type.
+     */
+    @Test
+    void deleteParticipant_withExpenses_returnsProblemDetailsFormat() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete Problem Details Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "HasExpenses", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Load split, add expense, and save back using repository
+        Split split = repository.load(splitId, Split.class).orElseThrow();
+        Expense expense = new Expense(Participant.Id.of(participantId));
+        split.addExpense(expense);
+        repository.save(splitId, split);
+
+        // Verify Problem Details format
+        given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(409)
+                .body("type", containsString("participant-has-expenses"))
+                .body("title", equalTo("Participant Has Expenses")).body("status", equalTo(409))
+                .body("detail", containsString("Cannot remove participant with associated expenses"));
+    }
+
+    /**
+     * Story 3.3 AC 8: DELETE returns 404 for non-existent participant.
+     */
+    @Test
+    void deleteParticipant_nonExistent_returns404() {
+        // Create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete Non-Existent Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to delete a non-existent participant
+        given().when().delete("/api/splits/" + splitId + "/participants/nonexistentid12345678").then().statusCode(404)
+                .body("type", containsString("participant-not-found")).body("status", equalTo(404));
+    }
+
+    /**
+     * Story 3.3 AC 8: DELETE returns 404 for non-existent split.
+     */
+    @Test
+    void deleteParticipant_toNonExistentSplit_returns404() {
+        // Use valid 21-char NanoID format for both IDs to avoid 400 validation errors
+        given().when().delete("/api/splits/V1StGXR8_Z5jdHi6B-myT/participants/X2YtGXR8_Z5jdHi6B-myU").then()
+                .statusCode(404).body("type", containsString("not-found")).body("status", equalTo(404));
+    }
+
+    /**
+     * Story 3.3 AC 9: DELETE returns 400 for invalid splitId format.
+     */
+    @Test
+    void deleteParticipant_withInvalidSplitId_returns400() {
+        given().when().delete("/api/splits/invalid..id/participants/X2YtGXR8_Z5jdHi6B-myU").then().statusCode(400);
+    }
+
+    /**
+     * Story 3.3 AC 9: DELETE returns 400 for invalid participantId format.
+     */
+    @Test
+    void deleteParticipant_withInvalidParticipantId_returns400() {
+        // Create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Participant ID Delete Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to delete with invalid participant ID format
+        given().when().delete("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
     }
 }

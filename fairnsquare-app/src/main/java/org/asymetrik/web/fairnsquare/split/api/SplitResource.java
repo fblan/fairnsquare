@@ -5,6 +5,7 @@ import java.net.URI;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -123,5 +124,35 @@ public class SplitResource {
         return splitService.updateParticipant(splitId, participantId, request)
                 .map(participant -> Response.ok(participant).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Removes a participant from a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param participantId
+     *            the participant identifier
+     *
+     * @return 204 No Content on success, or 404 Not Found, or 400 Bad Request, or 409 Conflict if participant has
+     *         expenses
+     */
+    @DELETE
+    @Path("/{splitId}/participants/{participantId}")
+    public Response deleteParticipant(@PathParam("splitId") String splitId,
+            @PathParam("participantId") String participantId) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+        if (!Participant.Id.isValid(participantId)) {
+            throw new InvalidParticipantIdError(participantId);
+        }
+
+        boolean removed = splitService.removeParticipant(splitId, participantId);
+        if (!removed) {
+            throw new SplitNotFoundError(splitId);
+        }
+
+        return Response.noContent().build();
     }
 }

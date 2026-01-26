@@ -56,10 +56,10 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Participant Management
-  epic-3: in-progress
+  epic-3: done
   3-1-add-participant-with-smart-defaults: done
   3-2-edit-participant-inline: done
-  3-3-remove-participant-with-expense-constraint: backlog
+  3-3-remove-participant-with-expense-constraint: done
   epic-3-retrospective: optional
 
   # Epic 4: Expense Tracking (stories pending in epics.md)

@@ -53,5 +53,10 @@ export async function apiRequest<T>(
     throw error;
   }
 
+  // Handle 204 No Content (no response body)
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json();
 }
