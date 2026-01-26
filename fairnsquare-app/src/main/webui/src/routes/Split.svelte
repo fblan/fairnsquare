@@ -2,8 +2,9 @@
   // Split Overview Page
   // Story 2.3: Access Split via Link & View Overview
   // Story 3.1: Add Participant with Smart Defaults
+  // Story 3.2: Edit Participant Inline
 
-  import { getSplit, addParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
+  import { getSplit, addParticipant, updateParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
@@ -31,6 +32,13 @@
 
   // Validation constants (must match backend)
   const MAX_NIGHTS = 365;
+
+  // Edit Participant state (Story 3.2)
+  let editingParticipantId = $state<string | null>(null);
+  let editName = $state('');
+  let editNights = $state(1);
+  let editValidationErrors = $state<{name?: string; nights?: string}>({});
+  let isEditSubmitting = $state(false);
 
   // Smart default for nights - persist to localStorage (Story 3.1 AC 3, 4)
   const NIGHTS_STORAGE_KEY = 'fairnsquare_lastParticipantNights';
@@ -176,6 +184,80 @@
       // Keep form open for retry (AC 8)
     } finally {
       isSubmitting = false;
+    }
+  }
+
+  // Edit Participant handlers (Story 3.2)
+  function handleStartEdit(participant: Participant) {
+    // Don't start edit if already submitting
+    if (isEditSubmitting) return;
+    // Close add form if open
+    if (showAddForm) {
+      showAddForm = false;
+    }
+    editingParticipantId = participant.id;
+    editName = participant.name;
+    editNights = participant.nights;
+    editValidationErrors = {};
+  }
+
+  function handleCancelEdit() {
+    editingParticipantId = null;
+    editName = '';
+    editNights = 1;
+    editValidationErrors = {};
+  }
+
+  function validateEditForm(): boolean {
+    const errors: {name?: string; nights?: string} = {};
+
+    if (!editName.trim()) {
+      errors.name = 'Name is required';
+    }
+
+    if (editNights < 1) {
+      errors.nights = 'Nights must be at least 1';
+    } else if (editNights > MAX_NIGHTS) {
+      errors.nights = 'Nights cannot exceed 365';
+    }
+
+    editValidationErrors = errors;
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSaveEdit() {
+    if (!validateEditForm()) return;
+    if (!splitId || !editingParticipantId) return;
+
+    isEditSubmitting = true;
+
+    try {
+      await updateParticipant(splitId, editingParticipantId, {
+        name: editName.trim(),
+        nights: editNights,
+      });
+
+      // Refresh split data
+      await loadSplit(splitId);
+
+      // Close edit mode and show success
+      editingParticipantId = null;
+      editName = '';
+      editNights = 1;
+      addToast({
+        type: 'success',
+        message: 'Participant updated',
+        duration: 3000,
+      });
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast({
+        type: 'error',
+        message: apiError.detail || 'Failed to update participant. Please try again.',
+      });
+      // Keep edit mode open for retry (AC 8 pattern)
+    } finally {
+      isEditSubmitting = false;
     }
   }
 
@@ -360,16 +442,85 @@
           {:else if split.participants.length > 0}
             <div class="space-y-3">
               {#each split.participants as participant}
-                <div class="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <div>
-                    <p class="font-medium text-foreground">{participant.name}</p>
-                    <p class="text-sm text-muted-foreground">{participant.nights} night{participant.nights !== 1 ? 's' : ''}</p>
-                  </div>
-                  <div class="text-right">
-                    <p class="font-medium text-foreground">{formatCurrency(0)}</p>
-                    <p class="text-xs text-muted-foreground">balance</p>
-                  </div>
-                </div>
+                {#if editingParticipantId === participant.id}
+                  <!-- Edit Mode (Story 3.2 AC 1) -->
+                  <form
+                    onsubmit={(e) => { e.preventDefault(); handleSaveEdit(); }}
+                    class="p-3 bg-secondary/30 rounded-lg space-y-3"
+                  >
+                    <div class="space-y-2">
+                      <Label for="edit-participant-name">Name</Label>
+                      <Input
+                        id="edit-participant-name"
+                        type="text"
+                        bind:value={editName}
+                        class="min-h-[44px]"
+                        disabled={isEditSubmitting}
+                      />
+                      {#if editValidationErrors.name}
+                        <p class="text-sm text-destructive">{editValidationErrors.name}</p>
+                      {/if}
+                    </div>
+
+                    <div class="space-y-2">
+                      <Label for="edit-participant-nights">Nights</Label>
+                      <Input
+                        id="edit-participant-nights"
+                        type="number"
+                        bind:value={editNights}
+                        class="min-h-[44px]"
+                        disabled={isEditSubmitting}
+                      />
+                      {#if editValidationErrors.nights}
+                        <p class="text-sm text-destructive">{editValidationErrors.nights}</p>
+                      {/if}
+                    </div>
+
+                    <div class="flex gap-2">
+                      <Button
+                        type="submit"
+                        class="flex-1 min-h-[44px]"
+                        disabled={isEditSubmitting}
+                      >
+                        {#if isEditSubmitting}
+                          <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        {:else}
+                          Save
+                        {/if}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onclick={handleCancelEdit}
+                        class="min-h-[44px]"
+                        disabled={isEditSubmitting}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                {:else}
+                  <!-- Display Mode (clickable for edit) -->
+                  <button
+                    type="button"
+                    onclick={() => handleStartEdit(participant)}
+                    class="flex items-center justify-between p-3 bg-secondary/50 rounded-lg w-full text-left hover:bg-secondary/70 transition-colors cursor-pointer"
+                    disabled={isEditSubmitting}
+                  >
+                    <div>
+                      <p class="font-medium text-foreground">{participant.name}</p>
+                      <p class="text-sm text-muted-foreground">{participant.nights} night{participant.nights !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-medium text-foreground">{formatCurrency(0)}</p>
+                      <p class="text-xs text-muted-foreground">balance</p>
+                    </div>
+                  </button>
+                {/if}
               {/each}
             </div>
           {/if}

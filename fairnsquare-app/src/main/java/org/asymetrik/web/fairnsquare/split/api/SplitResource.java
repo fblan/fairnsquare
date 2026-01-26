@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -15,9 +16,12 @@ import jakarta.ws.rs.core.Response;
 
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
+import org.asymetrik.web.fairnsquare.split.domain.InvalidParticipantIdError;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
+import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.service.SplitService;
 
 /**
@@ -90,6 +94,34 @@ public class SplitResource {
 
         return splitService.addParticipant(splitId, request)
                 .map(participant -> Response.status(Response.Status.CREATED).entity(participant).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Updates an existing participant in a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param participantId
+     *            the participant identifier
+     * @param request
+     *            the update participant request
+     *
+     * @return 200 OK with the updated participant, or 404 Not Found, or 400 Bad Request
+     */
+    @PUT
+    @Path("/{splitId}/participants/{participantId}")
+    public Response updateParticipant(@PathParam("splitId") String splitId,
+            @PathParam("participantId") String participantId, @Valid UpdateParticipantRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+        if (!Participant.Id.isValid(participantId)) {
+            throw new InvalidParticipantIdError(participantId);
+        }
+
+        return splitService.updateParticipant(splitId, participantId, request)
+                .map(participant -> Response.ok(participant).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

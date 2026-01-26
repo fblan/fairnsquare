@@ -107,6 +107,49 @@ public class Split {
         this.expenses.add(expense);
     }
 
+    /**
+     * Update an existing participant in the split.
+     *
+     * @param participantId
+     *            the ID of the participant to update
+     * @param newName
+     *            the new name for the participant
+     * @param newNights
+     *            the new number of nights
+     *
+     * @return the updated participant
+     *
+     * @throws ParticipantNotFoundError
+     *             if no participant with the given ID exists
+     */
+    public Participant updateParticipant(Participant.Id participantId, String newName, int newNights) {
+        for (int i = 0; i < participants.size(); i++) {
+            if (participants.get(i).id().equals(participantId)) {
+                Participant updated = new Participant(participantId, new Participant.Name(newName),
+                        new Participant.Nights(newNights));
+                participants.set(i, updated);
+                return updated;
+            }
+        }
+        throw new ParticipantNotFoundError(participantId.value(), id.value());
+    }
+
+    /**
+     * Find a participant by ID.
+     *
+     * @param participantId
+     *            the ID of the participant to find
+     *
+     * @return the participant if found
+     *
+     * @throws ParticipantNotFoundError
+     *             if no participant with the given ID exists
+     */
+    public Participant getParticipant(Participant.Id participantId) {
+        return participants.stream().filter(p -> p.id().equals(participantId)).findFirst()
+                .orElseThrow(() -> new ParticipantNotFoundError(participantId.value(), id.value()));
+    }
+
     // Getters - return value objects and unmodifiable collections
 
     public Id getId() {
