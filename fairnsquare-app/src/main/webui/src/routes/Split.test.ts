@@ -19,6 +19,7 @@ vi.mock('$lib/router', () => {
 vi.mock('$lib/api/splits', () => ({
   getSplit: vi.fn(),
   addParticipant: vi.fn(),
+  updateParticipant: vi.fn(),
 }));
 
 // Mock the toast store
@@ -26,7 +27,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSplit, addParticipant } from '$lib/api/splits';
+import { getSplit, addParticipant, updateParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -452,6 +453,307 @@ describe('Split', () => {
         expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
       });
       expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+    });
+  });
+
+  // Story 3.2: Edit Participant Tests
+  describe('Edit Participant (Story 3.2)', () => {
+    const mockSplitWithParticipants = {
+      id: 'test-split-id',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-24T12:00:00Z',
+      participants: [
+        { id: 'p1', name: 'Alice', nights: 2 },
+        { id: 'p2', name: 'Bob', nights: 3 },
+      ],
+      expenses: [],
+    };
+
+    it('enters edit mode when clicking on a participant card (AC 1)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      // Should show edit form with current values
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText('Nights')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+
+    it('shows current values in edit form (AC 1)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        const nameInput = screen.getByLabelText('Name') as HTMLInputElement;
+        expect(nameInput.value).toBe('Alice');
+      });
+
+      const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
+      expect(nightsInput.value).toBe('2');
+    });
+
+    it('closes edit mode when Cancel is clicked (AC 3)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+      });
+
+      // Click cancel
+      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+      await fireEvent.click(cancelButton);
+
+      // Should return to display mode
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(updateParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows validation error for empty name (AC 4)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      });
+
+      // Clear the name
+      const nameInput = screen.getByLabelText('Name');
+      await fireEvent.input(nameInput, { target: { value: '' } });
+
+      // Submit
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      expect(screen.getByText('Name is required')).toBeInTheDocument();
+      expect(updateParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows validation error for nights less than 1 (AC 5)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nights')).toBeInTheDocument();
+      });
+
+      // Set nights to 0
+      const nightsInput = screen.getByLabelText('Nights');
+      await fireEvent.input(nightsInput, { target: { value: '0' } });
+
+      // Submit
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
+      expect(updateParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows validation error for nights greater than 365 (AC 6)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Nights')).toBeInTheDocument();
+      });
+
+      // Set nights to 366
+      const nightsInput = screen.getByLabelText('Nights');
+      await fireEvent.input(nightsInput, { target: { value: '366' } });
+
+      // Submit
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
+      expect(updateParticipant).not.toHaveBeenCalled();
+    });
+
+    it('calls API and updates participant on successful save (AC 2)', async () => {
+      const updatedSplit = {
+        ...mockSplitWithParticipants,
+        participants: [
+          { id: 'p1', name: 'Updated Alice', nights: 5 },
+          { id: 'p2', name: 'Bob', nights: 3 },
+        ],
+      };
+
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(mockSplitWithParticipants)
+        .mockResolvedValueOnce(updatedSplit);
+
+      vi.mocked(updateParticipant).mockResolvedValue({
+        id: 'p1',
+        name: 'Updated Alice',
+        nights: 5,
+      });
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      });
+
+      // Update values
+      const nameInput = screen.getByLabelText('Name');
+      const nightsInput = screen.getByLabelText('Nights');
+      await fireEvent.input(nameInput, { target: { value: 'Updated Alice' } });
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
+      // Save
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p1', {
+          name: 'Updated Alice',
+          nights: 5,
+        });
+      });
+
+      // Verify list was refreshed
+      await waitFor(() => {
+        expect(screen.getByText('Updated Alice')).toBeInTheDocument();
+      });
+
+      // Verify toast was shown
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'Participant updated',
+        duration: 3000,
+      });
+    });
+
+    it('shows error toast and keeps edit mode open on API error (AC 8)', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+      vi.mocked(updateParticipant).mockRejectedValue({
+        status: 500,
+        detail: 'Server error',
+      });
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      });
+
+      // Save without changes
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Server error',
+        });
+      });
+
+      // Edit form should still be open
+      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+    });
+
+    it('shows loading state on Save button during submission', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithParticipants);
+      vi.mocked(updateParticipant).mockImplementation(() => new Promise(() => {})); // Never resolves
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Click on Alice's card
+      const aliceCard = screen.getByText('Alice').closest('button');
+      await fireEvent.click(aliceCard!);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+      });
+
+      // Save
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await fireEvent.click(saveButton);
+
+      // Should show loading state
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Saving/i })).toBeInTheDocument();
+      });
     });
   });
 });

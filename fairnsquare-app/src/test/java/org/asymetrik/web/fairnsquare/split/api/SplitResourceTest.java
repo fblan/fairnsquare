@@ -25,7 +25,8 @@ import io.restassured.http.ContentType;
 
 /**
  * Integration tests for SplitResource REST API. Story 2.1: Create Split Backend API (AC 1-6) Story 2.3: Access Split
- * via Link (GET endpoint) Story 3.1: Add Participant with Smart Defaults (AC 9-11)
+ * via Link (GET endpoint) Story 3.1: Add Participant with Smart Defaults (AC 9-11) Story 3.2: Edit Participant Inline
+ * (AC 7-10)
  */
 @QuarkusTest
 class SplitResourceTest {
@@ -369,5 +370,177 @@ class SplitResourceTest {
                 {"name": "%s", "nights": 2}
                 """.formatted(longName)).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400)
                 .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    // ========== Story 3.2: Update Participant Tests ==========
+
+    /**
+     * Story 3.2 AC 7: PUT returns 200 with valid data.
+     */
+    @Test
+    void updateParticipant_withValidData_returns200WithUpdatedParticipant() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Update the participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 4}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(200)
+                .body("id", equalTo(participantId)).body("name", equalTo("Bob")).body("nights", equalTo(4));
+    }
+
+    /**
+     * Story 3.2 AC 7: Updated participant is persisted in JSON file.
+     */
+    @Test
+    void updateParticipant_persistsChangesInJsonFile() throws IOException {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Persistence Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Update the participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "UpdatedName", "nights": 7}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(200);
+
+        // Verify file contains updated values
+        Path splitFile = pathResolver.resolve(splitId);
+        String content = Files.readString(splitFile);
+        assertTrue(content.contains("\"UpdatedName\""), "File should contain updated participant name");
+        assertTrue(content.contains("7"), "File should contain updated nights value");
+    }
+
+    /**
+     * Story 3.2 AC 8: PUT returns 400 for empty name.
+     */
+    @Test
+    void updateParticipant_withEmptyName_returns400() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Validation Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Try to update with empty name
+        given().contentType(ContentType.JSON).body("""
+                {"name": "", "nights": 4}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.2 AC 8: PUT returns 400 for nights less than 1.
+     */
+    @Test
+    void updateParticipant_withNightsLessThan1_returns400() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Nights Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Try to update with nights = 0
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 0}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.2 AC 8: PUT returns 400 for nights greater than 365.
+     */
+    @Test
+    void updateParticipant_withNightsGreaterThan365_returns400() {
+        // Create a split and add a participant
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Max Nights Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Try to update with nights = 366
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 366}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(400)
+                .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Story 3.2 AC 10: PUT returns 404 for non-existent split.
+     */
+    @Test
+    void updateParticipant_toNonExistentSplit_returns404() {
+        // Use valid 21-char NanoID format for both IDs to avoid 400 validation errors
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 4}
+                """).when().put("/api/splits/V1StGXR8_Z5jdHi6B-myT/participants/X2YtGXR8_Z5jdHi6B-myU").then()
+                .statusCode(404).body("type", containsString("not-found")).body("status", equalTo(404));
+    }
+
+    /**
+     * Story 3.2 AC 9: PUT returns 404 for non-existent participant.
+     */
+    @Test
+    void updateParticipant_nonExistentParticipant_returns404() {
+        // Create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Non-Existent Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to update a non-existent participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 4}
+                """).when().put("/api/splits/" + splitId + "/participants/nonexistentid12345678").then().statusCode(404)
+                .body("type", containsString("participant-not-found")).body("status", equalTo(404));
+    }
+
+    /**
+     * Story 3.2 AC 8: PUT returns 400 for invalid splitId format.
+     */
+    @Test
+    void updateParticipant_withInvalidSplitId_returns400() {
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 4}
+                """).when().put("/api/splits/invalid..id/participants/X2YtGXR8_Z5jdHi6B-myU").then().statusCode(400);
+    }
+
+    /**
+     * Story 3.2 AC 8: PUT returns 400 for invalid participantId format.
+     */
+    @Test
+    void updateParticipant_withInvalidParticipantId_returns400() {
+        // Create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Participant ID Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Try to update with invalid participant ID format
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 4}
+                """).when().put("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
     }
 }

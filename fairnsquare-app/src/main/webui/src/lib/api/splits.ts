@@ -13,6 +13,11 @@ export interface AddParticipantRequest {
   nights: number;
 }
 
+export interface UpdateParticipantRequest {
+  name: string;
+  nights: number;
+}
+
 export interface Participant {
   id: string;
   name: string;
@@ -69,6 +74,24 @@ export async function addParticipant(
 ): Promise<Participant> {
   return apiRequest<Participant>(`/splits/${splitId}/participants`, {
     method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Updates an existing participant in a split.
+ * @param splitId The split identifier
+ * @param participantId The participant identifier
+ * @param request The update participant request
+ * @returns The updated participant
+ */
+export async function updateParticipant(
+  splitId: string,
+  participantId: string,
+  request: UpdateParticipantRequest
+): Promise<Participant> {
+  return apiRequest<Participant>(`/splits/${splitId}/participants/${participantId}`, {
+    method: 'PUT',
     body: JSON.stringify(request),
   });
 }
