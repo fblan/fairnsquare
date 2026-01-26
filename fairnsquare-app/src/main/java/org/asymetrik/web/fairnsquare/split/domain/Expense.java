@@ -1,9 +1,22 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
- * Placeholder for expense entity. Will be expanded in Epic 4.
+ * Expense entity. Minimal implementation for Story 3.3 expense constraint check. Full implementation in Epic 4 (Expense
+ * Tracking).
  */
 public class Expense {
-    // Intentionally empty for Story 2.1
-    // Full implementation in Story 4.x (Expense Tracking)
+
+    private final Participant.Id payerId;
+
+    @JsonCreator
+    public Expense(@JsonProperty("payerId") Participant.Id payerId) {
+        this.payerId = payerId;
+    }
+
+    public Participant.Id getPayerId() {
+        return payerId;
+    }
 }

@@ -150,6 +150,39 @@ public class Split {
                 .orElseThrow(() -> new ParticipantNotFoundError(participantId.value(), id.value()));
     }
 
+    /**
+     * Check if a participant has any associated expenses.
+     *
+     * @param participantId
+     *            the ID of the participant to check
+     *
+     * @return true if the participant is a payer on any expense, false otherwise
+     */
+    public boolean hasExpensesForParticipant(Participant.Id participantId) {
+        return expenses.stream().anyMatch(e -> e.getPayerId() != null && e.getPayerId().equals(participantId));
+    }
+
+    /**
+     * Remove a participant from the split.
+     *
+     * @param participantId
+     *            the ID of the participant to remove
+     *
+     * @throws ParticipantHasExpensesError
+     *             if the participant has associated expenses
+     * @throws ParticipantNotFoundError
+     *             if no participant with the given ID exists
+     */
+    public void removeParticipant(Participant.Id participantId) {
+        if (hasExpensesForParticipant(participantId)) {
+            throw new ParticipantHasExpensesError();
+        }
+        boolean removed = participants.removeIf(p -> p.id().equals(participantId));
+        if (!removed) {
+            throw new ParticipantNotFoundError(participantId.value(), id.value());
+        }
+    }
+
     // Getters - return value objects and unmodifiable collections
 
     public Id getId() {

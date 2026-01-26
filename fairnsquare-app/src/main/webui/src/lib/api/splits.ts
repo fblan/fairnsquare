@@ -95,3 +95,18 @@ export async function updateParticipant(
     body: JSON.stringify(request),
   });
 }
+
+/**
+ * Deletes a participant from a split.
+ * @param splitId The split identifier
+ * @param participantId The participant identifier
+ * @throws Error with message if participant has associated expenses (409 Conflict)
+ */
+export async function deleteParticipant(
+  splitId: string,
+  participantId: string
+): Promise<void> {
+  await apiRequest<void>(`/splits/${splitId}/participants/${participantId}`, {
+    method: 'DELETE',
+  });
+}

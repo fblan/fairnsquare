@@ -3,13 +3,15 @@
   // Story 2.3: Access Split via Link & View Overview
   // Story 3.1: Add Participant with Smart Defaults
   // Story 3.2: Edit Participant Inline
+  // Story 3.3: Remove Participant with Expense Constraint
 
-  import { getSplit, addParticipant, updateParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
+  import { getSplit, addParticipant, updateParticipant, deleteParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import * as Card from '$lib/components/ui/card';
+  import { ConfirmDialog } from '$lib/components/ui/confirm-dialog';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
 
@@ -32,6 +34,7 @@
 
   // Validation constants (must match backend)
   const MAX_NIGHTS = 365;
+  const MAX_NAME_LENGTH = 50;
 
   // Edit Participant state (Story 3.2)
   let editingParticipantId = $state<string | null>(null);
@@ -39,6 +42,12 @@
   let editNights = $state(1);
   let editValidationErrors = $state<{name?: string; nights?: string}>({});
   let isEditSubmitting = $state(false);
+
+  // Delete Participant state (Story 3.3)
+  let deletingParticipantId = $state<string | null>(null);
+  let deletingParticipantName = $state('');
+  let showDeleteConfirm = $state(false);
+  let isDeleting = $state(false);
 
   // Smart default for nights - persist to localStorage (Story 3.1 AC 3, 4)
   const NIGHTS_STORAGE_KEY = 'fairnsquare_lastParticipantNights';
@@ -137,6 +146,8 @@
 
     if (!formName.trim()) {
       errors.name = 'Name is required';
+    } else if (formName.trim().length > MAX_NAME_LENGTH) {
+      errors.name = `Name cannot exceed ${MAX_NAME_LENGTH} characters`;
     }
 
     if (formNights < 1) {
@@ -213,6 +224,8 @@
 
     if (!editName.trim()) {
       errors.name = 'Name is required';
+    } else if (editName.trim().length > MAX_NAME_LENGTH) {
+      errors.name = `Name cannot exceed ${MAX_NAME_LENGTH} characters`;
     }
 
     if (editNights < 1) {
@@ -258,6 +271,68 @@
       // Keep edit mode open for retry (AC 8 pattern)
     } finally {
       isEditSubmitting = false;
+    }
+  }
+
+  // Delete Participant handlers (Story 3.3)
+  function handleDeleteClick(event: MouseEvent, participant: Participant) {
+    // Prevent triggering edit mode
+    event.stopPropagation();
+
+    // Don't allow delete during edit or other operations
+    if (editingParticipantId || isEditSubmitting || isSubmitting || isDeleting) return;
+
+    deletingParticipantId = participant.id;
+    deletingParticipantName = participant.name;
+    showDeleteConfirm = true;
+  }
+
+  function handleCancelDelete() {
+    showDeleteConfirm = false;
+    deletingParticipantId = null;
+    deletingParticipantName = '';
+  }
+
+  async function handleConfirmDelete() {
+    if (!splitId || !deletingParticipantId) return;
+
+    isDeleting = true;
+
+    try {
+      await deleteParticipant(splitId, deletingParticipantId);
+
+      // Refresh split data
+      await loadSplit(splitId);
+
+      // Close dialog and show success
+      showDeleteConfirm = false;
+      deletingParticipantId = null;
+      deletingParticipantName = '';
+      addToast({
+        type: 'success',
+        message: 'Participant removed',
+        duration: 3000,
+      });
+    } catch (err) {
+      const apiError = err as ApiError;
+      // Check if 409 Conflict (has expenses)
+      if (apiError.status === 409) {
+        addToast({
+          type: 'error',
+          message: `Cannot remove ${deletingParticipantName} - they have associated expenses. Remove or reassign their expenses first.`,
+        });
+      } else {
+        addToast({
+          type: 'error',
+          message: apiError.detail || 'Failed to remove participant. Please try again.',
+        });
+      }
+      // Close dialog on error
+      showDeleteConfirm = false;
+      deletingParticipantId = null;
+      deletingParticipantName = '';
+    } finally {
+      isDeleting = false;
     }
   }
 
@@ -505,21 +580,36 @@
                   </form>
                 {:else}
                   <!-- Display Mode (clickable for edit) -->
-                  <button
-                    type="button"
-                    onclick={() => handleStartEdit(participant)}
-                    class="flex items-center justify-between p-3 bg-secondary/50 rounded-lg w-full text-left hover:bg-secondary/70 transition-colors cursor-pointer"
-                    disabled={isEditSubmitting}
-                  >
-                    <div>
-                      <p class="font-medium text-foreground">{participant.name}</p>
-                      <p class="text-sm text-muted-foreground">{participant.nights} night{participant.nights !== 1 ? 's' : ''}</p>
-                    </div>
-                    <div class="text-right">
-                      <p class="font-medium text-foreground">{formatCurrency(0)}</p>
-                      <p class="text-xs text-muted-foreground">balance</p>
-                    </div>
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onclick={() => handleStartEdit(participant)}
+                      class="flex-1 flex items-center justify-between p-3 bg-secondary/50 rounded-lg text-left hover:bg-secondary/70 transition-colors cursor-pointer"
+                      disabled={isEditSubmitting || isDeleting}
+                    >
+                      <div>
+                        <p class="font-medium text-foreground">{participant.name}</p>
+                        <p class="text-sm text-muted-foreground">{participant.nights} night{participant.nights !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div class="text-right">
+                        <p class="font-medium text-foreground">{formatCurrency(0)}</p>
+                        <p class="text-xs text-muted-foreground">balance</p>
+                      </div>
+                    </button>
+                    <!-- Delete button (Story 3.3 AC 1) -->
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onclick={(e: MouseEvent) => handleDeleteClick(e, participant)}
+                      class="shrink-0 min-h-[44px] min-w-[44px] text-muted-foreground hover:text-destructive"
+                      disabled={editingParticipantId !== null || isEditSubmitting || isSubmitting || isDeleting}
+                      aria-label={`Delete ${participant.name}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                      </svg>
+                    </Button>
+                  </div>
                 {/if}
               {/each}
             </div>
@@ -580,3 +670,15 @@
     </section>
   {/if}
 </div>
+
+<!-- Delete Confirmation Dialog (Story 3.3 AC 2, 10) -->
+<ConfirmDialog
+  open={showDeleteConfirm}
+  title={`Remove ${deletingParticipantName}?`}
+  description="This cannot be undone."
+  confirmLabel="Remove"
+  cancelLabel="Cancel"
+  isLoading={isDeleting}
+  onConfirm={handleConfirmDelete}
+  onCancel={handleCancelDelete}
+/>
