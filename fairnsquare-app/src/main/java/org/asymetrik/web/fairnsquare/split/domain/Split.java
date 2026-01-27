@@ -183,6 +183,22 @@ public class Split {
         }
     }
 
+    /**
+     * Validate that a payer exists in the split's participants.
+     *
+     * @param payerId
+     *            the ID of the payer to validate
+     *
+     * @throws PayerNotFoundError
+     *             if the payer is not a participant in this split
+     */
+    public void validatePayerExists(Participant.Id payerId) {
+        boolean exists = participants.stream().anyMatch(p -> p.id().equals(payerId));
+        if (!exists) {
+            throw new PayerNotFoundError(payerId.value(), id.value());
+        }
+    }
+
     // Getters - return value objects and unmodifiable collections
 
     public Id getId() {

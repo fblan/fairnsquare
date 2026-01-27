@@ -4,8 +4,8 @@ storiesComplete:
   - epic1
   - epic2
   - epic3
-storiesPending:
   - epic4
+storiesPending:
   - epic5
   - epic6
 inputDocuments:
@@ -709,4 +709,415 @@ This document provides the complete epic and story breakdown for FairNSquare, de
 
 ---
 
-<!-- Stories for Epics 4-6 pending -->
+## Epic 4: Expense Tracking - Stories
+
+### Story 4.1: Add Expense with Split Mode Selection
+
+**As a** user managing a split,
+**I want** to add an expense with amount, description, payer, and split mode,
+**So that** the system can calculate fair shares based on my chosen distribution method.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split overview with at least one participant
+**When** I look at the Expenses section
+**Then** I see an "Add Expense" button with a plus icon
+**And** the button uses touch-friendly sizing (min 44px height)
+
+**Given** I click "Add Expense"
+**When** the add form appears
+**Then** I see input fields for:
+  - Amount (number input, required, min 0.01)
+  - Description (text input, required)
+  - Payer (dropdown/select, required, populated with participants)
+  - Split Mode (radio/segmented control, default: "By Night")
+**And** the form appears inline or as a slide-up panel on mobile
+**And** Split Mode shows three options: "By Night", "Equal", "Free"
+
+**Given** I enter valid expense data: amount "150.00", description "Groceries", payer "Alice", mode "By Night"
+**When** I click "Add" or submit the form
+**Then** the API is called POST `/api/splits/{splitId}/expenses`
+**And** a loading indicator appears on the submit button
+**And** on success, the new expense appears in the expenses list
+**And** the expense card shows: description, amount (€150.00), payer name, split mode badge
+**And** the form clears and closes
+**And** a success toast shows "Expense added"
+**And** running balances update immediately
+
+**Given** I select "Equal" split mode
+**When** I submit the expense
+**Then** the expense is recorded with splitMode = "EQUAL"
+**And** shares are calculated equally among all participants
+
+**Given** I select "By Night" split mode (default)
+**When** I submit the expense
+**Then** the expense is recorded with splitMode = "BY_NIGHT"
+**And** shares are calculated proportionally to each participant's nights
+
+**Given** I try to add an expense with empty description
+**When** I submit the form
+**Then** validation error "Description is required" is shown inline
+**And** the API is not called
+
+**Given** I try to add an expense with amount less than 0.01
+**When** I submit the form
+**Then** validation error "Amount must be at least €0.01" is shown inline
+**And** the API is not called
+
+**Given** I try to add an expense without selecting a payer
+**When** I submit the form
+**Then** validation error "Payer is required" is shown inline
+**And** the API is not called
+
+**Given** the split has no participants
+**When** I try to add an expense
+**Then** I see a message "Add participants before adding expenses"
+**And** the "Add Expense" button is disabled
+
+**Given** the API returns an error
+**When** adding an expense
+**Then** an error toast displays the error message
+**And** the form remains open for retry
+
+**Given** a POST request to `/api/splits/{splitId}/expenses` with body:
+```json
+{
+  "amount": 150.00,
+  "description": "Groceries",
+  "payerId": "abc123",
+  "splitMode": "BY_NIGHT"
+}
+```
+**When** the split and payer exist
+**Then** response status is 201 Created
+**And** response body contains:
+  - `id`: generated NanoID (21 chars)
+  - `amount`: 150.00
+  - `description`: "Groceries"
+  - `payerId`: "abc123"
+  - `splitMode`: "BY_NIGHT"
+  - `createdAt`: ISO 8601 timestamp
+  - `shares`: calculated share per participant
+**And** the expense is persisted in the split's JSON file
+
+**Given** a POST request with invalid payerId
+**When** the payerId doesn't exist in the split
+**Then** response status is 400 Bad Request
+**And** response follows Problem Details format with detail about invalid payer
+
+**Given** a POST request to a non-existent split
+**When** the splitId is invalid
+**Then** response status is 404 Not Found
+
+---
+
+### Story 4.2: Calculate Shares by Split Mode (By-Night and Equal)
+
+**As a** user,
+**I want** the system to automatically calculate each participant's share based on the split mode,
+**So that** expenses are distributed fairly without manual math.
+
+**Acceptance Criteria:**
+
+**Given** an expense of €180.00 with split mode "BY_NIGHT"
+**And** participants: Alice (4 nights), Bob (2 nights), Charlie (3 nights) = 9 total nights
+**When** the expense is saved
+**Then** shares are calculated proportionally:
+  - Alice: €180 × (4/9) = €80.00
+  - Bob: €180 × (2/9) = €40.00
+  - Charlie: €180 × (3/9) = €60.00
+**And** each participant's share is stored in the expense record
+**And** shares sum exactly to the expense amount (no rounding errors that lose cents)
+
+**Given** an expense of €90.00 with split mode "EQUAL"
+**And** 3 participants in the split
+**When** the expense is saved
+**Then** shares are calculated equally:
+  - Each participant: €90 / 3 = €30.00
+**And** each participant's share is stored in the expense record
+
+**Given** an expense of €100.00 with split mode "EQUAL"
+**And** 3 participants (indivisible amount)
+**When** the expense is saved
+**Then** shares are distributed fairly with rounding:
+  - Two participants: €33.33
+  - One participant: €33.34 (to ensure total = €100.00)
+**And** the rounding difference is assigned to the first participant alphabetically (or by creation order)
+
+**Given** an expense of €200.00 with split mode "BY_NIGHT"
+**And** participants with varying nights that create rounding scenarios
+**When** the expense is saved
+**Then** shares sum exactly to €200.00
+**And** any rounding remainder is distributed fairly (no money lost or gained)
+
+**Given** I view an expense in the expenses list
+**When** I tap on the expense card to expand details
+**Then** I see the calculation breakdown showing each participant's share
+**And** for "By Night" mode, I see the night-based calculation (e.g., "Alice: 4/9 nights = €80.00")
+**And** for "Equal" mode, I see "Split equally: €30.00 each"
+
+**Given** the backend calculates shares
+**When** an expense is created or updated
+**Then** the `shares` array in the expense includes:
+  - `participantId`: ID of the participant
+  - `amount`: calculated share amount (BigDecimal, 2 decimal places)
+**And** the sum of all share amounts equals the expense amount exactly
+
+---
+
+### Story 4.3: Free Mode Manual Share Specification
+
+**As a** user,
+**I want** to manually specify each participant's share for an expense,
+**So that** I can handle custom splitting scenarios that don't fit by-night or equal.
+
+**Acceptance Criteria:**
+
+**Given** I am adding an expense and select "Free" split mode
+**When** the form updates
+**Then** I see a list of all participants with individual amount inputs
+**And** each input is pre-filled with €0.00
+**And** I see a running total showing "Total: €X / €Y" (entered vs expense amount)
+
+**Given** I am in Free mode for a €100.00 expense with 3 participants
+**When** I enter: Alice €50, Bob €30, Charlie €20
+**Then** the running total shows "Total: €100.00 / €100.00" (green, valid)
+**And** the submit button is enabled
+
+**Given** I am in Free mode and enter shares that don't sum to the expense amount
+**When** the total is €80.00 but expense is €100.00
+**Then** the running total shows "Total: €80.00 / €100.00" (red, invalid)
+**And** validation error "Shares must equal the expense amount" is shown
+**And** the submit button is disabled
+
+**Given** I am in Free mode and enter shares that exceed the expense amount
+**When** the total is €120.00 but expense is €100.00
+**Then** the running total shows "Total: €120.00 / €100.00" (red, invalid)
+**And** validation error "Shares must equal the expense amount" is shown
+**And** the submit button is disabled
+
+**Given** I am in Free mode and change the expense amount after entering shares
+**When** I change amount from €100 to €150
+**Then** the validation updates to reflect the new target
+**And** I see "Total: €100.00 / €150.00" (red, invalid)
+
+**Given** I submit a valid Free mode expense
+**When** the API request is made
+**Then** the request body includes:
+```json
+{
+  "amount": 100.00,
+  "description": "Custom split",
+  "payerId": "abc123",
+  "splitMode": "FREE",
+  "shares": [
+    {"participantId": "p1", "amount": 50.00},
+    {"participantId": "p2", "amount": 30.00},
+    {"participantId": "p3", "amount": 20.00}
+  ]
+}
+```
+
+**Given** a POST request with Free mode and invalid shares total
+**When** shares don't sum to expense amount
+**Then** response status is 400 Bad Request
+**And** response follows Problem Details format with detail "Shares must sum to expense amount"
+
+**Given** a POST request with Free mode and missing participant shares
+**When** not all participants have a share specified
+**Then** response status is 400 Bad Request
+**And** response follows Problem Details format with detail "All participants must have a share specified"
+
+**Given** I am viewing on mobile (< 768px)
+**When** in Free mode
+**Then** participant share inputs are stacked vertically
+**And** each row shows: participant name, amount input
+**And** touch targets are at least 44px
+**And** the keyboard shows numeric input type
+
+---
+
+### Story 4.4: Edit Expense
+
+**As a** user managing a split,
+**I want** to edit an existing expense (amount, description, payer, split mode),
+**So that** I can correct mistakes without deleting and re-adding.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split with expenses
+**When** I tap/click on an expense card
+**Then** the card expands to show expense details and an "Edit" button
+**And** I see the calculation breakdown (shares per participant)
+
+**Given** I click "Edit" on an expense
+**When** the edit form appears
+**Then** all fields are pre-filled with current values:
+  - Amount: current amount
+  - Description: current description
+  - Payer: current payer selected
+  - Split Mode: current mode selected
+**And** I see "Save" and "Cancel" buttons
+
+**Given** I am editing an expense with "By Night" or "Equal" mode
+**When** I change the amount from €100 to €150
+**And** I click "Save"
+**Then** the API is called PUT `/api/splits/{splitId}/expenses/{expenseId}`
+**And** shares are recalculated based on the new amount
+**And** on success, the expense card shows updated values
+**And** running balances update immediately
+**And** a success toast shows "Expense updated"
+
+**Given** I am editing an expense and change the split mode from "Equal" to "By Night"
+**When** I click "Save"
+**Then** shares are recalculated using the new mode
+**And** the expense card shows the new split mode badge
+
+**Given** I am editing an expense and switch to "Free" mode
+**When** the form updates
+**Then** I see the participant share inputs
+**And** shares are pre-filled with the previous calculated amounts (from Equal or By Night)
+**And** I can adjust individual shares before saving
+
+**Given** I am editing a "Free" mode expense
+**When** I change individual participant shares
+**Then** the running total validation applies
+**And** I cannot save until shares sum to expense amount
+
+**Given** I click "Cancel" while editing
+**When** the edit mode closes
+**Then** original values are restored
+**And** no API call is made
+
+**Given** I try to save with invalid data (empty description, invalid amount)
+**When** I click "Save"
+**Then** validation errors are shown inline
+**And** the API is not called
+
+**Given** a PUT request to `/api/splits/{splitId}/expenses/{expenseId}` with updated data
+**When** the expense exists
+**Then** response status is 200 OK
+**And** response body contains the updated expense with recalculated shares
+**And** the split's JSON file is updated
+
+**Given** a PUT request to a non-existent expense
+**When** the expenseId is invalid
+**Then** response status is 404 Not Found
+**And** response follows Problem Details format
+
+**Given** I am viewing on mobile (< 768px)
+**When** editing an expense
+**Then** the edit form is full-width
+**And** touch targets are at least 44px
+**And** the keyboard appears with appropriate input type
+
+---
+
+### Story 4.5: Remove Expense
+
+**As a** user managing a split,
+**I want** to remove an expense,
+**So that** I can correct the split by removing incorrectly added expenses.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split with expenses
+**When** I look at an expense card (expanded view)
+**Then** I see a delete/remove button (trash icon)
+**And** the button is styled as a subtle secondary action
+
+**Given** I click delete on an expense
+**When** the confirmation dialog appears
+**Then** I see "Remove expense '[description]'?" with the expense description
+**And** I see the amount being removed (e.g., "€150.00 paid by Alice")
+**And** I see "This cannot be undone" warning
+**And** I see "Remove" (destructive) and "Cancel" buttons
+
+**Given** I confirm deletion of an expense
+**When** I click "Remove"
+**Then** the API is called DELETE `/api/splits/{splitId}/expenses/{expenseId}`
+**And** a loading indicator appears on the Remove button
+**And** on success, the expense is removed from the list
+**And** running balances update immediately (recalculated without this expense)
+**And** a success toast shows "Expense removed"
+
+**Given** I click "Cancel" on the confirmation dialog
+**When** the dialog closes
+**Then** the expense remains in the list
+**And** no API call is made
+
+**Given** a DELETE request to `/api/splits/{splitId}/expenses/{expenseId}`
+**When** the expense exists
+**Then** response status is 204 No Content
+**And** the expense is removed from the split's JSON file
+
+**Given** a DELETE request to a non-existent expense
+**When** the expenseId is invalid
+**Then** response status is 404 Not Found
+**And** response follows Problem Details format
+
+**Given** I am viewing on mobile
+**When** interacting with delete
+**Then** the confirmation dialog is a bottom sheet or centered modal
+**And** buttons are full-width and touch-friendly (min 44px)
+
+---
+
+### Story 4.6: Display Expenses List with Running Balances
+
+**As a** user viewing a split,
+**I want** to see all expenses in a clear list with visual indicators,
+**So that** I can quickly understand what's been paid and by whom.
+
+**Acceptance Criteria:**
+
+**Given** I am viewing a split overview
+**When** there are no expenses
+**Then** I see "No expenses yet" placeholder message
+**And** I see the "Add Expense" button prominently
+
+**Given** I am viewing a split with expenses
+**When** the expenses list loads
+**Then** expenses are displayed in chronological order (newest first)
+**And** each expense card shows:
+  - Description (primary text)
+  - Amount (prominent, formatted with currency symbol)
+  - Payer name with avatar/initial
+  - Split mode badge ("By Night", "Equal", or "Free")
+  - Date added (relative format: "2 hours ago", "Yesterday")
+
+**Given** I am viewing an expense card
+**When** the split mode is "By Night"
+**Then** the badge shows "By Night" with a moon/night icon
+**And** badge uses primary color
+
+**Given** I am viewing an expense card
+**When** the split mode is "Equal"
+**Then** the badge shows "Equal" with an equals icon
+**And** badge uses neutral/secondary color
+
+**Given** I am viewing an expense card
+**When** the split mode is "Free"
+**Then** the badge shows "Free" with a custom/edit icon
+**And** badge uses distinct color to indicate manual entry
+
+**Given** I tap/click an expense card
+**When** the card expands
+**Then** I see the share breakdown for each participant
+**And** format shows: participant name, their share amount
+**And** for By Night: shows calculation (e.g., "4/9 nights = €80.00")
+
+**Given** the API returns expenses in the split data
+**When** GET `/api/splits/{splitId}` is called
+**Then** the split response includes an `expenses` array
+**And** each expense includes all fields: id, amount, description, payerId, splitMode, createdAt, shares
+
+**Given** I am viewing on mobile (< 768px)
+**When** the expenses list renders
+**Then** cards are full-width with 16px padding
+**And** the layout is optimized for vertical scrolling
+**And** touch targets for expand/edit/delete are at least 44px
+
+---
+
+<!-- Stories for Epics 5-6 pending -->

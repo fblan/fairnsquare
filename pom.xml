@@ -81,7 +81,11 @@
                 <groupId>org.asymetrik.modular</groupId>
                 <artifactId>verification</artifactId>
                 <version>${asymetrik-modular.version}</version>
-                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.27.6</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

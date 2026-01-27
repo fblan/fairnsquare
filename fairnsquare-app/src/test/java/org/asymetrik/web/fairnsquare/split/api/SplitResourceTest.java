@@ -1,6 +1,7 @@
 package org.asymetrik.web.fairnsquare.split.api;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -12,9 +13,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
+import org.assertj.core.api.Assertions;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.split.domain.Expense;
@@ -23,6 +28,9 @@ import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
@@ -618,7 +626,9 @@ class SplitResourceTest {
 
         // Load split, add expense, and save back using repository
         Split split = repository.load(splitId, Split.class).orElseThrow();
-        Expense expense = new Expense(Participant.Id.of(participantId));
+        Expense expense = Expense.create(new java.math.BigDecimal("50.00"), "Test Expense",
+                Participant.Id.of(participantId), org.asymetrik.web.fairnsquare.split.domain.SplitMode.EQUAL,
+                java.util.Collections.emptyList());
         split.addExpense(expense);
         repository.save(splitId, split);
 
@@ -643,7 +653,9 @@ class SplitResourceTest {
 
         // Load split, add expense, and save back using repository
         Split split = repository.load(splitId, Split.class).orElseThrow();
-        Expense expense = new Expense(Participant.Id.of(participantId));
+        Expense expense = Expense.create(new java.math.BigDecimal("50.00"), "Test Expense",
+                Participant.Id.of(participantId), org.asymetrik.web.fairnsquare.split.domain.SplitMode.EQUAL,
+                java.util.Collections.emptyList());
         split.addExpense(expense);
         repository.save(splitId, split);
 
@@ -699,5 +711,325 @@ class SplitResourceTest {
 
         // Try to delete with invalid participant ID format
         given().when().delete("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
+    }
+
+    // ==================== Story 4.1: Add Expense Tests ====================
+
+    /**
+     * Story 4.1 AC 11: POST returns 201 with valid expense data (BY_NIGHT mode).
+     */
+    @Test
+    void addExpense_withValidData_returns201AndExpense() {
+        // Create a split and add participants
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Expense Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Charlie", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Add expense
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 180.00,
+                    "description": "Groceries",
+                    "payerId": "%s",
+                    "splitMode": "BY_NIGHT"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201)
+                .body("id", notNullValue()).body("id.length()", equalTo(21)).body("amount", equalTo(180.0f))
+                .body("description", equalTo("Groceries")).body("payerId", equalTo(payerId))
+                .body("splitMode", equalTo("BY_NIGHT")).body("createdAt", notNullValue()).body("shares", hasSize(3));
+    }
+
+    /**
+     * Story 4.1 AC 11: Response contains calculated shares for BY_NIGHT mode.
+     */
+    @Test
+    void addExpense_byNightMode_calculatesSharesProportionally() {
+        // Create a split with 3 participants: Alice (4 nights), Bob (2 nights), Charlie (3 nights) = 9 total nights
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "By Night Share Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String charlieId = given().contentType(ContentType.JSON).body("""
+                {"name": "Charlie", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add expense of €180.00 - BY_NIGHT should split: Alice=80, Bob=40, Charlie=60
+        io.restassured.response.Response response = given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 180.00,
+                    "description": "Dinner",
+                    "payerId": "%s",
+                    "splitMode": "BY_NIGHT"
+                }
+                """.formatted(aliceId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201)
+                .body("shares", hasSize(3)).extract().response();
+
+        // Verify shares sum to 180.00
+        java.util.List<java.util.Map<String, Object>> shares = response.jsonPath().getList("shares");
+        Map<String, Map<String, Object>> sharesByParticipant = shares.stream()
+                .collect(Collectors.toMap(s -> s.get("participantId").toString(), s -> s));
+        Assertions.assertThat(sharesByParticipant.get(aliceId).get("amount")).isEqualTo(80.00f);
+        Assertions.assertThat(sharesByParticipant.get(bobId).get("amount")).isEqualTo(40.00f);
+        Assertions.assertThat(sharesByParticipant.get(charlieId).get("amount")).isEqualTo(60.00f);
+        java.math.BigDecimal totalShares = shares.stream()
+                .map(s -> new java.math.BigDecimal(s.get("amount").toString()))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        org.junit.jupiter.api.Assertions.assertTrue(totalShares.compareTo(new java.math.BigDecimal("180.00")) == 0,
+                "Expected 180.00 but got " + totalShares);
+    }
+
+    /**
+     * Story 4.1 AC 4: POST with EQUAL mode calculates equal shares.
+     */
+    @Test
+    void addExpense_equalMode_calculatesEqualShares() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Equal Share Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String charlieId = given().contentType(ContentType.JSON).body("""
+                {"name": "Charlie", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add expense of €90.00 EQUAL mode - should be €30 each
+        io.restassured.response.Response response = given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 90.00,
+                    "description": "Taxi",
+                    "payerId": "%s",
+                    "splitMode": "EQUAL"
+                }
+                """.formatted(aliceId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201)
+                .body("splitMode", equalTo("EQUAL")).body("shares", hasSize(3)).extract().response();
+
+        java.util.List<java.util.Map<String, Object>> shares = response.jsonPath().getList("shares");
+
+        Map<String, Map<String, Object>> sharesByParticipant = shares.stream()
+                .collect(Collectors.toMap(s -> s.get("participantId").toString(), s -> s));
+        Assertions.assertThat(sharesByParticipant.get(aliceId).get("amount")).isEqualTo(30.00f);
+        Assertions.assertThat(sharesByParticipant.get(bobId).get("amount")).isEqualTo(30.00f);
+        Assertions.assertThat(sharesByParticipant.get(charlieId).get("amount")).isEqualTo(30.00f);
+
+        // Verify shares sum to 90.00
+        java.math.BigDecimal totalShares = shares.stream()
+                .map(s -> new java.math.BigDecimal(s.get("amount").toString()))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        org.junit.jupiter.api.Assertions.assertTrue(totalShares.compareTo(new java.math.BigDecimal("90.00")) == 0,
+                "Expected 90.00 but got " + totalShares);
+    }
+
+    /**
+     * Story 4.1 AC 11: Test expense is persisted in split's JSON file.
+     */
+    @Test
+    void addExpense_persistsToSplitFile() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Persistence Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add expense
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Snacks",
+                    "payerId": "%s",
+                    "splitMode": "EQUAL"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201);
+
+        // Verify expense persisted by getting the split
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("expenses", hasSize(1))
+                .body("expenses[0].description", equalTo("Snacks")).body("expenses[0].amount", equalTo(50.0f));
+    }
+
+    /**
+     * Story 4.1 AC 12: POST returns 400 for invalid payerId (not in split).
+     */
+    // TODO : refactor to do assertj.
+    // TODO : reorganize tests by use cases.
+    // TODO : test persistence by using // testing (do not rely on the fact that it is a json file on disk)
+    // TODO : refactor split calculator and Expense. Expense should be a sealed interface/abstract class with each one a
+    // calculation function that take the parent split as parameter.
+    // TODO : add test that verifies the coverage?
+    // TODO: add modifications in documentation.
+    @Test
+    void addExpense_withInvalidPayerId_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Payer Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Try to add expense with non-existent payer
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Test",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "splitMode": "EQUAL"
+                }
+                """).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400)
+                .body("type", containsString("payer-not-found")).body("title", equalTo("Payer Not Found"));
+    }
+
+    /**
+     * Story 4.1 AC 11: POST returns 400 for missing/invalid amount.
+     */
+    @Test
+    void addExpense_withMissingAmount_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Missing Amount Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "description": "Test",
+                    "payerId": "%s",
+                    "splitMode": "EQUAL"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
+    }
+
+    /**
+     * Story 4.1 AC 11: POST returns 400 for amount less than 0.01.
+     */
+    @Test
+    void addExpense_withAmountBelowMinimum_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Below Min Amount Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 0.001,
+                    "description": "Test",
+                    "payerId": "%s",
+                    "splitMode": "EQUAL"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
+    }
+
+    /**
+     * Story 4.1 AC 11: POST returns 400 for empty description.
+     */
+    @Test
+    void addExpense_withEmptyDescription_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Empty Description Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "",
+                    "payerId": "%s",
+                    "splitMode": "EQUAL"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
+    }
+
+    /**
+     * Story 4.1 AC 13: POST returns 404 for non-existent split.
+     */
+    @Test
+    void addExpense_toNonExistentSplit_returns404() {
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Test",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "splitMode": "EQUAL"
+                }
+                """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses").then().statusCode(404);
+    }
+
+    /**
+     * Story 4.1 AC 13: POST returns 400 for invalid splitId format.
+     */
+    @Test
+    void addExpense_withInvalidSplitIdFormat_returns400() {
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Test",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "splitMode": "EQUAL"
+                }
+                """).when().post("/api/splits/invalid..id/expenses").then().statusCode(400);
+    }
+
+    /**
+     * Story 4.1 Code Review: Test backward compatibility for minimal Expense JSON from Story 3.3.
+     */
+    @Test
+    void expense_deserializesMinimalJsonForBackwardCompatibility() throws Exception {
+        // Ensure old JSON format with only payerId still works
+        String minimalExpenseJson = """
+                {"payerId": "V1StGXR8_Z5jdHi6B-myT"}
+                """;
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        Expense expense = mapper.readValue(minimalExpenseJson, Expense.class);
+
+        assertThat(expense.getPayerId()).isNotNull();
+        assertThat(expense.getPayerId().value()).isEqualTo("V1StGXR8_Z5jdHi6B-myT");
     }
 }

@@ -1,13 +1,17 @@
 package org.asymetrik.web.fairnsquare.split.service;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
+import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
+import org.asymetrik.web.fairnsquare.split.domain.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
@@ -19,10 +23,12 @@ import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
 public class SplitService {
 
     private final JsonFileRepository repository;
+    private final SplitCalculator splitCalculator;
 
     @Inject
-    public SplitService(JsonFileRepository repository) {
+    public SplitService(JsonFileRepository repository, SplitCalculator splitCalculator) {
         this.repository = repository;
+        this.splitCalculator = splitCalculator;
     }
 
     /**
@@ -126,5 +132,36 @@ public class SplitService {
             repository.save(splitId, split);
             return true;
         }).orElse(false);
+    }
+
+    /**
+     * Adds an expense to an existing split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add expense request
+     *
+     * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
+     *         PayerNotFoundError if the payer is not a participant in the split.
+     */
+    public Optional<Expense> addExpense(String splitId, AddExpenseRequest request) {
+        return repository.load(splitId, Split.class).map(split -> {
+            // Validate payer exists
+            Participant.Id payerId = Participant.Id.of(request.payerId());
+            split.validatePayerExists(payerId);
+
+            // Calculate shares based on split mode
+            List<Expense.Share> shares = splitCalculator.calculateShares(request.amount(), request.splitMode(),
+                    split.getParticipants());
+
+            // Create and add expense
+            Expense expense = Expense.create(request.amount(), request.description(), payerId, request.splitMode(),
+                    shares);
+            split.addExpense(expense);
+            repository.save(splitId, split);
+
+            return expense;
+        });
     }
 }
