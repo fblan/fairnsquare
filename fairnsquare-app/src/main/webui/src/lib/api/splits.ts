@@ -24,13 +24,28 @@ export interface Participant {
   nights: number;
 }
 
+export type SplitMode = 'BY_NIGHT' | 'EQUAL' | 'FREE';
+
+export interface Share {
+  participantId: string;
+  amount: number;
+}
+
 export interface Expense {
   id: string;
   description: string;
   amount: number;
   payerId: string;
-  splitMode: 'BY_NIGHT' | 'EQUAL' | 'FREE';
+  splitMode: SplitMode;
   createdAt: string;
+  shares: Share[];
+}
+
+export interface AddExpenseRequest {
+  amount: number;
+  description: string;
+  payerId: string;
+  splitMode: SplitMode;
 }
 
 export interface Split {
@@ -108,5 +123,21 @@ export async function deleteParticipant(
 ): Promise<void> {
   await apiRequest<void>(`/splits/${splitId}/participants/${participantId}`, {
     method: 'DELETE',
+  });
+}
+
+/**
+ * Adds an expense to a split.
+ * @param splitId The split identifier
+ * @param request The add expense request
+ * @returns The created expense with calculated shares
+ */
+export async function addExpense(
+  splitId: string,
+  request: AddExpenseRequest
+): Promise<Expense> {
+  return apiRequest<Expense>(`/splits/${splitId}/expenses`, {
+    method: 'POST',
+    body: JSON.stringify(request),
   });
 }

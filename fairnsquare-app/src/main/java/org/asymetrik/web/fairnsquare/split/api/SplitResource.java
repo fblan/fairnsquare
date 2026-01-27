@@ -15,6 +15,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidParticipantIdError;
@@ -154,5 +155,27 @@ public class SplitResource {
         }
 
         return Response.noContent().build();
+    }
+
+    /**
+     * Adds an expense to a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add expense request
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @POST
+    @Path("/{splitId}/expenses")
+    public Response addExpense(@PathParam("splitId") String splitId, @Valid AddExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addExpense(splitId, request)
+                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

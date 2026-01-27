@@ -1,68 +1,26 @@
 <script lang="ts">
-  // Split Overview Page
+  // Split Overview Page - Refactored
   // Story 2.3: Access Split via Link & View Overview
-  // Story 3.1: Add Participant with Smart Defaults
-  // Story 3.2: Edit Participant Inline
-  // Story 3.3: Remove Participant with Expense Constraint
+  // Components extracted: ParticipantsSection, ExpensesSection
 
-  import { getSplit, addParticipant, updateParticipant, deleteParticipant, type Split, type Participant, type Expense } from '$lib/api/splits';
+  import { getSplit, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
-  import { Label } from '$lib/components/ui/label';
   import * as Card from '$lib/components/ui/card';
-  import { ConfirmDialog } from '$lib/components/ui/confirm-dialog';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
+  import ParticipantsSection from './ParticipantsSection.svelte';
+  import ExpensesSection from './ExpensesSection.svelte';
 
-  // Extract splitId from route params using sv-router
+  // Extract splitId from route params
   const splitId = $derived(route.params.splitId || '');
 
-  // State using Svelte 5 runes (per architecture pattern)
+  // State
   let split = $state<Split | null>(null);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
   let notFound = $state(false);
   let copyConfirmation = $state(false);
-
-  // Add Participant form state (Story 3.1)
-  let showAddForm = $state(false);
-  let formName = $state('');
-  let formNights = $state(1);
-  let isSubmitting = $state(false);
-  let validationErrors = $state<{name?: string; nights?: string}>({});
-
-  // Validation constants (must match backend)
-  const MAX_NIGHTS = 365;
-  const MAX_NAME_LENGTH = 50;
-
-  // Edit Participant state (Story 3.2)
-  let editingParticipantId = $state<string | null>(null);
-  let editName = $state('');
-  let editNights = $state(1);
-  let editValidationErrors = $state<{name?: string; nights?: string}>({});
-  let isEditSubmitting = $state(false);
-
-  // Delete Participant state (Story 3.3)
-  let deletingParticipantId = $state<string | null>(null);
-  let deletingParticipantName = $state('');
-  let showDeleteConfirm = $state(false);
-  let isDeleting = $state(false);
-
-  // Smart default for nights - persist to localStorage (Story 3.1 AC 3, 4)
-  const NIGHTS_STORAGE_KEY = 'fairnsquare_lastParticipantNights';
-
-  function getSmartDefaultNights(): number {
-    if (typeof window === 'undefined') return 1;
-    const stored = localStorage.getItem(NIGHTS_STORAGE_KEY);
-    return stored ? parseInt(stored, 10) : 1;
-  }
-
-  function saveSmartDefaultNights(nights: number): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(NIGHTS_STORAGE_KEY, nights.toString());
-    }
-  }
 
   // Shareable URL
   const shareableUrl = $derived(
@@ -96,28 +54,25 @@
     }
   }
 
-  async function handleRetry() {
-    if (splitId) {
-      await loadSplit(splitId);
-    }
-  }
+  // Copy shareable URL to clipboard (Story 2.3 AC 3)
+  async function handleCopyUrl() {
+    if (typeof window === 'undefined') return;
 
-  async function handleShare() {
     try {
       await navigator.clipboard.writeText(shareableUrl);
       copyConfirmation = true;
-      addToast({
-        type: 'success',
-        message: 'Link copied to clipboard!',
-        duration: 3000,
-      });
       setTimeout(() => {
         copyConfirmation = false;
       }, 2000);
-    } catch {
+
+      addToast({
+        type: 'success',
+        message: 'Link copied to clipboard',
+      });
+    } catch (err) {
       addToast({
         type: 'error',
-        message: 'Failed to copy link. Please copy manually.',
+        message: 'Failed to copy link',
       });
     }
   }
@@ -125,255 +80,13 @@
   function handleGoHome() {
     navigate('/');
   }
-
-  // Add Participant handlers (Story 3.1)
-  function handleShowAddForm() {
-    showAddForm = true;
-    formName = '';
-    formNights = getSmartDefaultNights();
-    validationErrors = {};
-  }
-
-  function handleCancelAddForm() {
-    showAddForm = false;
-    formName = '';
-    formNights = 1;
-    validationErrors = {};
-  }
-
-  function validateAddForm(): boolean {
-    const errors: {name?: string; nights?: string} = {};
-
-    if (!formName.trim()) {
-      errors.name = 'Name is required';
-    } else if (formName.trim().length > MAX_NAME_LENGTH) {
-      errors.name = `Name cannot exceed ${MAX_NAME_LENGTH} characters`;
-    }
-
-    if (formNights < 1) {
-      errors.nights = 'Nights must be at least 1';
-    } else if (formNights > MAX_NIGHTS) {
-      errors.nights = 'Nights cannot exceed 365';
-    }
-
-    validationErrors = errors;
-    return Object.keys(errors).length === 0;
-  }
-
-  async function handleAddParticipant() {
-    if (!validateAddForm()) return;
-    if (!splitId) return;
-
-    isSubmitting = true;
-
-    try {
-      await addParticipant(splitId, {
-        name: formName.trim(),
-        nights: formNights,
-      });
-
-      // Save smart default
-      saveSmartDefaultNights(formNights);
-
-      // Refresh split data
-      await loadSplit(splitId);
-
-      // Close form and show success
-      showAddForm = false;
-      formName = '';
-      addToast({
-        type: 'success',
-        message: 'Participant added',
-        duration: 3000,
-      });
-    } catch (err) {
-      const apiError = err as ApiError;
-      addToast({
-        type: 'error',
-        message: apiError.detail || 'Failed to add participant. Please try again.',
-      });
-      // Keep form open for retry (AC 8)
-    } finally {
-      isSubmitting = false;
-    }
-  }
-
-  // Edit Participant handlers (Story 3.2)
-  function handleStartEdit(participant: Participant) {
-    // Don't start edit if already submitting
-    if (isEditSubmitting) return;
-    // Close add form if open
-    if (showAddForm) {
-      showAddForm = false;
-    }
-    editingParticipantId = participant.id;
-    editName = participant.name;
-    editNights = participant.nights;
-    editValidationErrors = {};
-  }
-
-  function handleCancelEdit() {
-    editingParticipantId = null;
-    editName = '';
-    editNights = 1;
-    editValidationErrors = {};
-  }
-
-  function validateEditForm(): boolean {
-    const errors: {name?: string; nights?: string} = {};
-
-    if (!editName.trim()) {
-      errors.name = 'Name is required';
-    } else if (editName.trim().length > MAX_NAME_LENGTH) {
-      errors.name = `Name cannot exceed ${MAX_NAME_LENGTH} characters`;
-    }
-
-    if (editNights < 1) {
-      errors.nights = 'Nights must be at least 1';
-    } else if (editNights > MAX_NIGHTS) {
-      errors.nights = 'Nights cannot exceed 365';
-    }
-
-    editValidationErrors = errors;
-    return Object.keys(errors).length === 0;
-  }
-
-  async function handleSaveEdit() {
-    if (!validateEditForm()) return;
-    if (!splitId || !editingParticipantId) return;
-
-    isEditSubmitting = true;
-
-    try {
-      await updateParticipant(splitId, editingParticipantId, {
-        name: editName.trim(),
-        nights: editNights,
-      });
-
-      // Refresh split data
-      await loadSplit(splitId);
-
-      // Close edit mode and show success
-      editingParticipantId = null;
-      editName = '';
-      editNights = 1;
-      addToast({
-        type: 'success',
-        message: 'Participant updated',
-        duration: 3000,
-      });
-    } catch (err) {
-      const apiError = err as ApiError;
-      addToast({
-        type: 'error',
-        message: apiError.detail || 'Failed to update participant. Please try again.',
-      });
-      // Keep edit mode open for retry (AC 8 pattern)
-    } finally {
-      isEditSubmitting = false;
-    }
-  }
-
-  // Delete Participant handlers (Story 3.3)
-  function handleDeleteClick(event: MouseEvent, participant: Participant) {
-    // Prevent triggering edit mode
-    event.stopPropagation();
-
-    // Don't allow delete during edit or other operations
-    if (editingParticipantId || isEditSubmitting || isSubmitting || isDeleting) return;
-
-    deletingParticipantId = participant.id;
-    deletingParticipantName = participant.name;
-    showDeleteConfirm = true;
-  }
-
-  function handleCancelDelete() {
-    showDeleteConfirm = false;
-    deletingParticipantId = null;
-    deletingParticipantName = '';
-  }
-
-  async function handleConfirmDelete() {
-    if (!splitId || !deletingParticipantId) return;
-
-    isDeleting = true;
-
-    try {
-      await deleteParticipant(splitId, deletingParticipantId);
-
-      // Refresh split data
-      await loadSplit(splitId);
-
-      // Close dialog and show success
-      showDeleteConfirm = false;
-      deletingParticipantId = null;
-      deletingParticipantName = '';
-      addToast({
-        type: 'success',
-        message: 'Participant removed',
-        duration: 3000,
-      });
-    } catch (err) {
-      const apiError = err as ApiError;
-      // Check if 409 Conflict (has expenses)
-      if (apiError.status === 409) {
-        addToast({
-          type: 'error',
-          message: `Cannot remove ${deletingParticipantName} - they have associated expenses. Remove or reassign their expenses first.`,
-        });
-      } else {
-        addToast({
-          type: 'error',
-          message: apiError.detail || 'Failed to remove participant. Please try again.',
-        });
-      }
-      // Close dialog on error
-      showDeleteConfirm = false;
-      deletingParticipantId = null;
-      deletingParticipantName = '';
-    } finally {
-      isDeleting = false;
-    }
-  }
-
-  // Helper function to get payer name for an expense
-  function getPayerName(expense: Expense): string {
-    if (!split) return 'Unknown';
-    const payer = split.participants.find(p => p.id === expense.payerId);
-    return payer?.name || 'Unknown';
-  }
-
-  // Helper function to format split mode badge
-  function formatSplitMode(mode: Expense['splitMode']): string {
-    switch (mode) {
-      case 'BY_NIGHT': return 'By Night';
-      case 'EQUAL': return 'Equal';
-      case 'FREE': return 'Free';
-      default: return mode;
-    }
-  }
-
-  // Helper function to format currency
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-IE', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(amount);
-  }
-
-  // Sort expenses by createdAt (newest first)
-  const sortedExpenses = $derived(
-    split?.expenses ? [...split.expenses].sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ) : []
-  );
 </script>
 
 <div class="flex flex-col items-center space-y-6 w-full max-w-[420px] mx-auto">
   {#if isLoading}
     <!-- Loading State -->
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
-      <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-8 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
@@ -381,7 +94,7 @@
     </div>
 
   {:else if notFound}
-    <!-- 404 Not Found State (AC 5) -->
+    <!-- 404 Not Found State -->
     <Card.Root class="w-full">
       <Card.Header>
         <Card.Title class="text-center text-destructive">Split not found</Card.Title>
@@ -397,257 +110,54 @@
     </Card.Root>
 
   {:else if error}
-    <!-- Network Error State (AC 6) -->
+    <!-- Error State -->
     <Card.Root class="w-full">
       <Card.Header>
-        <Card.Title class="text-center text-destructive">Error</Card.Title>
+        <Card.Title class="text-center text-destructive">Error loading split</Card.Title>
       </Card.Header>
       <Card.Content class="text-center space-y-4">
         <p class="text-muted-foreground">{error}</p>
-        <Button onclick={handleRetry} class="min-h-[44px]">
-          Retry
+        <Button onclick={() => loadSplit(splitId)} class="min-h-[44px]">
+          Try again
         </Button>
       </Card.Content>
     </Card.Root>
 
   {:else if split}
-    <!-- Split Overview (AC 1, 2) -->
-
-    <!-- Header with split name and share button (AC 1) -->
-    <header class="w-full">
-      <Card.Root>
-        <Card.Content class="flex items-center justify-between py-4">
-          <h1 class="text-xl font-bold text-foreground truncate">{split.name}</h1>
-          <Button
-            onclick={handleShare}
-            variant={copyConfirmation ? 'secondary' : 'outline'}
-            size="sm"
-            class="shrink-0 min-h-[44px]"
-          >
-            {copyConfirmation ? 'Copied!' : 'Share'}
-          </Button>
-        </Card.Content>
-      </Card.Root>
-    </header>
-
-    <!-- Participants Section (AC 2, 3) + Add Participant (Story 3.1) -->
-    <section class="w-full">
-      <Card.Root>
-        <Card.Header class="pb-2 flex flex-row items-center justify-between">
-          <Card.Title class="text-lg">Participants</Card.Title>
-          {#if !showAddForm}
-            <Button
-              onclick={handleShowAddForm}
-              variant="outline"
-              size="sm"
-              class="min-h-[44px]"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-              </svg>
-              Add Participant
-            </Button>
-          {/if}
-        </Card.Header>
-        <Card.Content>
-          <!-- Add Participant Form (Story 3.1 AC 1, 2) -->
-          {#if showAddForm}
-            <form onsubmit={(e) => { e.preventDefault(); handleAddParticipant(); }} class="space-y-4 mb-4 p-4 bg-secondary/30 rounded-lg">
-              <div class="space-y-2">
-                <Label for="participant-name">Name</Label>
-                <Input
-                  id="participant-name"
-                  type="text"
-                  placeholder="Enter name"
-                  bind:value={formName}
-                  class="min-h-[44px]"
-                  disabled={isSubmitting}
-                />
-                {#if validationErrors.name}
-                  <p class="text-sm text-destructive">{validationErrors.name}</p>
-                {/if}
-              </div>
-
-              <div class="space-y-2">
-                <Label for="participant-nights">Nights</Label>
-                <Input
-                  id="participant-nights"
-                  type="number"
-                  bind:value={formNights}
-                  class="min-h-[44px]"
-                  disabled={isSubmitting}
-                />
-                {#if validationErrors.nights}
-                  <p class="text-sm text-destructive">{validationErrors.nights}</p>
-                {/if}
-              </div>
-
-              <div class="flex gap-2">
-                <Button
-                  type="submit"
-                  class="flex-1 min-h-[44px]"
-                  disabled={isSubmitting}
-                >
-                  {#if isSubmitting}
-                    <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Adding...
-                  {:else}
-                    Add
-                  {/if}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onclick={handleCancelAddForm}
-                  class="min-h-[44px]"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          {/if}
-
-          <!-- Participants List -->
-          {#if split.participants.length === 0 && !showAddForm}
-            <p class="text-muted-foreground text-center py-4">No participants yet</p>
-          {:else if split.participants.length > 0}
-            <div class="space-y-3">
-              {#each split.participants as participant}
-                {#if editingParticipantId === participant.id}
-                  <!-- Edit Mode (Story 3.2 AC 1) -->
-                  <form
-                    onsubmit={(e) => { e.preventDefault(); handleSaveEdit(); }}
-                    class="p-3 bg-secondary/30 rounded-lg space-y-3"
-                  >
-                    <div class="space-y-2">
-                      <Label for="edit-participant-name">Name</Label>
-                      <Input
-                        id="edit-participant-name"
-                        type="text"
-                        bind:value={editName}
-                        class="min-h-[44px]"
-                        disabled={isEditSubmitting}
-                      />
-                      {#if editValidationErrors.name}
-                        <p class="text-sm text-destructive">{editValidationErrors.name}</p>
-                      {/if}
-                    </div>
-
-                    <div class="space-y-2">
-                      <Label for="edit-participant-nights">Nights</Label>
-                      <Input
-                        id="edit-participant-nights"
-                        type="number"
-                        bind:value={editNights}
-                        class="min-h-[44px]"
-                        disabled={isEditSubmitting}
-                      />
-                      {#if editValidationErrors.nights}
-                        <p class="text-sm text-destructive">{editValidationErrors.nights}</p>
-                      {/if}
-                    </div>
-
-                    <div class="flex gap-2">
-                      <Button
-                        type="submit"
-                        class="flex-1 min-h-[44px]"
-                        disabled={isEditSubmitting}
-                      >
-                        {#if isEditSubmitting}
-                          <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Saving...
-                        {:else}
-                          Save
-                        {/if}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onclick={handleCancelEdit}
-                        class="min-h-[44px]"
-                        disabled={isEditSubmitting}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                {:else}
-                  <!-- Display Mode (clickable for edit) -->
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onclick={() => handleStartEdit(participant)}
-                      class="flex-1 flex items-center justify-between p-3 bg-secondary/50 rounded-lg text-left hover:bg-secondary/70 transition-colors cursor-pointer"
-                      disabled={isEditSubmitting || isDeleting}
-                    >
-                      <div>
-                        <p class="font-medium text-foreground">{participant.name}</p>
-                        <p class="text-sm text-muted-foreground">{participant.nights} night{participant.nights !== 1 ? 's' : ''}</p>
-                      </div>
-                      <div class="text-right">
-                        <p class="font-medium text-foreground">{formatCurrency(0)}</p>
-                        <p class="text-xs text-muted-foreground">balance</p>
-                      </div>
-                    </button>
-                    <!-- Delete button (Story 3.3 AC 1) -->
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onclick={(e: MouseEvent) => handleDeleteClick(e, participant)}
-                      class="shrink-0 min-h-[44px] min-w-[44px] text-muted-foreground hover:text-destructive"
-                      disabled={editingParticipantId !== null || isEditSubmitting || isSubmitting || isDeleting}
-                      aria-label={`Delete ${participant.name}`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                      </svg>
-                    </Button>
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          {/if}
-        </Card.Content>
-      </Card.Root>
-    </section>
-
-    <!-- Expenses Section (AC 2, 4) -->
+    <!-- Split Header (AC 2: Name, Shareable URL) -->
     <section class="w-full">
       <Card.Root>
         <Card.Header class="pb-2">
-          <Card.Title class="text-lg">Expenses</Card.Title>
+          <Card.Title class="text-xl">{split.name}</Card.Title>
         </Card.Header>
-        <Card.Content>
-          {#if split.expenses.length === 0}
-            <p class="text-muted-foreground text-center py-4">No expenses yet</p>
-          {:else}
-            <div class="space-y-3">
-              {#each sortedExpenses as expense}
-                <div class="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                  <div class="min-w-0 flex-1">
-                    <p class="font-medium text-foreground truncate">{expense.description}</p>
-                    <p class="text-sm text-muted-foreground">Paid by {getPayerName(expense)}</p>
-                  </div>
-                  <div class="text-right shrink-0 ml-3">
-                    <p class="font-medium text-foreground">{formatCurrency(expense.amount)}</p>
-                    <span class="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">
-                      {formatSplitMode(expense.splitMode)}
-                    </span>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
+        <Card.Content class="space-y-3">
+          <!-- Shareable URL (AC 3) -->
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              readonly
+              value={shareableUrl}
+              class="flex-1 px-3 py-2 text-sm bg-secondary border border-input rounded-md truncate"
+              onclick={(e) => e.currentTarget.select()}
+            />
+            <Button
+              onclick={handleCopyUrl}
+              variant="outline"
+              size="sm"
+              class="min-h-[44px] shrink-0"
+            >
+              {copyConfirmation ? 'Copied!' : 'Copy'}
+            </Button>
+          </div>
         </Card.Content>
       </Card.Root>
     </section>
+
+    <!-- Participants Section -->
+    <ParticipantsSection {split} onSplitUpdated={() => loadSplit(splitId)} />
+
+    <!-- Expenses Section -->
+    <ExpensesSection {split} onSplitUpdated={() => loadSplit(splitId)} />
 
     <!-- Balance Summary Section (AC 2) -->
     <section class="w-full">
@@ -670,15 +180,3 @@
     </section>
   {/if}
 </div>
-
-<!-- Delete Confirmation Dialog (Story 3.3 AC 2, 10) -->
-<ConfirmDialog
-  open={showDeleteConfirm}
-  title={`Remove ${deletingParticipantName}?`}
-  description="This cannot be undone."
-  confirmLabel="Remove"
-  cancelLabel="Cancel"
-  isLoading={isDeleting}
-  onConfirm={handleConfirmDelete}
-  onCancel={handleCancelDelete}
-/>
