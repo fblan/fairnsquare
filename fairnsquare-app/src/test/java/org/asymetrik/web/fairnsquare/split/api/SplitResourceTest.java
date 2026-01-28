@@ -7,7 +7,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -82,7 +81,7 @@ class SplitResourceTest {
 
         // Verify file was created (AC 2)
         Path splitFile = pathResolver.resolve(splitId);
-        assertTrue(Files.exists(splitFile), "Split file should exist at " + splitFile);
+        assertThat(Files.exists(splitFile)).as("Split file should exist at " + splitFile).isTrue();
     }
 
     /**
@@ -95,15 +94,15 @@ class SplitResourceTest {
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
         Path splitFile = pathResolver.resolve(splitId);
-        assertTrue(Files.exists(splitFile), "Split file should exist");
+        assertThat(Files.exists(splitFile)).as("Split file should exist").isTrue();
 
         String content = Files.readString(splitFile);
-        assertTrue(content.contains("\"id\""), "File should contain id field");
-        assertTrue(content.contains("\"name\""), "File should contain name field");
-        assertTrue(content.contains("\"createdAt\""), "File should contain createdAt field");
-        assertTrue(content.contains("\"participants\""), "File should contain participants field");
-        assertTrue(content.contains("\"expenses\""), "File should contain expenses field");
-        assertTrue(content.contains("Test Split"), "File should contain the split name");
+        assertThat(content.contains("\"id\"")).as("File should contain id field").isTrue();
+        assertThat(content.contains("\"name\"")).as("File should contain name field").isTrue();
+        assertThat(content.contains("\"createdAt\"")).as("File should contain createdAt field").isTrue();
+        assertThat(content.contains("\"participants\"")).as("File should contain participants field").isTrue();
+        assertThat(content.contains("\"expenses\"")).as("File should contain expenses field").isTrue();
+        assertThat(content.contains("Test Split")).as("File should contain the split name").isTrue();
     }
 
     /**
@@ -149,9 +148,9 @@ class SplitResourceTest {
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
         // Verify directory and file were created
-        assertTrue(Files.exists(defaultTenant), "Default tenant directory should exist");
+        assertThat(Files.exists(defaultTenant)).as("Default tenant directory should exist").isTrue();
         Path splitFile = pathResolver.resolve(splitId);
-        assertTrue(Files.exists(splitFile), "Split file should exist");
+        assertThat(Files.exists(splitFile)).as("Split file should exist").isTrue();
     }
 
     /**
@@ -164,8 +163,8 @@ class SplitResourceTest {
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
         // Verify NanoID characteristics
-        org.junit.jupiter.api.Assertions.assertEquals(21, splitId.length(), "NanoID should be 21 characters");
-        assertTrue(splitId.matches("^[A-Za-z0-9_-]+$"), "NanoID should only contain URL-safe characters");
+        assertThat(splitId.length()).as("NanoID should be 21 characters").isEqualTo(21);
+        assertThat(splitId.matches("^[A-Za-z0-9_-]+$")).as("NanoID should only contain URL-safe characters").isTrue();
     }
 
     /**
@@ -201,13 +200,12 @@ class SplitResourceTest {
     @Test
     void configuredDataPath_isUsedByPathResolver() {
         // Verify config property is injected (proves config mechanism works)
-        org.junit.jupiter.api.Assertions.assertNotNull(configuredDataPath,
-                "Config property fairnsquare.data.path should be injected");
+        assertThat(configuredDataPath).as("Config property fairnsquare.data.path should be injected").isNotNull();
 
         // Verify TenantPathResolver uses the configured path
         Path resolvedPath = pathResolver.resolve("test-split-id");
-        assertTrue(resolvedPath.toString().startsWith(configuredDataPath),
-                "Resolved path should start with configured data path: " + configuredDataPath);
+        assertThat(resolvedPath.toString().startsWith(configuredDataPath))
+                .as("Resolved path should start with configured data path: " + configuredDataPath).isTrue();
     }
 
     /**
@@ -269,8 +267,8 @@ class SplitResourceTest {
         // Verify file contains participant
         Path splitFile = pathResolver.resolve(splitId);
         String content = Files.readString(splitFile);
-        assertTrue(content.contains("\"Bob\""), "File should contain participant name");
-        assertTrue(content.contains("\"nights\""), "File should contain nights field");
+        assertThat(content.contains("\"Bob\"")).as("File should contain participant name").isTrue();
+        assertThat(content.contains("\"nights\"")).as("File should contain nights field").isTrue();
     }
 
     /**
@@ -434,8 +432,8 @@ class SplitResourceTest {
         // Verify file contains updated values
         Path splitFile = pathResolver.resolve(splitId);
         String content = Files.readString(splitFile);
-        assertTrue(content.contains("\"UpdatedName\""), "File should contain updated participant name");
-        assertTrue(content.contains("7"), "File should contain updated nights value");
+        assertThat(content.contains("\"UpdatedName\"")).as("File should contain updated participant name").isTrue();
+        assertThat(content.contains("7")).as("File should contain updated nights value").isTrue();
     }
 
     /**
@@ -598,15 +596,16 @@ class SplitResourceTest {
         // Verify participant exists
         Path splitFile = pathResolver.resolve(splitId);
         String contentBefore = Files.readString(splitFile);
-        assertTrue(contentBefore.contains("\"ToBeDeleted\""), "File should contain participant before deletion");
+        assertThat(contentBefore.contains("\"ToBeDeleted\"")).as("File should contain participant before deletion")
+                .isTrue();
 
         // Delete the participant
         given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(204);
 
         // Verify participant is removed from file
         String contentAfter = Files.readString(splitFile);
-        org.junit.jupiter.api.Assertions.assertFalse(contentAfter.contains("\"ToBeDeleted\""),
-                "File should not contain participant after deletion");
+        assertThat(contentAfter.contains("\"ToBeDeleted\"")).as("File should not contain participant after deletion")
+                .isFalse();
     }
 
     /**
@@ -798,8 +797,8 @@ class SplitResourceTest {
         java.math.BigDecimal totalShares = shares.stream()
                 .map(s -> new java.math.BigDecimal(s.get("amount").toString()))
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-        org.junit.jupiter.api.Assertions.assertTrue(totalShares.compareTo(new java.math.BigDecimal("180.00")) == 0,
-                "Expected 180.00 but got " + totalShares);
+        assertThat(totalShares.compareTo(new java.math.BigDecimal("180.00")) == 0)
+                .as("Expected 180.00 but got " + totalShares).isTrue();
     }
 
     /**
@@ -849,8 +848,8 @@ class SplitResourceTest {
         java.math.BigDecimal totalShares = shares.stream()
                 .map(s -> new java.math.BigDecimal(s.get("amount").toString()))
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-        org.junit.jupiter.api.Assertions.assertTrue(totalShares.compareTo(new java.math.BigDecimal("90.00")) == 0,
-                "Expected 90.00 but got " + totalShares);
+        assertThat(totalShares.compareTo(new java.math.BigDecimal("90.00")) == 0)
+                .as("Expected 90.00 but got " + totalShares).isTrue();
     }
 
     /**

@@ -798,3 +798,371 @@ quarkus create app org.asymetrik.web:fairnsquare \
   --java=25 \
   --no-code
 ```
+
+---
+
+## Technical Debt Epic: Code Quality & Maintainability Enhancement
+
+**Epic ID:** TD-001  
+**Created:** 2026-01-28  
+**Status:** Planned  
+**Architectural Theme:** Refactoring for extensibility, test quality, and documentation alignment
+
+### Epic Overview
+
+This epic addresses accumulated technical debt across three architectural dimensions:
+1. **Domain Model Evolution** - Transition Expense to extensible polymorphic pattern
+2. **Testing Infrastructure** - Modernize assertions, improve test organization, enforce integration patterns
+3. **Documentation Synchronization** - Align architecture-code-docs after refactoring
+
+**Business Value:** Improved maintainability, easier onboarding, reduced cognitive load for AI agents implementing future features.
+
+**Architectural Impact:** Medium - touches core domain model and test infrastructure but preserves external APIs.
+
+---
+
+### Item 1: Expense Domain Model Refactoring
+
+**Current State:**
+- `Expense` is a concrete class with conditional logic for split calculation
+- Split modes (BY_NIGHT, EQUAL) handled via switch/if statements
+
+**Target State:**
+- `Expense` becomes a **sealed abstract class** (Java 17+ syntax)
+- Concrete implementations: `ExpenseByNight`, `ExpenseEqual`
+- Each implementation encapsulates its own `calculateShare()` logic
+
+**Architectural Rationale:**
+- **Strategy Pattern:** Eliminates conditional complexity, each expense type is self-contained
+- **Open/Closed Principle:** New expense types (e.g., BY_PERCENTAGE) can be added without modifying existing code
+- **Sealed Classes:** Compiler-enforced exhaustiveness checks in pattern matching
+
+**Design Constraints:**
+- Must maintain JSON serialization compatibility (Jackson polymorphic deserialization)
+- Database schema unchanged (if persistence layer uses discriminator column)
+- External API contracts unchanged (REST endpoints still accept same JSON)
+
+**Implementation Pattern:**
+```java
+public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
+    protected Long id;
+    protected String description;
+    protected BigDecimal amount;
+    
+    public abstract BigDecimal calculateShare(Participant participant);
+}
+
+public final class ExpenseByNight extends Expense {
+    @Override
+    public BigDecimal calculateShare(Participant participant) {
+        // BY_NIGHT logic
+    }
+}
+
+public final class ExpenseEqual extends Expense {
+    @Override
+    public BigDecimal calculateShare(Participant participant) {
+        // EQUAL logic
+    }
+}
+```
+
+**Jackson Configuration:**
+```java
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = ExpenseByNight.class, name = "BY_NIGHT"),
+    @JsonSubTypes.Type(value = ExpenseEqual.class, name = "EQUAL")
+})
+```
+
+**Testing Impact:** All existing Expense tests must be updated to use concrete types.
+
+---
+
+### Item 2: AssertJ Migration
+
+**Current State:**
+- JUnit 5 assertions (`assertEquals`, `assertTrue`, etc.)
+
+**Target State:**
+- AssertJ fluent assertions throughout test suite
+
+**Architectural Rationale:**
+- **Readability:** Fluent API is more natural language-like
+- **Error Messages:** Better default failure messages
+- **Discoverability:** IDE autocomplete guides assertion discovery
+
+**Migration Pattern:**
+```java
+// Before
+assertEquals(expected, actual);
+assertTrue(condition);
+assertNotNull(value);
+
+// After
+assertThat(actual).isEqualTo(expected);
+assertThat(condition).isTrue();
+assertThat(value).isNotNull();
+```
+
+**Dependency Addition:**
+```xml
+<dependency>
+    <groupId>org.assertj</groupId>
+    <artifactId>assertj-core</artifactId>
+    <version>3.25.1</version>
+    <scope>test</scope>
+</dependency>
+```
+
+**Testing Impact:** All test classes require assertion statement updates.
+
+---
+
+### Item 3: Service Layer Naming & Test Organization
+
+**Current State:**
+- Service class: `SplitService`
+- Test class: `SplitServiceTest` (monolithic)
+
+**Target State:**
+- Service class: `SplitUseCases` (better DDD naming)
+- Test classes: One per use case
+  - `CreateSplitUseCaseTest`
+  - `AddParticipantUseCaseTest`
+  - `AddExpenseUseCaseTest`
+  - `CalculateBalancesUseCaseTest`
+  - etc.
+
+**Architectural Rationale:**
+- **Domain-Driven Design:** "Use Case" better reflects application service layer responsibility
+- **Single Responsibility:** Each test class focuses on one behavioral scenario
+- **Maintainability:** Easier to locate tests, smaller files, less merge conflicts
+
+**Refactoring Steps:**
+1. Rename `SplitService` → `SplitUseCases` (IDE refactor)
+2. Update all injection points
+3. Split `SplitServiceTest` by extracting test methods into new test classes
+4. Each new test class follows pattern: `{UseCaseName}UseCaseTest`
+
+**Testing Impact:** Test discovery unchanged (JUnit still finds all `*Test` classes).
+
+---
+
+### Item 4: Test Persistence Pattern Enforcement
+
+**Current State:**
+- Some tests directly access `data/` folder on disk
+- Tests may leave residual files after execution
+
+**Target State:**
+- Tests verify persistence through **public API only**
+- Integration test pattern: Create → Save → Load → Verify identity
+
+**Architectural Rationale:**
+- **Abstraction:** Tests don't depend on filesystem implementation details
+- **Portability:** Tests work regardless of persistence mechanism (file, DB, in-memory)
+- **Isolation:** No test pollution from leftover files
+
+**Recommended Test Pattern:**
+```java
+@Test
+void shouldPersistAndReloadSplitWithIdentity() {
+    // Create first split
+    Split split1 = createSplit("Split A");
+    String split1Id = splitUseCases.saveSplit(split1);
+    
+    // Create second split (forces potential file overwrite issues)
+    Split split2 = createSplit("Split B");
+    String split2Id = splitUseCases.saveSplit(split2);
+    
+    // Reload first split
+    Split reloadedSplit1 = splitUseCases.loadSplit(split1Id);
+    
+    // Verify identity
+    assertThat(reloadedSplit1).isEqualTo(split1);
+    assertThat(reloadedSplit1.getId()).isEqualTo(split1Id);
+}
+```
+
+**Enforcement Mechanism:**
+- Code review guideline: No `new File()`, `Path.of()`, `Files.readString()` in test code
+- If filesystem abstraction needed for mocking, introduce `FileSystemService` interface
+
+**Testing Impact:** Refactor any tests directly reading/writing `data/` folder.
+
+---
+
+### Item 5: Coverage Verification Test
+
+**Current State:**
+- No automated coverage enforcement
+
+**Target State:**
+- Test that verifies code coverage meets threshold
+- Initial threshold: **80%**
+
+**Architectural Rationale:**
+- **Quality Gate:** Prevents coverage regression
+- **Build Integration:** Fails build if coverage drops below threshold
+- **Visibility:** Coverage becomes a first-class concern
+
+**Implementation Options:**
+
+**Option A: JaCoCo Maven Plugin (Recommended)**
+```xml
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.11</version>
+    <executions>
+        <execution>
+            <goals>
+                <goal>prepare-agent</goal>
+            </goals>
+        </execution>
+        <execution>
+            <id>check</id>
+            <goals>
+                <goal>check</goal>
+            </goals>
+            <configuration>
+                <rules>
+                    <rule>
+                        <element>BUNDLE</element>
+                        <limits>
+                            <limit>
+                                <counter>LINE</counter>
+                                <value>COVEREDRATIO</value>
+                                <minimum>0.80</minimum>
+                            </limit>
+                        </limits>
+                    </rule>
+                </rules>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+
+**Option B: Custom Test (Alternative)**
+```java
+@Test
+void shouldMeetCoverageThreshold() {
+    // Read JaCoCo XML report
+    // Parse coverage percentage
+    // Assert coverage >= 80%
+}
+```
+
+**Recommendation:** Use Option A (JaCoCo plugin) - standard approach, better tooling integration.
+
+**Testing Impact:** Coverage reports generated during `mvn verify`.
+
+---
+
+### Item 6: Documentation Synchronization
+
+**Current State:**
+- Architecture document reflects pre-refactoring state
+
+**Target State:**
+- All documentation updated to reflect:
+  - Sealed Expense class hierarchy
+  - SplitUseCases naming
+  - Test organization patterns
+  - Coverage requirements
+
+**Files to Update:**
+- `architecture.md` (this document - patterns section)
+- `project-context.md` (if references service naming)
+- `README.md` (if contains code examples)
+- Any inline code comments referencing old patterns
+
+**Architectural Rationale:**
+- **Consistency:** AI agents rely on documentation for implementation guidance
+- **Onboarding:** New developers see accurate system state
+- **Maintenance:** Prevents drift between docs and code
+
+**Update Checklist:**
+- [ ] Architecture decision document (add this epic section ✅)
+- [ ] Implementation patterns section (update Expense example)
+- [ ] Project structure section (update test class names)
+- [ ] README code examples (if applicable)
+- [ ] API documentation (if Expense structure exposed)
+
+---
+
+### Epic Phasing & Dependencies
+
+**Phase 1: Foundation (Independent)**
+- Item 2: AssertJ Migration (no dependencies)
+- Item 5: Coverage Verification (no dependencies)
+
+**Phase 2: Domain Refactoring (Depends on Phase 1 completion)**
+- Item 1: Expense sealed class (easier with AssertJ assertions in place)
+
+**Phase 3: Service Layer Refactoring (Depends on Phase 2 completion)**
+- Item 3: Rename service + split tests (easier after Expense refactoring settles)
+
+**Phase 4: Test Pattern Enforcement (Depends on Phase 3 completion)**
+- Item 4: Forbid direct file access (do after test split to avoid massive refactor)
+
+**Phase 5: Documentation Sync (Depends on all previous phases)**
+- Item 6: Update all docs (final step after code stabilizes)
+
+**Rationale for Phasing:**
+- Minimizes merge conflicts
+- Each phase can be tested independently
+- Allows incremental value delivery
+
+---
+
+### Implementation Readiness Checklist
+
+**Before Starting:**
+- [ ] All existing tests passing
+- [ ] Git branch created for epic work
+- [ ] Baseline code coverage measured
+
+**Per Phase:**
+- [ ] Phase implementation complete
+- [ ] All tests passing (including new AssertJ assertions)
+- [ ] Code coverage maintained or improved
+- [ ] Documentation updated for that phase
+
+**Epic Completion Criteria:**
+- [ ] All 6 items implemented
+- [ ] Coverage ≥ 80% enforced
+- [ ] No direct file access in tests
+- [ ] All documentation synchronized
+- [ ] Architecture document updated (this section merged)
+
+---
+
+### Architecture Impact Summary
+
+| Dimension | Impact Level | Notes |
+|-----------|--------------|-------|
+| API Contracts | None | External REST APIs unchanged |
+| Domain Model | Medium | Expense becomes abstract, but JSON schema identical |
+| Service Layer | Low | Rename only, method signatures unchanged |
+| Testing | High | All tests updated (assertions, organization, patterns) |
+| Documentation | Medium | Multiple files require updates |
+| Build Process | Low | JaCoCo plugin added, coverage gate enforced |
+
+**Risk Assessment:**
+- **Low Risk:** Items 2, 5, 6 (additive or isolated changes)
+- **Medium Risk:** Items 1, 3 (require careful refactoring but well-understood patterns)
+- **Medium Risk:** Item 4 (may reveal hidden assumptions about file system behavior)
+
+**Mitigation:**
+- Comprehensive test coverage before refactoring (Item 5 first)
+- Incremental phasing (prevents big-bang failures)
+- Use IDE refactoring tools (reduces manual errors)
+
+---
+
+**Epic Ready for Implementation.** 🚀
+
