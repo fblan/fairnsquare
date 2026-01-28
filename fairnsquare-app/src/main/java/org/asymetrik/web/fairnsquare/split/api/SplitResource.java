@@ -2,6 +2,9 @@ package org.asymetrik.web.fairnsquare.split.api;
 
 import java.net.URI;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -17,6 +20,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
+import org.asymetrik.web.fairnsquare.split.domain.AddTypedExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidParticipantIdError;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
@@ -166,7 +170,10 @@ public class SplitResource {
      *            the add expense request
      *
      * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     *
+     * @deprecated Use POST /expenses/by-night or POST /expenses/equal instead.
      */
+    @Deprecated
     @POST
     @Path("/{splitId}/expenses")
     public Response addExpense(@PathParam("splitId") String splitId, @Valid AddExpenseRequest request) {
@@ -175,6 +182,68 @@ public class SplitResource {
         }
 
         return splitService.addExpense(splitId, request)
+                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds a BY_NIGHT expense to a split. Shares are calculated proportionally based on nights stayed.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add expense request (splitMode not required, BY_NIGHT is used)
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    /**
+     * Adds a BY_NIGHT expense to a split. Shares are calculated proportionally to participant nights.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add expense request (splitMode not required, BY_NIGHT is used)
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Add BY_NIGHT expense", description = "Creates an expense with shares calculated proportionally to participant nights")
+    @APIResponse(responseCode = "201", description = "Expense created successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid request")
+    @POST
+    @Path("/{splitId}/expenses/by-night")
+    public Response addExpenseByNight(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addExpenseByNight(splitId, request.amount(), request.description(), request.payerId())
+                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds an EQUAL expense to a split. Shares are calculated equally among all participants.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add expense request (splitMode not required, EQUAL is used)
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Add EQUAL expense", description = "Creates an expense with shares calculated equally among all participants")
+    @APIResponse(responseCode = "201", description = "Expense created successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid request")
+    @POST
+    @Path("/{splitId}/expenses/equal")
+    public Response addExpenseEqual(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addExpenseEqual(splitId, request.amount(), request.description(), request.payerId())
                 .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }

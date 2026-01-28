@@ -9,13 +9,18 @@ import java.util.List;
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Expense entity - represents a shared expense in a split with calculated shares per participant. Rich domain model
- * with value objects for fields.
+ * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
+ * calculation strategy.
  */
-public class Expense {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", defaultImpl = ExpenseByNight.class)
+@JsonSubTypes({ @JsonSubTypes.Type(value = ExpenseByNight.class, name = "BY_NIGHT"),
+        @JsonSubTypes.Type(value = ExpenseEqual.class, name = "EQUAL") })
+public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 
@@ -23,36 +28,29 @@ public class Expense {
     private final BigDecimal amount;
     private final String description;
     private final Participant.Id payerId;
-    private final SplitMode splitMode;
     private final Instant createdAt;
     private final List<Share> shares;
 
     /**
-     * Factory method to create a new Expense with generated ID and current timestamp.
+     * Factory method to create an Expense of the appropriate subtype based on splitMode.
      *
-     * @param amount
-     *            the expense amount (must be positive)
-     * @param description
-     *            the expense description (required, max 200 chars)
-     * @param payerId
-     *            the ID of the participant who paid
-     * @param splitMode
-     *            how to split the expense among participants
-     * @param shares
-     *            the calculated shares per participant
-     *
-     * @return a new Expense with generated ID and createdAt set to now
+     * @deprecated Use ExpenseByNight.create() or ExpenseEqual.create() directly
      */
+    @Deprecated
     public static Expense create(BigDecimal amount, String description, Participant.Id payerId, SplitMode splitMode,
             List<Share> shares) {
         validateAmount(amount);
         validateDescription(description);
-        return new Expense(Id.generate(), amount, description, payerId, splitMode, Instant.now(),
-                shares != null ? shares : Collections.emptyList());
+        return switch (splitMode) {
+            case BY_NIGHT -> new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now(), shares);
+            case EQUAL -> new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now(), shares);
+            case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
+        };
     }
 
     /**
-     * Jackson constructor for full deserialization.
+     * Jackson constructor for backward compatibility with legacy JSON. Routes to appropriate subclass based on
+     * splitMode field.
      */
     @JsonCreator
     public static Expense fromJson(@JsonProperty("id") Id id, @JsonProperty("amount") BigDecimal amount,
@@ -61,24 +59,46 @@ public class Expense {
             @JsonProperty("shares") List<Share> shares) {
         // Support backward compatibility: minimal expenses from Story 3.3 only had payerId
         if (id == null && amount == null && description == null && splitMode == null && createdAt == null) {
-            return new Expense(null, null, null, payerId, null, null, null);
+            return new ExpenseByNight(null, null, null, payerId, null, null);
         }
-        return new Expense(id, amount, description, payerId, splitMode, createdAt,
-                shares != null ? shares : Collections.emptyList());
+        // Route to appropriate subclass based on splitMode for legacy JSON without "type" field
+        SplitMode mode = splitMode != null ? splitMode : SplitMode.BY_NIGHT;
+        return switch (mode) {
+            case BY_NIGHT -> new ExpenseByNight(id, amount, description, payerId, createdAt, shares);
+            case EQUAL -> new ExpenseEqual(id, amount, description, payerId, createdAt, shares);
+            case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
+        };
     }
 
-    private Expense(Id id, BigDecimal amount, String description, Participant.Id payerId, SplitMode splitMode,
-            Instant createdAt, List<Share> shares) {
+    /**
+     * Protected constructor for subclasses.
+     */
+    protected Expense(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt,
+            List<Share> shares) {
         this.id = id;
         this.amount = amount;
         this.description = description;
         this.payerId = payerId;
-        this.splitMode = splitMode;
         this.createdAt = createdAt;
         this.shares = shares != null ? new ArrayList<>(shares) : new ArrayList<>();
     }
 
-    private static void validateAmount(BigDecimal amount) {
+    /**
+     * Abstract method - each subclass implements its calculation strategy.
+     *
+     * @param participants
+     *            the list of participants to calculate shares for
+     *
+     * @return calculated shares for each participant
+     */
+    public abstract List<Share> calculateShares(List<Participant> participants);
+
+    /**
+     * Returns the split mode for this expense type.
+     */
+    public abstract SplitMode getSplitMode();
+
+    protected static void validateAmount(BigDecimal amount) {
         if (amount == null) {
             throw new IllegalArgumentException("Amount cannot be null");
         }
@@ -87,7 +107,7 @@ public class Expense {
         }
     }
 
-    private static void validateDescription(String description) {
+    protected static void validateDescription(String description) {
         if (description == null || description.isBlank()) {
             throw new IllegalArgumentException("Description cannot be blank");
         }
@@ -112,10 +132,6 @@ public class Expense {
 
     public Participant.Id getPayerId() {
         return payerId;
-    }
-
-    public SplitMode getSplitMode() {
-        return splitMode;
     }
 
     public Instant getCreatedAt() {

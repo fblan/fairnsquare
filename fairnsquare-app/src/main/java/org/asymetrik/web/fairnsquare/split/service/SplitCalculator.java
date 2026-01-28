@@ -14,7 +14,11 @@ import org.asymetrik.web.fairnsquare.split.domain.SplitMode;
 
 /**
  * Service for calculating expense shares based on split mode.
+ *
+ * @deprecated Use Expense subclasses (ExpenseByNight, ExpenseEqual) calculateShares() method instead. This class will
+ *             be removed in a future release.
  */
+@Deprecated
 @ApplicationScoped
 public class SplitCalculator {
 
