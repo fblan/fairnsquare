@@ -3,7 +3,7 @@ story_id: TD-001.2
 story_key: td-001-2-add-jacoco-coverage-verification
 epic: TD-001
 title: "Add JaCoCo Coverage Verification"
-status: review
+status: done
 priority: P0
 phase: Foundation
 created: 2026-01-28
