@@ -84,7 +84,7 @@ development_status:
   epic-td-001: in-progress
   td-001-1-migrate-to-assertj-assertions: review
   td-001-2-add-jacoco-coverage-verification: done
-  td-001-3-refactor-expense-to-sealed-abstract-class: backlog
+  td-001-3-refactor-expense-to-sealed-abstract-class: done
   td-001-4-rename-splitservice-to-splitusecases: backlog
   td-001-5-split-splitservicetest-by-use-case: backlog
   td-001-6-enforce-test-persistence-pattern: backlog

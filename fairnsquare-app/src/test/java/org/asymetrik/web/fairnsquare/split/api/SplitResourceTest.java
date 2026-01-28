@@ -22,8 +22,11 @@ import org.assertj.core.api.Assertions;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.split.domain.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
+import org.asymetrik.web.fairnsquare.split.domain.SplitMode;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -1030,5 +1033,180 @@ class SplitResourceTest {
 
         assertThat(expense.getPayerId()).isNotNull();
         assertThat(expense.getPayerId().value()).isEqualTo("V1StGXR8_Z5jdHi6B-myT");
+    }
+
+    // ==================== TD-001.3: Type-Specific Endpoints ====================
+
+    /**
+     * TD-001.3 AC7: POST /expenses/by-night creates ExpenseByNight.
+     */
+    @Test
+    void addExpenseByNight_createsExpenseWithByNightShares() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "BY_NIGHT Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 180.00,
+                    "description": "Groceries",
+                    "payerId": "%s"
+                }
+                """.formatted(aliceId)).when().post("/api/splits/{splitId}/expenses/by-night", splitId).then()
+                .statusCode(201).body("type", equalTo("BY_NIGHT")).body("amount", equalTo(180.00f))
+                .body("description", equalTo("Groceries")).body("shares", hasSize(2));
+    }
+
+    /**
+     * TD-001.3 AC7: POST /expenses/equal creates ExpenseEqual.
+     */
+    @Test
+    void addExpenseEqual_createsExpenseWithEqualShares() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "EQUAL Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Dinner",
+                    "payerId": "%s"
+                }
+                """.formatted(aliceId)).when().post("/api/splits/{splitId}/expenses/equal", splitId).then()
+                .statusCode(201).body("type", equalTo("EQUAL")).body("amount", equalTo(100.00f))
+                .body("shares", hasSize(2)).body("shares[0].amount", equalTo(50.00f))
+                .body("shares[1].amount", equalTo(50.00f));
+    }
+
+    /**
+     * TD-001.3 AC7: New endpoints return 404 for non-existent split.
+     */
+    @Test
+    void addExpenseByNight_toNonExistentSplit_returns404() {
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Test",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT"
+                }
+                """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/by-night").then().statusCode(404);
+    }
+
+    /**
+     * TD-001.3 AC7: New endpoints return 404 for non-existent split.
+     */
+    @Test
+    void addExpenseEqual_toNonExistentSplit_returns404() {
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Test",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT"
+                }
+                """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/equal").then().statusCode(404);
+    }
+
+    /**
+     * TD-001.3 AC6: JSON roundtrip serialization for ExpenseByNight.
+     */
+    @Test
+    void expenseByNight_jsonRoundtrip() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+
+        String json = """
+                {
+                    "type": "BY_NIGHT",
+                    "id": "V1StGXR8_Z5jdHi6B-myT",
+                    "amount": 100.00,
+                    "description": "Test expense",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "createdAt": "2026-01-28T10:00:00Z",
+                    "shares": []
+                }
+                """;
+
+        Expense expense = mapper.readValue(json, Expense.class);
+        assertThat(expense).isInstanceOf(ExpenseByNight.class);
+        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
+
+        String serialized = mapper.writeValueAsString(expense);
+        assertThat(serialized).contains("\"type\":\"BY_NIGHT\"");
+    }
+
+    /**
+     * TD-001.3 AC6: JSON roundtrip serialization for ExpenseEqual.
+     */
+    @Test
+    void expenseEqual_jsonRoundtrip() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+
+        String json = """
+                {
+                    "type": "EQUAL",
+                    "id": "V1StGXR8_Z5jdHi6B-myT",
+                    "amount": 100.00,
+                    "description": "Test expense",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "createdAt": "2026-01-28T10:00:00Z",
+                    "shares": []
+                }
+                """;
+
+        Expense expense = mapper.readValue(json, Expense.class);
+        assertThat(expense).isInstanceOf(ExpenseEqual.class);
+        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.EQUAL);
+
+        String serialized = mapper.writeValueAsString(expense);
+        assertThat(serialized).contains("\"type\":\"EQUAL\"");
+    }
+
+    /**
+     * TD-001.3 AC6: Legacy JSON with splitMode field deserializes to defaultImpl (ExpenseByNight). Note: When JSON
+     * lacks "type" field, Jackson uses defaultImpl regardless of splitMode value. The splitMode field is preserved for
+     * data, but type discrimination requires "type" field.
+     */
+    @Test
+    void expense_legacyJsonWithSplitMode_deserializesToDefaultImpl() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+
+        // Legacy format with splitMode instead of type - defaults to BY_NIGHT
+        String legacyJson = """
+                {
+                    "id": "V1StGXR8_Z5jdHi6B-myT",
+                    "amount": 100.00,
+                    "description": "Test expense",
+                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
+                    "splitMode": "EQUAL",
+                    "createdAt": "2026-01-28T10:00:00Z",
+                    "shares": []
+                }
+                """;
+
+        Expense expense = mapper.readValue(legacyJson, Expense.class);
+        // Without "type" field, Jackson uses defaultImpl = ExpenseByNight
+        assertThat(expense).isInstanceOf(ExpenseByNight.class);
+        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
     }
 }
