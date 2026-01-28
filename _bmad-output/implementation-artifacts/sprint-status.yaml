@@ -83,7 +83,7 @@ development_status:
   # Epic TD-001: Technical Debt - Code Quality & Maintainability Enhancement
   epic-td-001: in-progress
   td-001-1-migrate-to-assertj-assertions: review
-  td-001-2-add-jacoco-coverage-verification: backlog
+  td-001-2-add-jacoco-coverage-verification: review
   td-001-3-refactor-expense-to-sealed-abstract-class: backlog
   td-001-4-rename-splitservice-to-splitusecases: backlog
   td-001-5-split-splitservicetest-by-use-case: backlog
