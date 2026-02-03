@@ -12,27 +12,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
 import org.assertj.core.api.Assertions;
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
 import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
-import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.domain.SplitMode;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
@@ -47,9 +36,6 @@ class SplitResourceTest {
 
     @Inject
     TenantPathResolver pathResolver;
-
-    @Inject
-    JsonFileRepository repository;
 
     @ConfigProperty(name = "fairnsquare.data.path")
     String configuredDataPath;
@@ -626,13 +612,11 @@ class SplitResourceTest {
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
                 .path("id");
 
-        // Load split, add expense, and save back using repository
-        Split split = repository.load(splitId, Split.class).orElseThrow();
-        Expense expense = Expense.create(new java.math.BigDecimal("50.00"), "Test Expense",
-                Participant.Id.of(participantId), org.asymetrik.web.fairnsquare.split.domain.SplitMode.EQUAL,
-                java.util.Collections.emptyList());
-        split.addExpense(expense);
-        repository.save(splitId, split);
+        // Add expense via API
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test Expense", "payerId": "%s"}
+                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                .statusCode(201);
 
         // Try to delete the participant - should return 409
         given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(409);
@@ -653,13 +637,11 @@ class SplitResourceTest {
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
                 .path("id");
 
-        // Load split, add expense, and save back using repository
-        Split split = repository.load(splitId, Split.class).orElseThrow();
-        Expense expense = Expense.create(new java.math.BigDecimal("50.00"), "Test Expense",
-                Participant.Id.of(participantId), org.asymetrik.web.fairnsquare.split.domain.SplitMode.EQUAL,
-                java.util.Collections.emptyList());
-        split.addExpense(expense);
-        repository.save(splitId, split);
+        // Add expense via API
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test Expense", "payerId": "%s"}
+                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                .statusCode(201);
 
         // Verify Problem Details format
         given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(409)
@@ -1017,24 +999,6 @@ class SplitResourceTest {
                 """).when().post("/api/splits/invalid..id/expenses").then().statusCode(400);
     }
 
-    /**
-     * Story 4.1 Code Review: Test backward compatibility for minimal Expense JSON from Story 3.3.
-     */
-    @Test
-    void expense_deserializesMinimalJsonForBackwardCompatibility() throws Exception {
-        // Ensure old JSON format with only payerId still works
-        String minimalExpenseJson = """
-                {"payerId": "V1StGXR8_Z5jdHi6B-myT"}
-                """;
-
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        Expense expense = mapper.readValue(minimalExpenseJson, Expense.class);
-
-        assertThat(expense.getPayerId()).isNotNull();
-        assertThat(expense.getPayerId().value()).isEqualTo("V1StGXR8_Z5jdHi6B-myT");
-    }
-
     // ==================== TD-001.3: Type-Specific Endpoints ====================
 
     /**
@@ -1125,88 +1089,4 @@ class SplitResourceTest {
                 """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/equal").then().statusCode(404);
     }
 
-    /**
-     * TD-001.3 AC6: JSON roundtrip serialization for ExpenseByNight.
-     */
-    @Test
-    void expenseByNight_jsonRoundtrip() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
-        String json = """
-                {
-                    "type": "BY_NIGHT",
-                    "id": "V1StGXR8_Z5jdHi6B-myT",
-                    "amount": 100.00,
-                    "description": "Test expense",
-                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "createdAt": "2026-01-28T10:00:00Z",
-                    "shares": []
-                }
-                """;
-
-        Expense expense = mapper.readValue(json, Expense.class);
-        assertThat(expense).isInstanceOf(ExpenseByNight.class);
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
-
-        String serialized = mapper.writeValueAsString(expense);
-        assertThat(serialized).contains("\"type\":\"BY_NIGHT\"");
-    }
-
-    /**
-     * TD-001.3 AC6: JSON roundtrip serialization for ExpenseEqual.
-     */
-    @Test
-    void expenseEqual_jsonRoundtrip() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
-        String json = """
-                {
-                    "type": "EQUAL",
-                    "id": "V1StGXR8_Z5jdHi6B-myT",
-                    "amount": 100.00,
-                    "description": "Test expense",
-                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "createdAt": "2026-01-28T10:00:00Z",
-                    "shares": []
-                }
-                """;
-
-        Expense expense = mapper.readValue(json, Expense.class);
-        assertThat(expense).isInstanceOf(ExpenseEqual.class);
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.EQUAL);
-
-        String serialized = mapper.writeValueAsString(expense);
-        assertThat(serialized).contains("\"type\":\"EQUAL\"");
-    }
-
-    /**
-     * TD-001.3 AC6: Legacy JSON with splitMode field deserializes to defaultImpl (ExpenseByNight). Note: When JSON
-     * lacks "type" field, Jackson uses defaultImpl regardless of splitMode value. The splitMode field is preserved for
-     * data, but type discrimination requires "type" field.
-     */
-    @Test
-    void expense_legacyJsonWithSplitMode_deserializesToDefaultImpl() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
-        // Legacy format with splitMode instead of type - defaults to BY_NIGHT
-        String legacyJson = """
-                {
-                    "id": "V1StGXR8_Z5jdHi6B-myT",
-                    "amount": 100.00,
-                    "description": "Test expense",
-                    "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "splitMode": "EQUAL",
-                    "createdAt": "2026-01-28T10:00:00Z",
-                    "shares": []
-                }
-                """;
-
-        Expense expense = mapper.readValue(legacyJson, Expense.class);
-        // Without "type" field, Jackson uses defaultImpl = ExpenseByNight
-        assertThat(expense).isInstanceOf(ExpenseByNight.class);
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
-    }
 }

@@ -1,9 +1,6 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * Participant entity - represents a person participating in a split with their stay duration. Rich domain model with
@@ -26,27 +23,13 @@ public record Participant(Id id, Name name, Nights nights) {
     }
 
     /**
-     * Jackson constructor for deserialization.
-     */
-    @JsonCreator
-    public static Participant fromJson(@JsonProperty("id") Id id, @JsonProperty("name") Name name,
-            @JsonProperty("nights") Nights nights) {
-        return new Participant(id, name, nights);
-    }
-
-    /**
      * Value object wrapping a NanoID for participant identification. Uses the same 21-character URL-safe format as
      * Split.Id.
      */
-    public record Id(@JsonValue String value) {
+    public record Id(String value) {
 
         private static final int NANOID_LENGTH = 21;
         private static final String NANOID_PATTERN = "^[A-Za-z0-9_-]+$";
-
-        @JsonCreator
-        public static Id fromJson(String value) {
-            return new Id(value);
-        }
 
         public Id {
             if (value == null || value.isBlank()) {
@@ -103,14 +86,9 @@ public record Participant(Id id, Name name, Nights nights) {
     /**
      * Value object for participant name with validation.
      */
-    public record Name(@JsonValue String value) {
+    public record Name(String value) {
 
         private static final int MAX_LENGTH = 50;
-
-        @JsonCreator
-        public static Name fromJson(String value) {
-            return new Name(value);
-        }
 
         public Name {
             if (value == null || value.isBlank()) {
@@ -130,15 +108,10 @@ public record Participant(Id id, Name name, Nights nights) {
     /**
      * Value object for number of nights with validation.
      */
-    public record Nights(@JsonValue int value) {
+    public record Nights(int value) {
 
         private static final int MIN_NIGHTS = 1;
         private static final int MAX_NIGHTS = 365;
-
-        @JsonCreator
-        public static Nights fromJson(int value) {
-            return new Nights(value);
-        }
 
         public Nights {
             if (value < MIN_NIGHTS) {

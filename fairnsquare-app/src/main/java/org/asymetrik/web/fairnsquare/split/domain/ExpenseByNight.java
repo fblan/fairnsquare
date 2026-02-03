@@ -7,14 +7,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /**
  * Expense split proportionally based on nights stayed. Share calculation: participant's nights / total nights × amount
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public final class ExpenseByNight extends Expense {
 
     private static final int SCALE = 2;
@@ -34,29 +29,25 @@ public final class ExpenseByNight extends Expense {
      *
      * @return a new ExpenseByNight with generated ID and createdAt set to now
      */
-    public static ExpenseByNight create(BigDecimal amount, String description, Participant.Id payerId,
-            List<Share> shares) {
+    public static ExpenseByNight create(BigDecimal amount, String description, Participant.Id payerId) {
         validateAmount(amount);
         validateDescription(description);
-        return new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now(), shares);
+        return new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now());
     }
 
     /**
-     * Jackson constructor for deserialization.
+     * Reconstitutes an ExpenseByNight from stored fields (used by persistence mapper).
      */
-    @JsonCreator
-    public static ExpenseByNight fromJson(@JsonProperty("id") Id id, @JsonProperty("amount") BigDecimal amount,
-            @JsonProperty("description") String description, @JsonProperty("payerId") Participant.Id payerId,
-            @JsonProperty("createdAt") Instant createdAt, @JsonProperty("shares") List<Share> shares) {
-        return new ExpenseByNight(id, amount, description, payerId, createdAt, shares);
+    public static ExpenseByNight fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
+            Instant createdAt) {
+        return new ExpenseByNight(id, amount, description, payerId, createdAt);
     }
 
     /**
      * Package-private constructor for internal use.
      */
-    ExpenseByNight(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt,
-            List<Share> shares) {
-        super(id, amount, description, payerId, createdAt, shares);
+    ExpenseByNight(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
+        super(id, amount, description, payerId, createdAt);
     }
 
     @Override
@@ -65,7 +56,11 @@ public final class ExpenseByNight extends Expense {
     }
 
     @Override
-    public List<Share> calculateShares(List<Participant> participants) {
+    public List<Share> getShares(Split split) {
+        return calculateShares(split.getParticipants());
+    }
+
+    List<Share> calculateShares(List<Participant> participants) {
         if (participants == null || participants.isEmpty()) {
             return Collections.emptyList();
         }

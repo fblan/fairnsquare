@@ -18,6 +18,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
+import org.asymetrik.web.fairnsquare.expense.api.mapper.ExpenseMapper;
+import org.asymetrik.web.fairnsquare.split.api.dto.ParticipantDTO;
+import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
+import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
+import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
 import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddTypedExpenseRequest;
@@ -28,7 +34,7 @@ import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
-import org.asymetrik.web.fairnsquare.split.service.SplitService;
+import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
 
 /**
  * REST resource for managing splits.
@@ -38,11 +44,18 @@ import org.asymetrik.web.fairnsquare.split.service.SplitService;
 @Consumes(MediaType.APPLICATION_JSON)
 public class SplitResource {
 
-    private final SplitService splitService;
+    private final SplitUseCases splitService;
+    private final SplitMapper splitMapper;
+    private final ParticipantMapper participantMapper;
+    private final ExpenseMapper expenseMapper;
 
     @Inject
-    public SplitResource(SplitService splitService) {
+    public SplitResource(SplitUseCases splitService, SplitMapper splitMapper, ParticipantMapper participantMapper,
+            ExpenseMapper expenseMapper) {
         this.splitService = splitService;
+        this.splitMapper = splitMapper;
+        this.participantMapper = participantMapper;
+        this.expenseMapper = expenseMapper;
     }
 
     /**
@@ -59,7 +72,7 @@ public class SplitResource {
 
         URI location = URI.create("/api/splits/" + split.getId().value());
 
-        return Response.created(location).entity(split).build();
+        return Response.created(location).entity(splitMapper.toDTO(split)).build();
     }
 
     /**
@@ -77,7 +90,7 @@ public class SplitResource {
             throw new InvalidSplitIdError(splitId);
         }
 
-        return splitService.getSplit(splitId).map(split -> Response.ok(split).build())
+        return splitService.getSplit(splitId).map(split -> Response.ok(splitMapper.toDTO(split)).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 
@@ -99,7 +112,8 @@ public class SplitResource {
         }
 
         return splitService.addParticipant(splitId, request)
-                .map(participant -> Response.status(Response.Status.CREATED).entity(participant).build())
+                .map(participant -> Response.status(Response.Status.CREATED)
+                        .entity(participantMapper.toDTO(participant)).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 
@@ -127,7 +141,7 @@ public class SplitResource {
         }
 
         return splitService.updateParticipant(splitId, participantId, request)
-                .map(participant -> Response.ok(participant).build())
+                .map(participant -> Response.ok(participantMapper.toDTO(participant)).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 
@@ -181,21 +195,11 @@ public class SplitResource {
             throw new InvalidSplitIdError(splitId);
         }
 
-        return splitService.addExpense(splitId, request)
-                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+        return splitService.addExpense(splitId, request).flatMap(expense -> splitService.getSplit(splitId).map(
+                split -> Response.status(Response.Status.CREATED).entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 
-    /**
-     * Adds a BY_NIGHT expense to a split. Shares are calculated proportionally based on nights stayed.
-     *
-     * @param splitId
-     *            the split identifier
-     * @param request
-     *            the add expense request (splitMode not required, BY_NIGHT is used)
-     *
-     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
-     */
     /**
      * Adds a BY_NIGHT expense to a split. Shares are calculated proportionally to participant nights.
      *
@@ -218,7 +222,9 @@ public class SplitResource {
         }
 
         return splitService.addExpenseByNight(splitId, request.amount(), request.description(), request.payerId())
-                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+                .flatMap(expense -> splitService.getSplit(splitId)
+                        .map(split -> Response.status(Response.Status.CREATED)
+                                .entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 
@@ -244,7 +250,9 @@ public class SplitResource {
         }
 
         return splitService.addExpenseEqual(splitId, request.amount(), request.description(), request.payerId())
-                .map(expense -> Response.status(Response.Status.CREATED).entity(expense).build())
+                .flatMap(expense -> splitService.getSplit(splitId)
+                        .map(split -> Response.status(Response.Status.CREATED)
+                                .entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

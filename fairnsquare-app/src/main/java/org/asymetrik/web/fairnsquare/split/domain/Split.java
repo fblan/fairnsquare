@@ -6,9 +6,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * Split aggregate root - represents an expense split with participants and expenses. Rich domain model: no setters,
@@ -19,11 +16,7 @@ public class Split {
     /**
      * Value object for split name with validation.
      */
-    public record Name(@JsonValue String value) {
-        @JsonCreator
-        public static Name fromJson(String value) {
-            return new Name(value);
-        }
+    public record Name(String value) {
 
         public Name {
             if (value == null || value.isBlank()) {
@@ -49,11 +42,9 @@ public class Split {
     }
 
     /**
-     * Constructor for creating Split with all fields (used by factory and Jackson).
+     * Constructor for creating Split with all fields.
      */
-    @JsonCreator
-    public Split(@JsonProperty("id") Id id, @JsonProperty("name") Name name,
-            @JsonProperty("createdAt") Instant createdAt) {
+    public Split(Id id, Name name, Instant createdAt) {
         this.id = id;
         this.name = name;
         this.createdAt = createdAt;
@@ -62,12 +53,10 @@ public class Split {
     }
 
     /**
-     * Full constructor including collections (for Jackson deserialization).
+     * Full constructor including collections.
      */
-    @JsonCreator
-    public static Split fromJson(@JsonProperty("id") Id id, @JsonProperty("name") Name name,
-            @JsonProperty("createdAt") Instant createdAt, @JsonProperty("participants") List<Participant> participants,
-            @JsonProperty("expenses") List<Expense> expenses) {
+    public static Split withCollections(Id id, Name name, Instant createdAt, List<Participant> participants,
+            List<Expense> expenses) {
         Split split = new Split(id, name, createdAt);
         if (participants != null) {
             split.participants.addAll(participants);
@@ -225,12 +214,7 @@ public class Split {
      * Value object wrapping a NanoID for split identification. Generates cryptographically secure, URL-safe
      * identifiers.
      */
-    public record Id(@JsonValue String value) {
-
-        @JsonCreator
-        public static Id fromJson(String value) {
-            return new Id(value);
-        }
+    public record Id(String value) {
 
         private static final int NANOID_LENGTH = 21;
         private static final String NANOID_PATTERN = "^[A-Za-z0-9_-]+$";

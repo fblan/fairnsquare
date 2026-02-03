@@ -449,6 +449,8 @@ Request/Response DTOs (e.g., `CreateSplitRequest`) may use setters or records fo
 3. Use the standard response formats for all API endpoints
 4. Include splitId/tenantId in all log statements
 5. Use per-component loading state pattern in frontend
+6. Use DTO representation for all data persistence operations (entities must be converted to DTOs before being persisted)
+7. Use DTO representation for all data sent out of the backend (domain objects must be converted to DTOs before API responses)
 
 **Anti-Patterns to Avoid:**
 - ❌ `split_id` (use `splitId`)

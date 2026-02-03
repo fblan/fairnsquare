@@ -16,20 +16,23 @@ import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.domain.SplitMode;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
+import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMapper;
 
 /**
  * Service for managing splits.
  */
 @ApplicationScoped
-public class SplitService {
+public class SplitUseCases {
 
     private final JsonFileRepository repository;
+    private final SplitPersistenceMapper splitMapper;
 
     @Inject
-    public SplitService(JsonFileRepository repository) {
+    public SplitUseCases(JsonFileRepository repository, SplitPersistenceMapper splitMapper) {
         this.repository = repository;
+        this.splitMapper = splitMapper;
     }
 
     /**
@@ -43,7 +46,7 @@ public class SplitService {
     public Split createSplit(CreateSplitRequest request) {
         Split split = Split.create(request.getName());
 
-        repository.save(split.getId().value(), split);
+        repository.save(split.getId().value(), splitMapper.toPersistenceDTO(split));
 
         return split;
     }
@@ -57,7 +60,7 @@ public class SplitService {
      * @return an Optional containing the split if found, empty otherwise
      */
     public Optional<Split> getSplit(String splitId) {
-        return repository.load(splitId, Split.class);
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain);
     }
 
     /**
@@ -83,10 +86,10 @@ public class SplitService {
      * @return an Optional containing the created participant if the split exists, empty otherwise
      */
     public Optional<Participant> addParticipant(String splitId, AddParticipantRequest request) {
-        return repository.load(splitId, Split.class).map(split -> {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
             Participant participant = Participant.create(request.name(), request.nights());
             split.addParticipant(participant);
-            repository.save(splitId, split);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
             return participant;
         });
     }
@@ -106,10 +109,10 @@ public class SplitService {
      */
     public Optional<Participant> updateParticipant(String splitId, String participantId,
             UpdateParticipantRequest request) {
-        return repository.load(splitId, Split.class).map(split -> {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             Participant updated = split.updateParticipant(partId, request.name(), request.nights());
-            repository.save(splitId, split);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
             return updated;
         });
     }
@@ -127,10 +130,10 @@ public class SplitService {
      *         ParticipantHasExpensesError if the participant has associated expenses.
      */
     public boolean removeParticipant(String splitId, String participantId) {
-        return repository.load(splitId, Split.class).map(split -> {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             split.removeParticipant(partId);
-            repository.save(splitId, split);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
             return true;
         }).orElse(false);
     }
@@ -175,20 +178,16 @@ public class SplitService {
      */
     public Optional<ExpenseByNight> addExpenseByNight(String splitId, BigDecimal amount, String description,
             String payerId) {
-        return repository.load(splitId, Split.class).map(split -> {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
 
             // Create expense and calculate shares using encapsulated logic
-            ExpenseByNight expense = ExpenseByNight.create(amount, description, payer, null);
-            List<Expense.Share> shares = expense.calculateShares(split.getParticipants());
+            ExpenseByNight expense = ExpenseByNight.create(amount, description, payer);
+            split.addExpense(expense);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
 
-            // Create final expense with calculated shares
-            ExpenseByNight expenseWithShares = ExpenseByNight.create(amount, description, payer, shares);
-            split.addExpense(expenseWithShares);
-            repository.save(splitId, split);
-
-            return expenseWithShares;
+            return expense;
         });
     }
 
@@ -208,20 +207,16 @@ public class SplitService {
      */
     public Optional<ExpenseEqual> addExpenseEqual(String splitId, BigDecimal amount, String description,
             String payerId) {
-        return repository.load(splitId, Split.class).map(split -> {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
 
             // Create expense and calculate shares using encapsulated logic
-            ExpenseEqual expense = ExpenseEqual.create(amount, description, payer, null);
-            List<Expense.Share> shares = expense.calculateShares(split.getParticipants());
+            ExpenseEqual expense = ExpenseEqual.create(amount, description, payer);
+            split.addExpense(expense);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
 
-            // Create final expense with calculated shares
-            ExpenseEqual expenseWithShares = ExpenseEqual.create(amount, description, payer, shares);
-            split.addExpense(expenseWithShares);
-            repository.save(splitId, split);
-
-            return expenseWithShares;
+            return expense;
         });
     }
 }
