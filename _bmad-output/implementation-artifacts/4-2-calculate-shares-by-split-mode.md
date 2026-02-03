@@ -1,6 +1,6 @@
 # Story 4.2: Calculate Shares by Split Mode (By-Night and Equal)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -124,25 +124,6 @@ So that **expenses are distributed fairly without manual math**.
   - [x] 7.5: Test breakdown shows all participants with correct amounts
   - [x] 7.6: Test breakdown total matches expense amount
   - [x] 7.7: Test multiple expenses can be expanded independently
-  - [ ] 5.4: Show breakdown only when expanded
-  - [ ] 5.5: Mobile: ensure breakdown is readable on small screens
-
-- [ ] Task 6: Format calculation display helpers (AC: 5)
-  - [ ] 6.1: Create `formatShare(expense, share, participants)` function
-  - [ ] 6.2: Look up participant name from ID
-  - [ ] 6.3: For BY_NIGHT: calculate nights fraction and format as "4/9 nights"
-  - [ ] 6.4: For EQUAL: return "Split equally"
-  - [ ] 6.5: Format amount as currency: €80.00 (2 decimal places)
-  - [ ] 6.6: Handle missing participant gracefully (show ID if name not found)
-
-- [ ] Task 7: Write frontend tests for calculation display (AC: 5)
-  - [ ] 7.1: Test expense card shows chevron icon
-  - [ ] 7.2: Test clicking expense card toggles expansion
-  - [ ] 7.3: Test BY_NIGHT expense shows night-based breakdown when expanded
-  - [ ] 7.4: Test EQUAL expense shows "Split equally" when expanded
-  - [ ] 7.5: Test breakdown shows all participants with correct amounts
-  - [ ] 7.6: Test breakdown total matches expense amount
-  - [ ] 7.7: Test multiple expenses can be expanded independently
 
 ## Dev Notes
 
