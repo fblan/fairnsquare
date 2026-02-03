@@ -17,9 +17,8 @@ class ExpenseTest {
     @SuppressWarnings("deprecation")
     void create_withByNightMode_returnsExpenseByNight() {
         Participant.Id payerId = Participant.Id.generate();
-        List<Expense.Share> shares = List.of();
 
-        Expense expense = Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.BY_NIGHT, shares);
+        Expense expense = Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.BY_NIGHT);
 
         assertThat(expense).isInstanceOf(ExpenseByNight.class);
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
@@ -29,9 +28,7 @@ class ExpenseTest {
     @SuppressWarnings("deprecation")
     void create_withEqualMode_returnsExpenseEqual() {
         Participant.Id payerId = Participant.Id.generate();
-        List<Expense.Share> shares = List.of();
-
-        Expense expense = Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.EQUAL, shares);
+        Expense expense = Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.EQUAL);
 
         assertThat(expense).isInstanceOf(ExpenseEqual.class);
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.EQUAL);
@@ -41,9 +38,8 @@ class ExpenseTest {
     @SuppressWarnings("deprecation")
     void create_withFreeMode_throwsUnsupportedOperationException() {
         Participant.Id payerId = Participant.Id.generate();
-        List<Expense.Share> shares = List.of();
 
-        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.FREE, shares))
+        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.FREE))
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessageContaining("FREE mode not yet implemented");
     }
@@ -53,7 +49,7 @@ class ExpenseTest {
     void create_withNullAmount_throwsIllegalArgumentException() {
         Participant.Id payerId = Participant.Id.generate();
 
-        assertThatThrownBy(() -> Expense.create(null, "Test", payerId, SplitMode.BY_NIGHT, List.of()))
+        assertThatThrownBy(() -> Expense.create(null, "Test", payerId, SplitMode.BY_NIGHT))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Amount cannot be null");
     }
 
@@ -62,7 +58,7 @@ class ExpenseTest {
     void create_withZeroAmount_throwsIllegalArgumentException() {
         Participant.Id payerId = Participant.Id.generate();
 
-        assertThatThrownBy(() -> Expense.create(BigDecimal.ZERO, "Test", payerId, SplitMode.BY_NIGHT, List.of()))
+        assertThatThrownBy(() -> Expense.create(BigDecimal.ZERO, "Test", payerId, SplitMode.BY_NIGHT))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Amount must be positive");
     }
 
@@ -71,9 +67,8 @@ class ExpenseTest {
     void create_withNegativeAmount_throwsIllegalArgumentException() {
         Participant.Id payerId = Participant.Id.generate();
 
-        assertThatThrownBy(
-                () -> Expense.create(new BigDecimal("-10.00"), "Test", payerId, SplitMode.BY_NIGHT, List.of()))
-                        .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Amount must be positive");
+        assertThatThrownBy(() -> Expense.create(new BigDecimal("-10.00"), "Test", payerId, SplitMode.BY_NIGHT))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Amount must be positive");
     }
 
     @Test
@@ -81,7 +76,7 @@ class ExpenseTest {
     void create_withNullDescription_throwsIllegalArgumentException() {
         Participant.Id payerId = Participant.Id.generate();
 
-        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), null, payerId, SplitMode.BY_NIGHT, List.of()))
+        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), null, payerId, SplitMode.BY_NIGHT))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Description cannot be blank");
     }
 
@@ -90,10 +85,8 @@ class ExpenseTest {
     void create_withBlankDescription_throwsIllegalArgumentException() {
         Participant.Id payerId = Participant.Id.generate();
 
-        assertThatThrownBy(
-                () -> Expense.create(new BigDecimal("100.00"), "   ", payerId, SplitMode.BY_NIGHT, List.of()))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("Description cannot be blank");
+        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), "   ", payerId, SplitMode.BY_NIGHT))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Description cannot be blank");
     }
 
     @Test
@@ -102,17 +95,16 @@ class ExpenseTest {
         Participant.Id payerId = Participant.Id.generate();
         String longDescription = "x".repeat(201);
 
-        assertThatThrownBy(
-                () -> Expense.create(new BigDecimal("100.00"), longDescription, payerId, SplitMode.BY_NIGHT, List.of()))
-                        .isInstanceOf(IllegalArgumentException.class)
-                        .hasMessageContaining("Description cannot exceed 200 characters");
+        assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), longDescription, payerId, SplitMode.BY_NIGHT))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Description cannot exceed 200 characters");
     }
 
     @Test
     void fromJson_minimalExpense_createsExpenseWithOnlyPayerId() {
         Participant.Id payerId = Participant.Id.generate();
 
-        Expense expense = Expense.fromJson(null, null, null, payerId, null, null, null);
+        Expense expense = Expense.fromJson(null, null, null, payerId, null, null);
 
         assertThat(expense).isInstanceOf(ExpenseByNight.class);
         assertThat(expense.getPayerId()).isEqualTo(payerId);
@@ -126,7 +118,7 @@ class ExpenseTest {
         Participant.Id payerId = Participant.Id.generate();
 
         Expense expense = Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, SplitMode.BY_NIGHT,
-                java.time.Instant.now(), List.of());
+                java.time.Instant.now());
 
         assertThat(expense).isInstanceOf(ExpenseByNight.class);
     }
@@ -137,7 +129,7 @@ class ExpenseTest {
         Participant.Id payerId = Participant.Id.generate();
 
         Expense expense = Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, SplitMode.EQUAL,
-                java.time.Instant.now(), List.of());
+                java.time.Instant.now());
 
         assertThat(expense).isInstanceOf(ExpenseEqual.class);
     }
@@ -148,7 +140,7 @@ class ExpenseTest {
         Participant.Id payerId = Participant.Id.generate();
 
         assertThatThrownBy(() -> Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, SplitMode.FREE,
-                java.time.Instant.now(), List.of())).isInstanceOf(UnsupportedOperationException.class)
+                java.time.Instant.now())).isInstanceOf(UnsupportedOperationException.class)
                         .hasMessageContaining("FREE mode not yet implemented");
     }
 
@@ -157,8 +149,8 @@ class ExpenseTest {
         Expense.Id id = Expense.Id.generate();
         Participant.Id payerId = Participant.Id.generate();
 
-        Expense expense = Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, null, java.time.Instant.now(),
-                List.of());
+        Expense expense = Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, null,
+                java.time.Instant.now());
 
         assertThat(expense).isInstanceOf(ExpenseByNight.class);
     }

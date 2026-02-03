@@ -7,14 +7,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /**
  * Expense split equally among all participants. Share calculation: amount / number of participants
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public final class ExpenseEqual extends Expense {
 
     private static final int SCALE = 2;
@@ -34,29 +29,25 @@ public final class ExpenseEqual extends Expense {
      *
      * @return a new ExpenseEqual with generated ID and createdAt set to now
      */
-    public static ExpenseEqual create(BigDecimal amount, String description, Participant.Id payerId,
-            List<Share> shares) {
+    public static ExpenseEqual create(BigDecimal amount, String description, Participant.Id payerId) {
         validateAmount(amount);
         validateDescription(description);
-        return new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now(), shares);
+        return new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now());
     }
 
     /**
-     * Jackson constructor for deserialization.
+     * Reconstitutes an ExpenseEqual from stored fields (used by persistence mapper).
      */
-    @JsonCreator
-    public static ExpenseEqual fromJson(@JsonProperty("id") Id id, @JsonProperty("amount") BigDecimal amount,
-            @JsonProperty("description") String description, @JsonProperty("payerId") Participant.Id payerId,
-            @JsonProperty("createdAt") Instant createdAt, @JsonProperty("shares") List<Share> shares) {
-        return new ExpenseEqual(id, amount, description, payerId, createdAt, shares);
+    public static ExpenseEqual fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
+            Instant createdAt) {
+        return new ExpenseEqual(id, amount, description, payerId, createdAt);
     }
 
     /**
      * Package-private constructor for internal use.
      */
-    ExpenseEqual(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt,
-            List<Share> shares) {
-        super(id, amount, description, payerId, createdAt, shares);
+    ExpenseEqual(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
+        super(id, amount, description, payerId, createdAt);
     }
 
     @Override
@@ -65,7 +56,11 @@ public final class ExpenseEqual extends Expense {
     }
 
     @Override
-    public List<Share> calculateShares(List<Participant> participants) {
+    public List<Share> getShares(Split split) {
+        return calculateShares(split.getParticipants());
+    }
+
+    List<Share> calculateShares(List<Participant> participants) {
         if (participants == null || participants.isEmpty()) {
             return Collections.emptyList();
         }
@@ -93,4 +88,5 @@ public final class ExpenseEqual extends Expense {
 
         return calculatedShares;
     }
+
 }

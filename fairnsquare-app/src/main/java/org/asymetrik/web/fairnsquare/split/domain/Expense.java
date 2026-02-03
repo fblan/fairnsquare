@@ -7,19 +7,11 @@ import java.util.Collections;
 import java.util.List;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
  * calculation strategy.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", defaultImpl = ExpenseByNight.class)
-@JsonSubTypes({ @JsonSubTypes.Type(value = ExpenseByNight.class, name = "BY_NIGHT"),
-        @JsonSubTypes.Type(value = ExpenseEqual.class, name = "EQUAL") })
 public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
@@ -29,7 +21,6 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
     private final String description;
     private final Participant.Id payerId;
     private final Instant createdAt;
-    private final List<Share> shares;
 
     /**
      * Factory method to create an Expense of the appropriate subtype based on splitMode.
@@ -37,35 +28,30 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
      * @deprecated Use ExpenseByNight.create() or ExpenseEqual.create() directly
      */
     @Deprecated
-    public static Expense create(BigDecimal amount, String description, Participant.Id payerId, SplitMode splitMode,
-            List<Share> shares) {
+    public static Expense create(BigDecimal amount, String description, Participant.Id payerId, SplitMode splitMode) {
         validateAmount(amount);
         validateDescription(description);
         return switch (splitMode) {
-            case BY_NIGHT -> new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now(), shares);
-            case EQUAL -> new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now(), shares);
+            case BY_NIGHT -> new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now());
+            case EQUAL -> new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now());
             case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
         };
     }
 
     /**
-     * Jackson constructor for backward compatibility with legacy JSON. Routes to appropriate subclass based on
-     * splitMode field.
+     * Reconstitutes an Expense from stored fields, routing to the appropriate subclass based on splitMode.
      */
-    @JsonCreator
-    public static Expense fromJson(@JsonProperty("id") Id id, @JsonProperty("amount") BigDecimal amount,
-            @JsonProperty("description") String description, @JsonProperty("payerId") Participant.Id payerId,
-            @JsonProperty("splitMode") SplitMode splitMode, @JsonProperty("createdAt") Instant createdAt,
-            @JsonProperty("shares") List<Share> shares) {
+    public static Expense fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
+            SplitMode splitMode, Instant createdAt) {
         // Support backward compatibility: minimal expenses from Story 3.3 only had payerId
         if (id == null && amount == null && description == null && splitMode == null && createdAt == null) {
-            return new ExpenseByNight(null, null, null, payerId, null, null);
+            return new ExpenseByNight(null, null, null, payerId, null);
         }
-        // Route to appropriate subclass based on splitMode for legacy JSON without "type" field
+        // Route to appropriate subclass based on splitMode
         SplitMode mode = splitMode != null ? splitMode : SplitMode.BY_NIGHT;
         return switch (mode) {
-            case BY_NIGHT -> new ExpenseByNight(id, amount, description, payerId, createdAt, shares);
-            case EQUAL -> new ExpenseEqual(id, amount, description, payerId, createdAt, shares);
+            case BY_NIGHT -> new ExpenseByNight(id, amount, description, payerId, createdAt);
+            case EQUAL -> new ExpenseEqual(id, amount, description, payerId, createdAt);
             case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
         };
     }
@@ -73,25 +59,14 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
     /**
      * Protected constructor for subclasses.
      */
-    protected Expense(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt,
-            List<Share> shares) {
+    protected Expense(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
         this.id = id;
         this.amount = amount;
         this.description = description;
         this.payerId = payerId;
         this.createdAt = createdAt;
-        this.shares = shares != null ? new ArrayList<>(shares) : new ArrayList<>();
-    }
 
-    /**
-     * Abstract method - each subclass implements its calculation strategy.
-     *
-     * @param participants
-     *            the list of participants to calculate shares for
-     *
-     * @return calculated shares for each participant
-     */
-    public abstract List<Share> calculateShares(List<Participant> participants);
+    }
 
     /**
      * Returns the split mode for this expense type.
@@ -138,20 +113,17 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
         return createdAt;
     }
 
-    public List<Share> getShares() {
-        return shares != null ? Collections.unmodifiableList(shares) : Collections.emptyList();
-    }
+    public abstract List<Share> getShares(Split split);
 
     /**
      * Value object wrapping a NanoID for expense identification. Uses the same 21-character URL-safe format as Split.Id
      * and Participant.Id.
      */
-    public record Id(@JsonValue String value) {
+    public record Id(String value) {
 
         private static final int NANOID_LENGTH = 21;
         private static final String NANOID_PATTERN = "^[A-Za-z0-9_-]+$";
 
-        @JsonCreator
         public static Id fromJson(String value) {
             return new Id(value);
         }
@@ -213,9 +185,7 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
      */
     public record Share(Participant.Id participantId, BigDecimal amount) {
 
-        @JsonCreator
-        public static Share fromJson(@JsonProperty("participantId") Participant.Id participantId,
-                @JsonProperty("amount") BigDecimal amount) {
+        public static Share fromJson(Participant.Id participantId, BigDecimal amount) {
             return new Share(participantId, amount);
         }
 

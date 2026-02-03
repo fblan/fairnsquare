@@ -1,7 +1,5 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-
 /**
  * Expense split modes for distributing costs among participants.
  */
@@ -28,7 +26,6 @@ public enum SplitMode {
         this.value = value;
     }
 
-    @JsonValue
     public String getValue() {
         return value;
     }

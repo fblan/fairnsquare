@@ -20,7 +20,7 @@ class ExpenseByNightTest {
         Participant charlie = createParticipant("charlie", 3);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("180.00"), "Groceries", alice.id(), null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("180.00"), "Groceries", alice.id());
 
         // When
         List<Expense.Share> shares = expense.calculateShares(participants);
@@ -37,7 +37,7 @@ class ExpenseByNightTest {
         Participant alice = createParticipant("alice", 5);
         List<Participant> participants = List.of(alice);
 
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Hotel", alice.id(), null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Hotel", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -47,8 +47,7 @@ class ExpenseByNightTest {
 
     @Test
     void calculateShares_withEmptyParticipants_returnsEmptyList() {
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(),
-                null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(List.of());
 
@@ -57,8 +56,7 @@ class ExpenseByNightTest {
 
     @Test
     void calculateShares_withNullParticipants_returnsEmptyList() {
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(),
-                null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(null);
 
@@ -69,8 +67,7 @@ class ExpenseByNightTest {
     void calculateShares_withZeroTotalNights_returnsEmptyList() {
         // Participant validation requires nights >= 1, so we test empty list instead
         // This effectively tests the "0 total nights" scenario
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(),
-                null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(List.of());
 
@@ -85,7 +82,7 @@ class ExpenseByNightTest {
         Participant charlie = createParticipant("charlie", 1);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Dinner", alice.id(), null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Dinner", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -95,9 +92,30 @@ class ExpenseByNightTest {
     }
 
     @Test
+    void calculateShares_ac1_180WithFourTwoThreeNights_returnsEightyFortySixty() {
+        // AC 1: €180 with (4, 2, 3) nights → (€80, €40, €60)
+        Participant alice = createParticipant("Alice", 4);
+        Participant bob = createParticipant("Bob", 2);
+        Participant charlie = createParticipant("Charlie", 3);
+        List<Participant> participants = List.of(alice, bob, charlie);
+
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("180.00"), "Accommodation", alice.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(3);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("80.00");
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("40.00");
+        assertThat(shares.get(2).amount()).isEqualByComparingTo("60.00");
+
+        // Verify sum equals expense amount exactly
+        BigDecimal total = shares.stream().map(Expense.Share::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo("180.00");
+    }
+
+    @Test
     void getSplitMode_returnsByNight() {
-        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(),
-                null);
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT);
     }
@@ -108,20 +126,12 @@ class ExpenseByNightTest {
         Participant.Id payerId = Participant.Id.generate();
 
         ExpenseByNight expense = ExpenseByNight.fromJson(id, new BigDecimal("150.00"), "Dinner", payerId,
-                java.time.Instant.now(), List.of());
+                java.time.Instant.now());
 
         assertThat(expense.getId()).isEqualTo(id);
         assertThat(expense.getAmount()).isEqualByComparingTo("150.00");
         assertThat(expense.getDescription()).isEqualTo("Dinner");
         assertThat(expense.getPayerId()).isEqualTo(payerId);
-    }
-
-    @Test
-    void getShares_withNullShares_returnsEmptyList() {
-        ExpenseByNight expense = ExpenseByNight.fromJson(Expense.Id.generate(), new BigDecimal("100.00"), "Test",
-                Participant.Id.generate(), java.time.Instant.now(), null);
-
-        assertThat(expense.getShares()).isEmpty();
     }
 
     private Participant createParticipant(String name, int nights) {

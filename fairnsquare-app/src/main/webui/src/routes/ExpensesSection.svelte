@@ -8,6 +8,7 @@
   import * as RadioGroup from '$lib/components/ui/radio-group';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { Plus, Moon, Equal } from 'lucide-svelte';
+  import { ExpenseCard } from '$lib/components/ui/expense-card';
 
   let {
     split,
@@ -26,6 +27,9 @@
   let expenseSplitMode = $state<SplitMode>('BY_NIGHT');
   let expenseValidationErrors = $state<{amount?: string; description?: string; payer?: string}>({});
   let isExpenseSubmitting = $state(false);
+  
+  // Track expanded expenses per expense ID (Story 4.2)
+  let expandedExpenses = $state<Map<string, boolean>>(new Map());
 
   const canAddExpense = $derived(split.participants.length > 0);
 
@@ -264,24 +268,22 @@
           </div>
         </form>
       {:else}
-        <!-- Expenses List (AC 4) -->
+        <!-- Expenses List (AC 4, Story 4.2 AC 5) -->
         {#if sortedExpenses.length === 0}
           <div class="text-sm text-muted-foreground text-center py-4">No expenses yet</div>
         {:else}
           <div class="space-y-2">
             {#each sortedExpenses as expense (expense.id)}
-              <div class="flex items-center justify-between p-3 border rounded-lg hover:bg-secondary/50">
-                <div class="flex-1 min-w-0 mr-3">
-                  <p class="font-medium text-foreground truncate">{expense.description}</p>
-                  <p class="text-sm text-muted-foreground">Paid by {getPayerName(expense)}</p>
-                </div>
-                <div class="text-right shrink-0 ml-3">
-                  <p class="font-medium text-foreground">{formatCurrency(expense.amount)}</p>
-                  <span class="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">
-                    {formatSplitMode(expense.splitMode)}
-                  </span>
-                </div>
-              </div>
+              {@const isExpanded = expandedExpenses.get(expense.id) || false}
+              <ExpenseCard 
+                {expense} 
+                {split} 
+                expanded={isExpanded}
+                onToggle={() => {
+                  expandedExpenses.set(expense.id, !isExpanded);
+                  expandedExpenses = new Map(expandedExpenses);
+                }}
+              />
             {/each}
           </div>
         {/if}

@@ -20,7 +20,7 @@ class ExpenseEqualTest {
         Participant charlie = createParticipant("charlie", 3);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("90.00"), "Dinner", alice.id(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("90.00"), "Dinner", alice.id());
 
         // When
         List<Expense.Share> shares = expense.calculateShares(participants);
@@ -37,7 +37,7 @@ class ExpenseEqualTest {
         Participant alice = createParticipant("alice", 5);
         List<Participant> participants = List.of(alice);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Hotel", alice.id(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Hotel", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -47,7 +47,7 @@ class ExpenseEqualTest {
 
     @Test
     void calculateShares_withEmptyParticipants_returnsEmptyList() {
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(List.of());
 
@@ -56,7 +56,7 @@ class ExpenseEqualTest {
 
     @Test
     void calculateShares_withNullParticipants_returnsEmptyList() {
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(null);
 
@@ -71,7 +71,7 @@ class ExpenseEqualTest {
         Participant charlie = createParticipant("charlie", 1);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -92,7 +92,7 @@ class ExpenseEqualTest {
         Participant bob = createParticipant("bob", 1);
         List<Participant> participants = List.of(alice, bob);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Shared expense", alice.id(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Shared expense", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -102,8 +102,48 @@ class ExpenseEqualTest {
     }
 
     @Test
+    void calculateShares_ac2_90WithThreeParticipants_returnsThirtyEach() {
+        // AC 2: €90 with 3 participants → €30 each
+        Participant alice = createParticipant("Alice", 1);
+        Participant bob = createParticipant("Bob", 1);
+        Participant charlie = createParticipant("Charlie", 1);
+        List<Participant> participants = List.of(alice, bob, charlie);
+
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("90.00"), "Dinner", alice.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(3);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("30.00");
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("30.00");
+        assertThat(shares.get(2).amount()).isEqualByComparingTo("30.00");
+    }
+
+    @Test
+    void calculateShares_ac3_100WithThreeParticipants_returnsTwoThirtyThreeAndOneThirtyFour() {
+        // AC 3: €100 with 3 participants → (€33.33, €33.33, €33.34)
+        Participant alice = createParticipant("Alice", 1);
+        Participant bob = createParticipant("Bob", 1);
+        Participant charlie = createParticipant("Charlie", 1);
+        List<Participant> participants = List.of(alice, bob, charlie);
+
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Supplies", alice.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(3);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("33.33");
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("33.33");
+        assertThat(shares.get(2).amount()).isEqualByComparingTo("33.34");
+
+        // Verify sum equals expense amount exactly
+        BigDecimal total = shares.stream().map(Expense.Share::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void getSplitMode_returnsEqual() {
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate(), null);
+        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.EQUAL);
     }
@@ -114,20 +154,12 @@ class ExpenseEqualTest {
         Participant.Id payerId = Participant.Id.generate();
 
         ExpenseEqual expense = ExpenseEqual.fromJson(id, new BigDecimal("150.00"), "Dinner", payerId,
-                java.time.Instant.now(), List.of());
+                java.time.Instant.now());
 
         assertThat(expense.getId()).isEqualTo(id);
         assertThat(expense.getAmount()).isEqualByComparingTo("150.00");
         assertThat(expense.getDescription()).isEqualTo("Dinner");
         assertThat(expense.getPayerId()).isEqualTo(payerId);
-    }
-
-    @Test
-    void getShares_withNullShares_returnsEmptyList() {
-        ExpenseEqual expense = ExpenseEqual.fromJson(Expense.Id.generate(), new BigDecimal("100.00"), "Test",
-                Participant.Id.generate(), java.time.Instant.now(), null);
-
-        assertThat(expense.getShares()).isEmpty();
     }
 
     private Participant createParticipant(String name, int nights) {
