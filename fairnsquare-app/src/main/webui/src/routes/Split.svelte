@@ -1,7 +1,6 @@
 <script lang="ts">
-  // Split Overview Page - Refactored
-  // Story 2.3: Access Split via Link & View Overview
-  // Components extracted: ParticipantsSection, ExpensesSection
+  // Split Dashboard - Participant-Centric View
+  // Story FNS-002-2: Main Dashboard with Participant Cards
 
   import { getSplit, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
@@ -20,11 +19,11 @@
   let isLoading = $state(true);
   let error = $state<string | null>(null);
   let notFound = $state(false);
-  let copyConfirmation = $state(false);
 
-  // Shareable URL
-  const shareableUrl = $derived(
-    typeof window !== 'undefined' ? window.location.href : ''
+  // Expense summary stats
+  const expenseCount = $derived(split?.expenses.length ?? 0);
+  const expenseTotal = $derived(
+    split?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0
   );
 
   // Fetch split data when splitId changes
@@ -54,25 +53,38 @@
     }
   }
 
-  // Copy shareable URL to clipboard (Story 2.3 AC 3)
-  async function handleCopyUrl() {
+  function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(amount);
+  }
+
+  async function handleShare() {
     if (typeof window === 'undefined') return;
 
-    try {
-      await navigator.clipboard.writeText(shareableUrl);
-      copyConfirmation = true;
-      setTimeout(() => {
-        copyConfirmation = false;
-      }, 2000);
+    const url = window.location.href;
 
+    if (!navigator.clipboard) {
+      // Fallback: clipboard API not available (older browsers)
+      addToast({
+        type: 'info',
+        message: `Share link: ${url}`,
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
       addToast({
         type: 'success',
-        message: 'Link copied to clipboard',
+        message: 'Link copied!',
       });
-    } catch (err) {
+    } catch {
+      // Fallback: clipboard access denied
       addToast({
-        type: 'error',
-        message: 'Failed to copy link',
+        type: 'info',
+        message: `Share link: ${url}`,
       });
     }
   }
@@ -82,11 +94,11 @@
   }
 </script>
 
-<div class="flex flex-col items-center space-y-6 w-full max-w-[420px] mx-auto">
+<div class="flex flex-col items-center space-y-4 w-full max-w-[420px] mx-auto">
   {#if isLoading}
     <!-- Loading State -->
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
-      <svg class="animate-spin h-8 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
@@ -118,65 +130,57 @@
       <Card.Content class="text-center space-y-4">
         <p class="text-muted-foreground">{error}</p>
         <Button onclick={() => loadSplit(splitId)} class="min-h-[44px]">
-          Try again
+          Retry
         </Button>
       </Card.Content>
     </Card.Root>
 
   {:else if split}
-    <!-- Split Header (AC 2: Name, Shareable URL) -->
+    <!-- Dashboard Header -->
+    <header class="w-full flex items-center justify-between">
+      <h1 class="text-xl font-bold text-primary">{split.name}</h1>
+      <Button
+        onclick={handleShare}
+        variant="outline"
+        size="sm"
+        class="min-h-[44px]"
+        aria-label="Share"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+        </svg>
+        Share
+      </Button>
+    </header>
+
+    <!-- Expense Summary Card (clickable → navigates to expense list) -->
     <section class="w-full">
-      <Card.Root>
-        <Card.Header class="pb-2">
-          <Card.Title class="text-xl">{split.name}</Card.Title>
-        </Card.Header>
-        <Card.Content class="space-y-3">
-          <!-- Shareable URL (AC 3) -->
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              readonly
-              value={shareableUrl}
-              class="flex-1 px-3 py-2 text-sm bg-secondary border border-input rounded-md truncate"
-              onclick={(e) => e.currentTarget.select()}
-            />
-            <Button
-              onclick={handleCopyUrl}
-              variant="outline"
-              size="sm"
-              class="min-h-[44px] shrink-0"
-            >
-              {copyConfirmation ? 'Copied!' : 'Copy'}
-            </Button>
-          </div>
-        </Card.Content>
-      </Card.Root>
+      <button
+        class="w-full text-left"
+        onclick={() => navigate(`/splits/${splitId}/expenses`)}
+        aria-label="View all expenses"
+      >
+        <Card.Root class="border-teal-200 bg-teal-50/50 hover:bg-teal-50 transition-colors cursor-pointer">
+          <Card.Content class="py-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm text-muted-foreground">Expenses</p>
+                <p class="text-lg font-semibold">{expenseCount} {expenseCount === 1 ? 'expense' : 'expenses'}</p>
+              </div>
+              <div class="text-right">
+                <p class="text-sm text-muted-foreground">Total</p>
+                <p class="text-lg font-semibold text-primary">{formatCurrency(expenseTotal)}</p>
+              </div>
+            </div>
+          </Card.Content>
+        </Card.Root>
+      </button>
     </section>
 
-    <!-- Participants Section -->
+    <!-- Participants Section (cards with stats) -->
     <ParticipantsSection {split} onSplitUpdated={() => loadSplit(splitId)} />
 
-    <!-- Expenses Section -->
+    <!-- Expenses Section (add expense + list) -->
     <ExpensesSection {split} onSplitUpdated={() => loadSplit(splitId)} />
-
-    <!-- Balance Summary Section (AC 2) -->
-    <section class="w-full">
-      <Card.Root>
-        <Card.Header class="pb-2">
-          <Card.Title class="text-lg">Balance Summary</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          {#if split.participants.length === 0 || split.expenses.length === 0}
-            <p class="text-muted-foreground text-center py-4">
-              Add participants and expenses to see balances
-            </p>
-          {:else}
-            <p class="text-muted-foreground text-center py-4">
-              Balance calculation coming soon...
-            </p>
-          {/if}
-        </Card.Content>
-      </Card.Root>
-    </section>
   {/if}
 </div>

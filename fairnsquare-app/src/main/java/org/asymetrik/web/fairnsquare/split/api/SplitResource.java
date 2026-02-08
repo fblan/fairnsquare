@@ -24,15 +24,18 @@ import org.asymetrik.web.fairnsquare.split.api.dto.ParticipantDTO;
 import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
 import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
+import org.asymetrik.web.fairnsquare.split.domain.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.domain.AddTypedExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
+import org.asymetrik.web.fairnsquare.split.domain.InvalidExpenseIdError;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidParticipantIdError;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
 import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
 
@@ -168,6 +171,71 @@ public class SplitResource {
         }
 
         boolean removed = splitService.removeParticipant(splitId, participantId);
+        if (!removed) {
+            throw new SplitNotFoundError(splitId);
+        }
+
+        return Response.noContent().build();
+    }
+
+    /**
+     * Updates an existing expense in a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param expenseId
+     *            the expense identifier
+     * @param request
+     *            the update expense request
+     *
+     * @return 200 OK with the updated expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Update expense", description = "Updates an expense and recalculates shares based on new split mode")
+    @APIResponse(responseCode = "200", description = "Expense updated successfully")
+    @APIResponse(responseCode = "404", description = "Split or expense not found")
+    @APIResponse(responseCode = "400", description = "Invalid split ID, expense ID, or request data")
+    @PUT
+    @Path("/{splitId}/expenses/{expenseId}")
+    public Response updateExpense(@PathParam("splitId") String splitId, @PathParam("expenseId") String expenseId,
+            @Valid UpdateExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+        if (!Expense.Id.isValid(expenseId)) {
+            throw new InvalidExpenseIdError(expenseId);
+        }
+
+        return splitService.updateExpense(splitId, expenseId, request)
+                .flatMap(expense -> splitService.getSplit(splitId)
+                        .map(split -> Response.ok(expenseMapper.toDTO(expense, split)).build()))
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Removes an expense from a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param expenseId
+     *            the expense identifier
+     *
+     * @return 204 No Content on success, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Delete expense", description = "Removes an expense from a split and recalculates balances")
+    @APIResponse(responseCode = "204", description = "Expense deleted successfully")
+    @APIResponse(responseCode = "404", description = "Split or expense not found")
+    @APIResponse(responseCode = "400", description = "Invalid split ID or expense ID format")
+    @DELETE
+    @Path("/{splitId}/expenses/{expenseId}")
+    public Response deleteExpense(@PathParam("splitId") String splitId, @PathParam("expenseId") String expenseId) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+        if (!Expense.Id.isValid(expenseId)) {
+            throw new InvalidExpenseIdError(expenseId);
+        }
+
+        boolean removed = splitService.removeExpense(splitId, expenseId);
         if (!removed) {
             throw new SplitNotFoundError(splitId);
         }

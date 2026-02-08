@@ -1,193 +1,196 @@
 <script lang="ts">
-  // Home page - Landing / Create Split
-  // Story 2.2: Create Split Frontend
+  // Home page - Create Split with First Participant
+  // Story FNS-002-1: Create Split Flow & Direct Dashboard Redirect
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
-  import { createSplit, type Split } from '$lib/api/splits';
+  import { createSplit, addParticipant } from '$lib/api/splits';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import type { ApiError } from '$lib/api/client';
-  import { p, navigate } from '$lib/router';
+  import { navigate } from '$lib/router';
 
-  // State using Svelte 5 runes
+  // Form state
   let splitName = $state('');
+  let participantName = $state('');
+  let nights = $state(1);
   let isLoading = $state(false);
-  let validationError = $state<string | null>(null);
-  let createdSplit = $state<Split | null>(null);
-  let copyConfirmation = $state(false);
 
-  // Derived: shareable URL
-  let shareableUrl = $derived(
-    createdSplit ? `${window.location.origin}/splits/${createdSplit.id}` : ''
+  // Track whether fields have been touched for validation display
+  let splitNameTouched = $state(false);
+  let participantNameTouched = $state(false);
+  let nightsTouched = $state(false);
+
+  // Derived validation errors (only shown after field is touched)
+  let splitNameError = $derived.by(() => {
+    if (!splitNameTouched) return null;
+    if (!splitName.trim()) return 'Split name is required';
+    if (splitName.length > 100) return 'Split name cannot exceed 100 characters';
+    return null;
+  });
+
+  let participantNameError = $derived.by(() => {
+    if (!participantNameTouched) return null;
+    if (!participantName.trim()) return 'Participant name is required';
+    if (participantName.length > 50) return 'Participant name cannot exceed 50 characters';
+    return null;
+  });
+
+  let nightsError = $derived.by(() => {
+    if (!nightsTouched) return null;
+    if (!Number.isInteger(nights) || nights < 1) return 'Nights must be at least 1';
+    if (nights > 365) return 'Nights cannot exceed 365';
+    return null;
+  });
+
+  // Derived: form validity (independent of touched state)
+  let isValid = $derived(
+    splitName.trim().length > 0 &&
+    splitName.length <= 100 &&
+    participantName.trim().length > 0 &&
+    participantName.length <= 50 &&
+    Number.isInteger(nights) &&
+    nights >= 1 &&
+    nights <= 365
   );
 
-  function clearValidationError() {
-    if (validationError) {
-      validationError = null;
-    }
-  }
-
   async function handleCreateSplit() {
-    // Client-side validation
-    if (!splitName.trim()) {
-      validationError = 'Split name is required';
-      return;
-    }
+    // Touch all fields to show errors
+    splitNameTouched = true;
+    participantNameTouched = true;
+    nightsTouched = true;
 
-    validationError = null;
+    if (!isValid) return;
+
     isLoading = true;
 
     try {
+      // Step 1: Create the split
       const split = await createSplit({ name: splitName.trim() });
-      createdSplit = split;
+
+      // Step 2: Add the first participant
+      await addParticipant(split.id, {
+        name: participantName.trim(),
+        nights,
+      });
+
+      // Step 3: Redirect directly to split page (no intermediate screen)
+      navigate('/splits/:splitId', { params: { splitId: split.id } });
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
         type: 'error',
-        message: apiError.detail || 'Failed to create split. Please try again.',
+        message: apiError.detail || 'Failed to create split',
       });
     } finally {
       isLoading = false;
     }
-  }
-
-  async function handleCopyLink() {
-    if (!shareableUrl) return;
-
-    try {
-      await navigator.clipboard.writeText(shareableUrl);
-      copyConfirmation = true;
-      addToast({
-        type: 'success',
-        message: 'Link copied to clipboard!',
-        duration: 3000,
-      });
-      // Reset confirmation after 2 seconds
-      setTimeout(() => {
-        copyConfirmation = false;
-      }, 2000);
-    } catch {
-      addToast({
-        type: 'error',
-        message: 'Failed to copy link. Please copy manually.',
-      });
-    }
-  }
-
-  function handleGoToSplit() {
-    if (createdSplit) {
-      navigate('/splits/:splitId', { params: { splitId: createdSplit.id } });
-    }
-  }
-
-  function handleCreateAnother() {
-    splitName = '';
-    createdSplit = null;
-    validationError = null;
-    copyConfirmation = false;
   }
 </script>
 
 <div class="flex flex-col items-center space-y-6">
   <!-- Header -->
   <header class="text-center py-8">
-    <h1 class="text-2xl font-bold text-foreground">FairNSquare</h1>
+    <h1 class="text-2xl font-bold text-primary">FairNSquare</h1>
     <p class="text-muted-foreground mt-2">Split expenses fairly with friends</p>
   </header>
 
-  <!-- Create Split Form / Success State -->
+  <!-- Create Split Form -->
   <div class="w-full max-w-[420px]">
-    {#if createdSplit}
-      <!-- Success State -->
-      <Card.Root>
-        <Card.Header>
-          <Card.Title class="text-center text-success">Split Created!</Card.Title>
-        </Card.Header>
-        <Card.Content class="space-y-4">
+    <Card.Root>
+      <Card.Header>
+        <Card.Title>Create a New Split</Card.Title>
+      </Card.Header>
+      <Card.Content>
+        <form onsubmit={(e) => { e.preventDefault(); handleCreateSplit(); }} class="space-y-4">
+          <!-- Split Name -->
           <div class="space-y-2">
-            <Label>Your shareable link</Label>
-            <div class="flex gap-2">
-              <Input
-                type="text"
-                value={shareableUrl}
-                readonly
-                class="flex-1 text-sm"
-              />
-              <Button
-                onclick={handleCopyLink}
-                variant={copyConfirmation ? 'secondary' : 'outline'}
-                class="min-h-[44px] shrink-0"
-              >
-                {copyConfirmation ? 'Copied!' : 'Copy Link'}
-              </Button>
-            </div>
+            <Label for="splitName">Split Name</Label>
+            <Input
+              type="text"
+              id="splitName"
+              bind:value={splitName}
+              onblur={() => { splitNameTouched = true; }}
+              oninput={() => { splitNameTouched = true; }}
+              placeholder="e.g., Weekend Trip"
+              disabled={isLoading}
+              class="min-h-[44px]"
+              aria-invalid={splitNameError ? 'true' : undefined}
+              aria-describedby={splitNameError ? 'splitName-error' : undefined}
+            />
+            {#if splitNameError}
+              <p id="splitName-error" class="text-sm text-destructive">
+                {splitNameError}
+              </p>
+            {/if}
           </div>
 
-          <div class="flex flex-col gap-2">
-            <Button
-              onclick={handleGoToSplit}
-              class="w-full min-h-[44px]"
-            >
-              Go to Split
-            </Button>
-            <Button
-              onclick={handleCreateAnother}
-              variant="outline"
-              class="w-full min-h-[44px]"
-            >
-              Create Another Split
-            </Button>
-          </div>
-        </Card.Content>
-      </Card.Root>
-    {:else}
-      <!-- Create Split Form -->
-      <Card.Root>
-        <Card.Header>
-          <Card.Title>Create a New Split</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <form onsubmit={(e) => { e.preventDefault(); handleCreateSplit(); }} class="space-y-4">
+          <!-- First Participant Section -->
+          <div class="rounded-lg border border-teal-300 bg-teal-50 p-4 space-y-3">
+            <p class="text-sm font-medium text-teal-700">First Participant</p>
+
             <div class="space-y-2">
-              <Label for="splitName">Split Name</Label>
+              <Label for="participantName">Name</Label>
               <Input
                 type="text"
-                id="splitName"
-                bind:value={splitName}
-                oninput={clearValidationError}
-                placeholder="e.g., Bordeaux Weekend 2026"
+                id="participantName"
+                bind:value={participantName}
+                onblur={() => { participantNameTouched = true; }}
+                oninput={() => { participantNameTouched = true; }}
+                placeholder="Your name"
                 disabled={isLoading}
                 class="min-h-[44px]"
-                aria-invalid={validationError ? 'true' : undefined}
-                aria-describedby={validationError ? 'splitName-error' : undefined}
+                aria-invalid={participantNameError ? 'true' : undefined}
+                aria-describedby={participantNameError ? 'participantName-error' : undefined}
               />
-              {#if validationError}
-                <p id="splitName-error" class="text-sm text-destructive">
-                  {validationError}
+              {#if participantNameError}
+                <p id="participantName-error" class="text-sm text-destructive">
+                  {participantNameError}
                 </p>
               {/if}
             </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              class="w-full min-h-[44px]"
-            >
-              {#if isLoading}
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating...
-              {:else}
-                Create Split
+            <div class="space-y-2">
+              <Label for="nights">Number of Nights</Label>
+              <Input
+                type="number"
+                id="nights"
+                bind:value={nights}
+                onblur={() => { nightsTouched = true; }}
+                oninput={() => { nightsTouched = true; }}
+                min={1}
+                max={365}
+                disabled={isLoading}
+                class="min-h-[44px]"
+                aria-invalid={nightsError ? 'true' : undefined}
+                aria-describedby={nightsError ? 'nights-error' : undefined}
+              />
+              {#if nightsError}
+                <p id="nights-error" class="text-sm text-destructive">
+                  {nightsError}
+                </p>
               {/if}
-            </Button>
-          </form>
-        </Card.Content>
-      </Card.Root>
-    {/if}
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isLoading}
+            class="w-full min-h-[44px]"
+          >
+            {#if isLoading}
+              <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating...
+            {:else}
+              Create Split
+            {/if}
+          </Button>
+        </form>
+      </Card.Content>
+    </Card.Root>
   </div>
 
   <!-- Info Section -->

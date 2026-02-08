@@ -434,4 +434,317 @@ class ExpenseUseCaseTest {
                 """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/equal").then().statusCode(404);
     }
 
+    // ==================== Story FNS-002.5: Delete Expense Tests ====================
+
+    /**
+     * FNS-002.5 AC5: DELETE returns 204 and removes expense from split.
+     */
+    @Test
+    void deleteExpense_withValidData_returns204() {
+        // Create split + participant + expense
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Delete Expense Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String expenseId = given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 50.00,
+                    "description": "Groceries",
+                    "payerId": "%s"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
+                .extract().path("id");
+
+        // Delete the expense
+        given().when().delete("/api/splits/" + splitId + "/expenses/" + expenseId).then().statusCode(204);
+
+        // Verify expense is removed
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("expenses", hasSize(0));
+    }
+
+    /**
+     * FNS-002.5 AC5: DELETE persists removal to file.
+     */
+    @Test
+    void deleteExpense_persistsRemovalToFile() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Persistence Delete Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add two expenses
+        String expense1Id = given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 30.00,
+                    "description": "Snacks",
+                    "payerId": "%s"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
+                .extract().path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 20.00,
+                    "description": "Drinks",
+                    "payerId": "%s"
+                }
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                .statusCode(201);
+
+        // Delete first expense
+        given().when().delete("/api/splits/" + splitId + "/expenses/" + expense1Id).then().statusCode(204);
+
+        // Verify only second expense remains
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("expenses", hasSize(1))
+                .body("expenses[0].description", equalTo("Drinks"));
+    }
+
+    /**
+     * FNS-002.5: DELETE returns 404 for non-existent expense.
+     */
+    @Test
+    void deleteExpense_withNonExistentExpense_returns404() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Non-Existent Expense Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        given().when().delete("/api/splits/" + splitId + "/expenses/V1StGXR8_Z5jdHi6B-myT").then().statusCode(404)
+                .body("type", containsString("expense-not-found"));
+    }
+
+    /**
+     * FNS-002.5: DELETE returns 400 for invalid expense ID format.
+     */
+    @Test
+    void deleteExpense_withInvalidExpenseIdFormat_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Expense ID Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        given().when().delete("/api/splits/" + splitId + "/expenses/invalid..id").then().statusCode(400).body("type",
+                containsString("invalid-expense-id"));
+    }
+
+    /**
+     * FNS-002.5: DELETE returns 404 for non-existent split.
+     */
+    @Test
+    void deleteExpense_withNonExistentSplit_returns404() {
+        given().when().delete("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/V1StGXR8_Z5jdHi6B-myT").then()
+                .statusCode(404);
+    }
+
+    /**
+     * FNS-002.5: DELETE returns 400 for invalid split ID format.
+     */
+    @Test
+    void deleteExpense_withInvalidSplitIdFormat_returns400() {
+        given().when().delete("/api/splits/invalid..id/expenses/V1StGXR8_Z5jdHi6B-myT").then().statusCode(400);
+    }
+
+    /**
+     * FNS-002.6: PUT successfully updates expense amount and description.
+     */
+    @Test
+    void updateExpense_withValidRequest_returns200AndUpdatedExpense() {
+        // Create split with participants
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Update Expense Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Create initial expense
+        String expenseId = given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Groceries", "payerId": "%s"}
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
+
+        // Update expense
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 75.00, "description": "Updated Groceries", "payerId": "%s", "splitMode": "BY_NIGHT"}
+                """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then()
+                .statusCode(200).body("amount", equalTo(75.00f)).body("description", equalTo("Updated Groceries"))
+                .body("splitMode", equalTo("BY_NIGHT"));
+
+        // Verify updated expense persisted
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("expenses", hasSize(1))
+                .body("expenses[0].amount", equalTo(75.00f))
+                .body("expenses[0].description", equalTo("Updated Groceries"));
+    }
+
+    /**
+     * FNS-002.6: PUT successfully changes split mode from BY_NIGHT to EQUAL.
+     */
+    @Test
+    void updateExpense_withSplitModeChange_returns200AndRecalculatesShares() {
+        // Create split with participants
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Split Mode Change Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Create BY_NIGHT expense
+        String expenseId = given().contentType(ContentType.JSON).body("""
+                {"amount": 100.00, "description": "Hotel", "payerId": "%s"}
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
+
+        // Change to EQUAL split mode
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 100.00, "description": "Hotel", "payerId": "%s", "splitMode": "EQUAL"}
+                """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then()
+                .statusCode(200).body("splitMode", equalTo("EQUAL")).body("shares", hasSize(2))
+                .body("shares[0].amount", equalTo(50.00f)).body("shares[1].amount", equalTo(50.00f));
+    }
+
+    /**
+     * FNS-002.6: PUT successfully changes payer.
+     */
+    @Test
+    void updateExpense_withPayerChange_returns200AndUpdatedPayer() {
+        // Create split with participants
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Payer Change Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String alice = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bob = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Create expense with Alice as payer
+        String expenseId = given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Dinner", "payerId": "%s"}
+                """.formatted(alice)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
+                .extract().path("id");
+
+        // Change payer to Bob
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Dinner", "payerId": "%s", "splitMode": "EQUAL"}
+                """.formatted(bob)).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then()
+                .statusCode(200).body("payerId", equalTo(bob));
+    }
+
+    /**
+     * FNS-002.6: PUT returns 404 for non-existent expense.
+     */
+    @Test
+    void updateExpense_withNonExistentExpense_returns404() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Non-Existent Expense Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "EQUAL"}
+                """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/V1StGXR8_Z5jdHi6B-myT").then()
+                .statusCode(404).body("type", containsString("expense-not-found"));
+    }
+
+    /**
+     * FNS-002.6: PUT returns 400 for invalid expense ID format.
+     */
+    @Test
+    void updateExpense_withInvalidExpenseIdFormat_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Expense ID Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "EQUAL"}
+                """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/invalid..id").then()
+                .statusCode(400).body("type", containsString("invalid-expense-id"));
+    }
+
+    /**
+     * FNS-002.6: PUT returns 404 for non-existent split.
+     */
+    @Test
+    void updateExpense_withNonExistentSplit_returns404() {
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                """).when().put("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/V1StGXR8_Z5jdHi6B-myT").then()
+                .statusCode(404);
+    }
+
+    /**
+     * FNS-002.6: PUT returns 400 for invalid split ID format.
+     */
+    @Test
+    void updateExpense_withInvalidSplitIdFormat_returns400() {
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                """).when().put("/api/splits/invalid..id/expenses/V1StGXR8_Z5jdHi6B-myT").then().statusCode(400);
+    }
+
+    /**
+     * FNS-002.6: PUT returns 400 for invalid payer (not a participant).
+     */
+    @Test
+    void updateExpense_withInvalidPayer_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Invalid Payer Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String payerId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Create expense
+        String expenseId = given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "%s"}
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
+                .extract().path("id");
+
+        // Try to update with non-existent payer
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                """).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then().statusCode(400).body("type",
+                containsString("payer-not-found"));
+    }
+
 }
+
+/**
+ * FNS-002.6 Code Review Fix: PUT returns 404 for non-existent split.
+ */

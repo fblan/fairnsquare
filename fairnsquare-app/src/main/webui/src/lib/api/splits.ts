@@ -48,6 +48,13 @@ export interface AddExpenseRequest {
   splitMode: SplitMode;
 }
 
+export interface UpdateExpenseRequest {
+  amount: number;
+  description: string;
+  payerId: string;
+  splitMode: SplitMode;
+}
+
 export interface Split {
   id: string;
   name: string;
@@ -139,5 +146,37 @@ export async function addExpense(
   return apiRequest<Expense>(`/splits/${splitId}/expenses`, {
     method: 'POST',
     body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Updates an existing expense in a split.
+ * @param splitId The split identifier
+ * @param expenseId The expense identifier
+ * @param request The update expense request
+ * @returns The updated expense with recalculated shares
+ */
+export async function updateExpense(
+  splitId: string,
+  expenseId: string,
+  request: UpdateExpenseRequest
+): Promise<Expense> {
+  return apiRequest<Expense>(`/splits/${splitId}/expenses/${expenseId}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Deletes an expense from a split.
+ * @param splitId The split identifier
+ * @param expenseId The expense identifier
+ */
+export async function deleteExpense(
+  splitId: string,
+  expenseId: string
+): Promise<void> {
+  await apiRequest<void>(`/splits/${splitId}/expenses/${expenseId}`, {
+    method: 'DELETE',
   });
 }
