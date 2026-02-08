@@ -173,6 +173,62 @@ public class Split {
     }
 
     /**
+     * Update an existing expense in the split.
+     *
+     * @param expenseId
+     *            the ID of the expense to update
+     * @param amount
+     *            the new amount
+     * @param description
+     *            the new description
+     * @param payerId
+     *            the new payer ID
+     * @param splitMode
+     *            the new split mode
+     *
+     * @return the updated expense with recalculated shares
+     *
+     * @throws ExpenseNotFoundError
+     *             if no expense with the given ID exists
+     * @throws PayerNotFoundError
+     *             if the new payer is not a participant in this split
+     */
+    public Expense updateExpense(Expense.Id expenseId, java.math.BigDecimal amount, String description,
+            Participant.Id payerId, SplitMode splitMode) {
+        // Validate payer exists
+        validatePayerExists(payerId);
+
+        // Find and update the expense
+        for (int i = 0; i < expenses.size(); i++) {
+            Expense existing = expenses.get(i);
+            if (existing.getId().equals(expenseId)) {
+                // Preserve original ID and createdAt, create new instance with updated values
+                Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
+                        existing.getCreatedAt());
+                expenses.set(i, updated);
+                return updated;
+            }
+        }
+        throw new ExpenseNotFoundError(expenseId.value(), id.value());
+    }
+
+    /**
+     * Remove an expense from the split.
+     *
+     * @param expenseId
+     *            the ID of the expense to remove
+     *
+     * @throws ExpenseNotFoundError
+     *             if no expense with the given ID exists
+     */
+    public void removeExpense(Expense.Id expenseId) {
+        boolean removed = expenses.removeIf(e -> e.getId().equals(expenseId));
+        if (!removed) {
+            throw new ExpenseNotFoundError(expenseId.value(), id.value());
+        }
+    }
+
+    /**
      * Validate that a payer exists in the split's participants.
      *
      * @param payerId

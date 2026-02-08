@@ -1,0 +1,12 @@
+{
+  "name": "FairNSquare Theme",
+  "colors": {
+    "background": "#F8FAFC",
+    "card": "#FFFFFF",
+    "border": "#E2E8F0",
+    "text": "#1E293B",
+    "primary": "#0D9488",
+    "accent": "#14B8A6",
+    "muted": "#64748B"
+  }
+}

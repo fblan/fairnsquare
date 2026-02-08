@@ -16,6 +16,7 @@ import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
+import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMapper;
@@ -136,6 +137,50 @@ public class SplitUseCases {
             repository.save(splitId, splitMapper.toPersistenceDTO(split));
             return true;
         }).orElse(false);
+    }
+
+    /**
+     * Removes an expense from a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param expenseId
+     *            the expense identifier
+     *
+     * @return true if the split exists and expense was removed, false if split not found. Throws ExpenseNotFoundError
+     *         if the expense doesn't exist within the split.
+     */
+    public boolean removeExpense(String splitId, String expenseId) {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+            Expense.Id expId = Expense.Id.of(expenseId);
+            split.removeExpense(expId);
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            return true;
+        }).orElse(false);
+    }
+
+    /**
+     * Updates an existing expense in a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param expenseId
+     *            the expense identifier
+     * @param request
+     *            the update expense request
+     *
+     * @return an Optional containing the updated expense if the split exists, empty otherwise. Throws
+     *         ExpenseNotFoundError if the expense doesn't exist within the split.
+     */
+    public Optional<Expense> updateExpense(String splitId, String expenseId, UpdateExpenseRequest request) {
+        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+            Expense.Id expId = Expense.Id.of(expenseId);
+            Participant.Id payerId = Participant.Id.of(request.payerId());
+            Expense updated = split.updateExpense(expId, request.amount(), request.description(), payerId,
+                    request.splitMode());
+            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            return updated;
+        });
     }
 
     /**
