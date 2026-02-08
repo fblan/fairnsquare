@@ -9,7 +9,6 @@
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import ParticipantsSection from './ParticipantsSection.svelte';
-  import ExpensesSection from './ExpensesSection.svelte';
 
   // Extract splitId from route params
   const splitId = $derived(route.params.splitId || '');
@@ -180,7 +179,5 @@
     <!-- Participants Section (cards with stats) -->
     <ParticipantsSection {split} onSplitUpdated={() => loadSplit(splitId)} />
 
-    <!-- Expenses Section (add expense + list) -->
-    <ExpensesSection {split} onSplitUpdated={() => loadSplit(splitId)} />
   {/if}
 </div>

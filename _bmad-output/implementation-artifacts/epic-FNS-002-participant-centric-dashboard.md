@@ -345,24 +345,26 @@ The UX spec defines screens/components that don't exist yet:
 **So that** the interface is cleaner without duplicate expense information
 
 **Acceptance Criteria:**
-- [ ] Remove ONLY the bottom expense summary card (the one below "Add Participant" button)
-- [ ] Keep the top expense summary card (remains functional and clickable)
-- [ ] Verify dashboard displays in this order:
-  - [ ] Split name in header
-  - [ ] Share button in top-right
-  - [ ] **Top expense summary card (KEEP THIS)**
-  - [ ] Participant cards
-  - [ ] "Add Participant" button
-  - [ ] ~~Bottom expense summary card~~ **(REMOVED)**
-  - [ ] "Split" button at bottom
-- [ ] No visual gaps where bottom card was removed (proper spacing maintained)
-- [ ] Top expense summary card still navigates to Expense List screen when clicked
+- [x] Remove ONLY the bottom expense summary card (the one below "Add Participant" button)
+- [x] Keep the top expense summary card (remains functional and clickable)
+- [x] Verify dashboard displays in this order:
+  - [x] Split name in header
+  - [x] Share button in top-right
+  - [x] **Top expense summary card (KEEP THIS)**
+  - [x] Participant cards
+  - [x] "Add Participant" button
+  - [x] ~~Bottom expense summary card~~ **(REMOVED)**
+  - [x] "Split" button at bottom
+- [x] No visual gaps where bottom card was removed (proper spacing maintained)
+- [x] Top expense summary card still navigates to Expense List screen when clicked
 
 **Technical Notes:**
-- Locate the bottom expense summary card rendering in `routes/Dashboard.svelte` or `routes/Split.svelte`
-- Remove only the second instance of the expense summary component
-- Keep the top instance intact with all its functionality
-- Test that clicking top expense card still works
+- ✅ Removed ExpensesSection component import from Split.svelte:12
+- ✅ Removed ExpensesSection component render from Split.svelte:182-183
+- ✅ Deleted backup file Split.svelte.backup
+- ✅ All tests passing (36/36 in Split.test.ts)
+- ✅ Build successful with no errors
+- Top expense summary card (lines 155-177) remains functional
 
 **Rationale:**
 Two expense cards on the same page is redundant. Keep the top one for quick access to expense list, remove the bottom one to reduce clutter and scrolling.
