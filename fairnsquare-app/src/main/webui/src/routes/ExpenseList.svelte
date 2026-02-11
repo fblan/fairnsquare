@@ -6,8 +6,7 @@
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-  import AddExpenseModal from '$lib/components/expense/AddExpenseModal.svelte';
-  import EditExpenseModal from '$lib/components/expense/EditExpenseModal.svelte';
+  import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import { ArrowLeft, Plus, Pencil, Trash2, Receipt } from 'lucide-svelte';
@@ -337,7 +336,7 @@
 
 <!-- Add Expense Modal -->
 {#if split}
-  <AddExpenseModal
+  <ExpenseEditModal
     open={showAddExpense}
     {splitId}
     preselectedPayerId={null}
@@ -349,7 +348,7 @@
 
 <!-- Edit Expense Modal -->
 {#if split}
-  <EditExpenseModal
+  <ExpenseEditModal
     open={showEditExpense}
     {splitId}
     expense={expenseToEdit}

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenceDTO;
 import org.junit.jupiter.api.Test;
 

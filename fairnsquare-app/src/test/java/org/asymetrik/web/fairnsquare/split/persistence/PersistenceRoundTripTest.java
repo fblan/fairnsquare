@@ -11,12 +11,10 @@ import java.util.List;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMapper;

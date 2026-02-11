@@ -505,7 +505,7 @@ describe('Split', () => {
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
-    it('shows validation error for nights less than 1', async () => {
+    it('shows validation error for nights less than 0.5', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplit);
 
       render(Split);
@@ -520,7 +520,9 @@ describe('Split', () => {
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '0' } });
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-      expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
+      });
       expect(addParticipant).not.toHaveBeenCalled();
     });
 

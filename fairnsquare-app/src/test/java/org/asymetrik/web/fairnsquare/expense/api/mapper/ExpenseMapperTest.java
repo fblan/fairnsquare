@@ -7,9 +7,9 @@ import java.math.BigDecimal;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByNightDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseEqualDTO;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import io.quarkus.test.junit.QuarkusTest;

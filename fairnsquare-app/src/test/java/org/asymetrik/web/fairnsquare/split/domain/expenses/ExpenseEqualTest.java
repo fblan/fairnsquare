@@ -3,6 +3,10 @@ package org.asymetrik.web.fairnsquare.split.domain;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

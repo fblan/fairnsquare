@@ -232,4 +232,127 @@ describe('ExpenseCard', () => {
     const amountElements = screen.getAllByText('€123.45');
     expect(amountElements.length).toBeGreaterThan(0);
   });
+
+  // --- Story 4.3: FREE Mode Display Tests (AC10) ---
+
+  describe('FREE Mode Display (Story 4.3 AC10)', () => {
+    let mockExpenseFree: Expense;
+
+    beforeEach(() => {
+      mockExpenseFree = {
+        id: 'expense-free-1',
+        description: 'Custom Split Dinner',
+        amount: 100.00,
+        payerId: 'alice-id',
+        splitMode: 'FREE',
+        type: 'FREE',
+        createdAt: '2024-01-02T12:00:00Z',
+        shares: [
+          { participantId: 'alice-id', amount: 40.00, parts: 2 },
+          { participantId: 'bob-id', amount: 60.00, parts: 3 },
+          { participantId: 'charlie-id', amount: 0.00, parts: 0 },
+        ],
+      };
+    });
+
+    it('displays "Manual split" for FREE mode expenses (AC10)', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      const manualSplitTexts = screen.getAllByText('Manual split');
+      expect(manualSplitTexts.length).toBeGreaterThan(0);
+    });
+
+    it('does NOT show "Split equally" for FREE mode', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      expect(screen.queryByText('Split equally')).not.toBeInTheDocument();
+    });
+
+    it('does NOT show nights fraction for FREE mode', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      expect(screen.queryByText(/nights/i)).not.toBeInTheDocument();
+    });
+
+    it('displays FREE mode badge', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: false,
+          onToggle: () => {},
+        },
+      });
+
+      expect(screen.getByText('Free')).toBeInTheDocument();
+    });
+
+    it('shows participant names with manually-specified amounts', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getByText('Charlie')).toBeInTheDocument();
+      expect(screen.getByText('€40.00')).toBeInTheDocument();
+      expect(screen.getByText('€60.00')).toBeInTheDocument();
+    });
+
+    it('shows zero-amount participants in FREE mode breakdown', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      // Charlie has €0.00 - verify displayed
+      const charlieRow = screen.getByText('Charlie').closest('div');
+      expect(charlieRow).toBeInTheDocument();
+      expect(screen.getByText('€0.00')).toBeInTheDocument();
+    });
+
+    it('total matches expense amount with checkmark for FREE mode', () => {
+      render(ExpenseCard, {
+        props: {
+          expense: mockExpenseFree,
+          split: mockSplit,
+          expanded: true,
+          onToggle: () => {},
+        },
+      });
+
+      expect(screen.getByText('Total')).toBeInTheDocument();
+      expect(screen.getByText(/€100\.00 ✓/)).toBeInTheDocument();
+    });
+  });
 });

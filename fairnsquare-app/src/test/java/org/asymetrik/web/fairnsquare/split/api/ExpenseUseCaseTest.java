@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.split.persistence.TenantPathResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -743,6 +743,296 @@ class ExpenseUseCaseTest {
                 containsString("payer-not-found"));
     }
 
+    // ==================== Story 4.3: FREE Mode Manual Share Specification Tests ====================
+
+    /**
+     * Story 4.3 AC6: POST /expenses/free with valid shares returns 201 and correct response.
+     */
+    @Test
+    void addExpenseFree_withValidShares_returns201AndExpense() {
+        // Create split with 2 participants
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "FREE Mode Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add FREE expense with manual parts: Alice=2, Bob=3 (will calculate to €40 and €60)
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Custom Split Dinner",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 2.00},
+                        {"participantId": "%s", "parts": 3.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId, bobId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(201).body("id", notNullValue()).body("type", equalTo("FREE"))
+                .body("splitMode", equalTo("FREE")).body("amount", equalTo(100.00f))
+                .body("description", equalTo("Custom Split Dinner")).body("payerId", equalTo(aliceId))
+                .body("shares", hasSize(2));
+    }
+
+    /**
+     * Story 4.3 AC7: POST /expenses/free returns calculated shares from parts.
+     */
+    @Test
+    void addExpenseFree_withValidShares_returnsCalculatedShares() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "FREE Shares Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add FREE expense with parts (3 and 2 parts should split €150 as €90 and €60)
+        io.restassured.response.Response response = given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 150.00,
+                    "description": "Uneven Split",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 3.00},
+                        {"participantId": "%s", "parts": 2.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId, bobId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(201).body("shares", hasSize(2)).extract().response();
+
+        // Verify shares are calculated from parts: 3 parts = €90, 2 parts = €60
+        java.util.List<java.util.Map<String, Object>> shares = response.jsonPath().getList("shares");
+        Map<String, Map<String, Object>> sharesByParticipant = shares.stream()
+                .collect(Collectors.toMap(s -> s.get("participantId").toString(), s -> s));
+        assertThat(sharesByParticipant.get(aliceId).get("amount")).isEqualTo(90.00f);
+        assertThat(sharesByParticipant.get(aliceId).get("parts")).isEqualTo(3.00f);
+        assertThat(sharesByParticipant.get(bobId).get("amount")).isEqualTo(60.00f);
+        assertThat(sharesByParticipant.get(bobId).get("parts")).isEqualTo(2.00f);
+    }
+
+    /**
+     * Story 4.3 AC8: POST /expenses/free with negative parts returns 400.
+     */
+    @Test
+    void addExpenseFree_withNegativeParts_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Negative Parts Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Negative parts are invalid
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Invalid Negative Parts",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 5.00},
+                        {"participantId": "%s", "parts": -1.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId, bobId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(400);
+    }
+
+    /**
+     * Story 4.3 AC8: POST /expenses/free with non-existent participant returns 400.
+     */
+    @Test
+    void addExpenseFree_withNonExistentParticipant_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Missing Participant Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Try to add expense with non-existent participant ID in shares
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Invalid Participant",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 2.00},
+                        {"participantId": "V1StGXR8_Z5jdHi6B-myT", "parts": 3.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(400).body("type", containsString("invalid-shares"));
+    }
+
+    /**
+     * Story 4.3 AC7: POST /expenses/free persists parts and calculates shares (round-trip test).
+     */
+    @Test
+    void addExpenseFree_persistsSharesCorrectly() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Persistence Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Add FREE expense with parts (7 and 5 parts should split €120 as €70 and €50)
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 120.00,
+                    "description": "Persisted Split",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 7.00},
+                        {"participantId": "%s", "parts": 5.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId, bobId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(201);
+
+        // GET split and verify shares persisted and calculated correctly
+        io.restassured.response.Response response = given().when().get("/api/splits/" + splitId).then().statusCode(200)
+                .body("expenses", hasSize(1)).body("expenses[0].type", equalTo("FREE"))
+                .body("expenses[0].amount", equalTo(120.00f)).body("expenses[0].shares", hasSize(2)).extract()
+                .response();
+
+        // Verify calculated amounts and original parts
+        java.util.List<java.util.Map<String, Object>> shares = response.jsonPath().getList("expenses[0].shares");
+        Map<String, Map<String, Object>> sharesByParticipant = shares.stream()
+                .collect(Collectors.toMap(s -> s.get("participantId").toString(), s -> s));
+        assertThat(sharesByParticipant.get(aliceId).get("amount")).isEqualTo(70.00f);
+        assertThat(sharesByParticipant.get(aliceId).get("parts")).isEqualTo(7.00f);
+        assertThat(sharesByParticipant.get(bobId).get("amount")).isEqualTo(50.00f);
+        assertThat(sharesByParticipant.get(bobId).get("parts")).isEqualTo(5.00f);
+    }
+
+    /**
+     * Story 4.3 AC8: POST /expenses/free when a split participant is missing from shares returns 400.
+     */
+    @Test
+    void addExpenseFree_withMissingSplitParticipant_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Missing Participant Share Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        // Charlie is a participant but NOT included in shares — should be 400
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Charlie", "nights": 4}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
+
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Only two get shares",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 2.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(400).body("type", containsString("invalid-shares"))
+                .body("detail", containsString("All participants must have a share specified"));
+    }
+
+    /**
+     * Story 4.3 AC8: POST /expenses/free with empty shares list returns 400.
+     */
+    @Test
+    void addExpenseFree_withEmptyShares_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Empty Shares Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Try to add expense with empty shares
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "No Shares",
+                    "payerId": "%s",
+                    "shares": []
+                }
+                """.formatted(aliceId)).when().post("/api/splits/" + splitId + "/expenses/free").then().statusCode(400);
+    }
+
+    /**
+     * Story 4.3 AC8: POST /expenses/free allows zero parts (participant owes nothing).
+     */
+    @Test
+    void addExpenseFree_withZeroShareParts_returns201() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Zero Share Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String aliceId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 3}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        String bobId = given().contentType(ContentType.JSON).body("""
+                {"name": "Bob", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        // Alice has 5 parts, Bob has 0 parts (Bob owes nothing)
+        given().contentType(ContentType.JSON).body("""
+                {
+                    "amount": 100.00,
+                    "description": "Alice pays all",
+                    "payerId": "%s",
+                    "shares": [
+                        {"participantId": "%s", "parts": 5.00},
+                        {"participantId": "%s", "parts": 0.00}
+                    ]
+                }
+                """.formatted(aliceId, aliceId, bobId)).when().post("/api/splits/" + splitId + "/expenses/free").then()
+                .statusCode(201).body("shares", hasSize(2));
+    }
 }
 
 /**

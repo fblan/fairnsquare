@@ -49,6 +49,8 @@
       return `${participant.nights}/${totalNights} nights`;
     } else if (expense.splitMode === 'EQUAL') {
       return 'Split equally';
+    } else if (expense.splitMode === 'FREE') {
+      return 'Manual split';
     }
     return '';
   }

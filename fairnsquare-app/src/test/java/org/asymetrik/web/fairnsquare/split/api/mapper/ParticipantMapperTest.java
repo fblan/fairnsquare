@@ -3,7 +3,7 @@ package org.asymetrik.web.fairnsquare.split.api.mapper;
 import static org.assertj.core.api.Assertions.*;
 
 import org.asymetrik.web.fairnsquare.split.api.dto.ParticipantDTO;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

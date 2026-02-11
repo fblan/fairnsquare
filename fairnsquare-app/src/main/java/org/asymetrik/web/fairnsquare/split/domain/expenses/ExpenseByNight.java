@@ -65,7 +65,7 @@ public final class ExpenseByNight extends Expense {
             return Collections.emptyList();
         }
 
-        int totalNights = participants.stream().mapToInt(p -> p.nights().value()).sum();
+        double totalNights = participants.stream().mapToDouble(p -> p.nights().value()).sum();
 
         if (totalNights == 0) {
             return Collections.emptyList();
@@ -87,7 +87,7 @@ public final class ExpenseByNight extends Expense {
                 totalAssigned = totalAssigned.add(share);
             }
 
-            calculatedShares.add(new Share(p.id(), share));
+            calculatedShares.add(Share.withAmount(p.id(), share));
         }
 
         return calculatedShares;

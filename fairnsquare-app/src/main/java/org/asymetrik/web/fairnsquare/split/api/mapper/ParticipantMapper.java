@@ -1,7 +1,7 @@
 package org.asymetrik.web.fairnsquare.split.api.mapper;
 
 import org.asymetrik.web.fairnsquare.split.api.dto.ParticipantDTO;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 
 import jakarta.enterprise.context.ApplicationScoped;
 

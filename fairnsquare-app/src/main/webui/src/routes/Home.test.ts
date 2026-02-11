@@ -103,13 +103,13 @@ describe('Home', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows validation error for nights less than 1', async () => {
+  it('shows validation error for nights less than 0.5', async () => {
     render(Home);
 
     const nightsInput = screen.getByLabelText('Number of Nights');
     await fireEvent.input(nightsInput, { target: { value: 0 } });
 
-    expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
+    expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
   });
 
   it('shows validation error for nights greater than 365', async () => {

@@ -83,7 +83,7 @@ public final class ExpenseEqual extends Expense {
                 totalAssigned = totalAssigned.add(share);
             }
 
-            calculatedShares.add(new Share(p.id(), share));
+            calculatedShares.add(Share.withAmount(p.id(), share));
         }
 
         return calculatedShares;

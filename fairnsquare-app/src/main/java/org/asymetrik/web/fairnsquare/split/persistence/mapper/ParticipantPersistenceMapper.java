@@ -2,7 +2,7 @@ package org.asymetrik.web.fairnsquare.split.persistence.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenceDTO;
 
 /**

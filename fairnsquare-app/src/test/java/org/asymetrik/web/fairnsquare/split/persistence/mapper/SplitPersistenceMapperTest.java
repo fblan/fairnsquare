@@ -7,10 +7,9 @@ import java.util.List;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;

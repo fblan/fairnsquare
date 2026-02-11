@@ -1,5 +1,5 @@
 /**
- * EditExpenseModal Tests
+ * ExpenseEditModal Tests
  * Story FNS-002-6: Edit Expense Modal
  *
  * Tests cover all 8 acceptance criteria:
@@ -15,11 +15,13 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import EditExpenseModal from './EditExpenseModal.svelte';
+import ExpenseEditModal from './ExpenseEditModal.svelte';
 import type { Expense, Participant } from '$lib/api/splits';
 
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
+  addExpense: vi.fn(),
+  addFreeExpense: vi.fn(),
   updateExpense: vi.fn(),
   deleteExpense: vi.fn(),
 }));
@@ -32,7 +34,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
 import { updateExpense, deleteExpense } from '$lib/api/splits';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
-describe('EditExpenseModal', () => {
+describe('ExpenseEditModal', () => {
   const mockParticipants: Participant[] = [
     { id: 'p1', name: 'Alice', nights: 4 },
     { id: 'p2', name: 'Bob', nights: 2 },
@@ -74,20 +76,20 @@ describe('EditExpenseModal', () => {
 
   describe('Modal Rendering (AC1)', () => {
     it('renders modal with overlay when open is true', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Edit Expense' })).toBeInTheDocument();
     });
 
     it('does not render modal when open is false', () => {
-      render(EditExpenseModal, { props: { ...defaultProps, open: false } });
+      render(ExpenseEditModal, { props: { ...defaultProps, open: false } });
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('renders close button with aria-label', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
     });
@@ -97,7 +99,7 @@ describe('EditExpenseModal', () => {
 
   describe('Form Fields Pre-filled (AC2)', () => {
     it('renders all required form fields', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
@@ -106,28 +108,28 @@ describe('EditExpenseModal', () => {
     });
 
     it('pre-fills amount field with expense amount', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
       expect(amountInput.value).toBe('50');
     });
 
     it('pre-fills description field with expense description', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i) as HTMLInputElement;
       expect(descInput.value).toBe('Groceries');
     });
 
     it('pre-selects payer from expense', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Bob (p2) should be pre-selected as payer
       expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
     it('pre-selects split mode from expense', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const byNightRadio = screen.getByRole('radio', { name: /by night/i });
       expect(byNightRadio).toBeChecked();
@@ -135,14 +137,14 @@ describe('EditExpenseModal', () => {
 
     it('pre-selects EQUAL split mode when expense uses EQUAL', () => {
       const equalExpense: Expense = { ...mockExpense, splitMode: 'EQUAL' };
-      render(EditExpenseModal, { props: { ...defaultProps, expense: equalExpense } });
+      render(ExpenseEditModal, { props: { ...defaultProps, expense: equalExpense } });
 
       const equalRadio = screen.getByRole('radio', { name: /equal/i });
       expect(equalRadio).toBeChecked();
     });
 
     it('renders Delete Expense button below form', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('button', { name: /delete expense/i })).toBeInTheDocument();
     });
@@ -152,14 +154,14 @@ describe('EditExpenseModal', () => {
 
   describe('Save Button State (AC3)', () => {
     it('disables Save Changes button when form is pristine', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       expect(saveButton).toBeDisabled();
     });
 
     it('enables Save Changes button when amount is changed', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -169,7 +171,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('enables Save Changes button when description is changed', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
       await fireEvent.input(descInput, { target: { value: 'Updated Groceries' } });
@@ -179,7 +181,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('enables Save Changes button when split mode is changed', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const equalRadio = screen.getByRole('radio', { name: /equal/i });
       await fireEvent.click(equalRadio);
@@ -189,7 +191,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('disables Save Changes button when form has validation errors', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Change to invalid amount
       const amountInput = screen.getByLabelText(/amount/i);
@@ -210,7 +212,7 @@ describe('EditExpenseModal', () => {
         description: 'Updated Groceries',
       });
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -234,7 +236,7 @@ describe('EditExpenseModal', () => {
     it('shows loading state on Save Changes button during API call', async () => {
       vi.mocked(updateExpense).mockImplementation(() => new Promise(() => {}));
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -253,7 +255,7 @@ describe('EditExpenseModal', () => {
         amount: 75.00,
       });
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -273,7 +275,7 @@ describe('EditExpenseModal', () => {
         amount: 75.00,
       });
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -292,7 +294,7 @@ describe('EditExpenseModal', () => {
     it('shows error toast when API fails and keeps modal open', async () => {
       vi.mocked(updateExpense).mockRejectedValue({ detail: 'Server error' });
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '75.00' } });
@@ -317,7 +319,7 @@ describe('EditExpenseModal', () => {
 
   describe('Validation Errors (AC5)', () => {
     it('shows error when amount is less than 0.01', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '0.001' } });
@@ -329,7 +331,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('shows error when amount exceeds maximum', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '1000000' } });
@@ -341,7 +343,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('shows error when description exceeds 100 characters', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
       const longDescription = 'a'.repeat(101);
@@ -354,7 +356,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('accepts valid amount changes', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '100.50' } });
@@ -364,7 +366,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('accepts description up to 100 characters', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
       const validDescription = 'a'.repeat(100);
@@ -379,7 +381,7 @@ describe('EditExpenseModal', () => {
 
   describe('Delete from Modal (AC6)', () => {
     it('shows confirmation dialog when Delete Expense button is clicked', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       await fireEvent.click(deleteButton);
@@ -393,7 +395,7 @@ describe('EditExpenseModal', () => {
     it('deletes expense and closes modal when confirmed', async () => {
       vi.mocked(deleteExpense).mockResolvedValue(undefined);
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       await fireEvent.click(deleteButton);
@@ -415,7 +417,7 @@ describe('EditExpenseModal', () => {
     it('shows success toast after deletion', async () => {
       vi.mocked(deleteExpense).mockResolvedValue(undefined);
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       await fireEvent.click(deleteButton);
@@ -436,7 +438,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('keeps modal open when delete is canceled', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       await fireEvent.click(deleteButton);
@@ -456,7 +458,7 @@ describe('EditExpenseModal', () => {
     it('shows error toast when delete fails', async () => {
       vi.mocked(deleteExpense).mockRejectedValue({ detail: 'Failed to delete' });
 
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       await fireEvent.click(deleteButton);
@@ -481,7 +483,7 @@ describe('EditExpenseModal', () => {
 
   describe('Dirty Form Confirmation (AC7)', () => {
     it('shows confirmation dialog when closing with dirty form via X button', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -498,7 +500,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('shows confirmation dialog when clicking Cancel with dirty form', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -515,7 +517,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('closes modal when confirming discard', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -537,7 +539,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('keeps modal open when canceling discard', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -563,7 +565,7 @@ describe('EditExpenseModal', () => {
     it('does not close dirty form on Escape key without confirmation', async () => {
       // This test verifies Escape doesn't close a dirty form without confirmation
       // The confirmation dialog flow is tested thoroughly in the X button tests
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -582,7 +584,7 @@ describe('EditExpenseModal', () => {
 
   describe('Pristine Form Close (AC8)', () => {
     it('closes immediately when form is pristine via X button', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       await fireEvent.click(closeButton);
@@ -591,7 +593,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('closes immediately when form is pristine via Cancel button', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const cancelButton = screen.getAllByRole('button', { name: /cancel/i })[0];
       await fireEvent.click(cancelButton);
@@ -600,7 +602,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('closes immediately on Escape key when form is pristine', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       await fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -608,7 +610,7 @@ describe('EditExpenseModal', () => {
     });
 
     it('does not show confirmation dialog for pristine form', async () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       await fireEvent.click(closeButton);
@@ -621,7 +623,7 @@ describe('EditExpenseModal', () => {
 
   describe('Accessibility', () => {
     it('has proper ARIA attributes on dialog', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -629,21 +631,21 @@ describe('EditExpenseModal', () => {
     });
 
     it('all form fields have associated labels', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     });
 
     it('Save Changes button has minimum 44px touch target', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       expect(saveButton).toHaveClass('min-h-[44px]');
     });
 
     it('Delete Expense button has proper destructive styling', () => {
-      render(EditExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const deleteButton = screen.getByRole('button', { name: /delete expense/i });
       expect(deleteButton).toBeInTheDocument();
