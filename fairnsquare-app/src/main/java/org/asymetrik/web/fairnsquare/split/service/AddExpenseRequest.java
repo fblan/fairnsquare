@@ -1,6 +1,8 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.service;
 
 import java.math.BigDecimal;
+
+import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;

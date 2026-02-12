@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.participant;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 

@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -6,6 +6,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
  * Expense split proportionally based on nights stayed. Share calculation: participant's nights / total nights × amount

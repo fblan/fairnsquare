@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.sharedkernel.persistence;
+package org.asymetrik.web.fairnsquare.split.persistence;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

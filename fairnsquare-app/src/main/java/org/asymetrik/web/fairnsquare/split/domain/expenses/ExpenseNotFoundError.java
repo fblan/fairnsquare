@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.error.BaseError;
 

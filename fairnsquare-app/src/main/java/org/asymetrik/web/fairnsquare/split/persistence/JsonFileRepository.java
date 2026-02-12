@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.sharedkernel.persistence;
+package org.asymetrik.web.fairnsquare.split.persistence;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,7 +49,7 @@ public class JsonFileRepository {
      * @throws PersistenceException
      *             if the save operation fails
      */
-    public <T> void save(String splitId, T entity) {
+    <T> void save(String splitId, T entity) {
         Path filePath = pathResolver.resolve(splitId);
         saveToPath(filePath, entity);
     }
@@ -69,7 +69,7 @@ public class JsonFileRepository {
      * @throws PersistenceException
      *             if the save operation fails
      */
-    public <T> void save(String tenantId, String splitId, T entity) {
+    <T> void save(String tenantId, String splitId, T entity) {
         Path filePath = pathResolver.resolve(tenantId, splitId);
         saveToPath(filePath, entity);
     }
@@ -89,7 +89,7 @@ public class JsonFileRepository {
      * @throws PersistenceException
      *             if the load operation fails (other than file not found)
      */
-    public <T> Optional<T> load(String splitId, Class<T> entityClass) {
+    <T> Optional<T> load(String splitId, Class<T> entityClass) {
         Path filePath = pathResolver.resolve(splitId);
         return loadFromPath(filePath, entityClass);
     }
@@ -111,7 +111,7 @@ public class JsonFileRepository {
      * @throws PersistenceException
      *             if the load operation fails (other than file not found)
      */
-    public <T> Optional<T> load(String tenantId, String splitId, Class<T> entityClass) {
+    <T> Optional<T> load(String tenantId, String splitId, Class<T> entityClass) {
         Path filePath = pathResolver.resolve(tenantId, splitId);
         return loadFromPath(filePath, entityClass);
     }
@@ -124,7 +124,7 @@ public class JsonFileRepository {
      *
      * @return true if the file exists, false otherwise
      */
-    public boolean exists(String splitId) {
+    boolean exists(String splitId) {
         Path filePath = pathResolver.resolve(splitId);
         return Files.exists(filePath);
     }
@@ -139,7 +139,7 @@ public class JsonFileRepository {
      *
      * @return true if the file exists, false otherwise
      */
-    public boolean exists(String tenantId, String splitId) {
+    boolean exists(String tenantId, String splitId) {
         Path filePath = pathResolver.resolve(tenantId, splitId);
         return Files.exists(filePath);
     }
@@ -167,10 +167,12 @@ public class JsonFileRepository {
 
         try {
             String json = Files.readString(filePath);
+            System.out.println("Loaded JSON from " + filePath + ": " + json); // Debug log
             T entity = objectMapper.readValue(json, entityClass);
             return Optional.of(entity);
         } catch (IOException e) {
-            throw new PersistenceException("Failed to load entity from " + filePath, e);
+            System.out.println("Failed to load entity from " + filePath + ": " + e); // Debug log
+            throw new PersistenceException("Failed to load entity " + entityClass.getName() + " from " + filePath, e);
         }
     }
 
