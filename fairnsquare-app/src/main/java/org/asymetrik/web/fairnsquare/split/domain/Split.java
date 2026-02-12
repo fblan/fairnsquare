@@ -4,6 +4,17 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.PayerNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
+import org.asymetrik.web.fairnsquare.split.domain.participant.DuplicateParticipantNameError;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantHasExpensesError;
+import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -12,6 +23,9 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * behavior methods only, value objects for fields.
  */
 public class Split {
+
+    public static final int MAX_PARTICIPANTS = 100;
+    public static final int MAX_EXPENSES = 1000;
 
     /**
      * Value object for split name with validation.
@@ -50,30 +64,41 @@ public class Split {
         this.createdAt = createdAt;
         this.participants = new ArrayList<>();
         this.expenses = new ArrayList<>();
+        validate();
     }
 
-    /**
-     * Full constructor including collections.
-     */
-    public static Split withCollections(Id id, Name name, Instant createdAt, List<Participant> participants,
-            List<Expense> expenses) {
-        Split split = new Split(id, name, createdAt);
-        if (participants != null) {
-            split.participants.addAll(participants);
+    public void validate() {
+        Objects.requireNonNull(id, "Split ID cannot be null");
+        Objects.requireNonNull(name, "Split name cannot be null");
+        Objects.requireNonNull(createdAt, "CreatedAt cannot be null");
+        Objects.requireNonNull(participants, "Participants list cannot be null");
+        Objects.requireNonNull(expenses, "Expenses list cannot be null");
+        if (this.participants.size() > MAX_PARTICIPANTS) {
+            throw new SplitMaximumParticipantNumberReachedError(this);
         }
-        if (expenses != null) {
-            split.expenses.addAll(expenses);
+        if (this.expenses.size() > MAX_EXPENSES) {
+            throw new SplitMaximumExpenseReachedError(this);
         }
-        return split;
-    }
+        // Validate split name
+        Set<String> participantNames = new java.util.HashSet<>();
+        // Validate participants
+        for (Participant participant : participants) {
+            if (participant == null) {
+                throw new IllegalArgumentException("Participant cannot be null");
+            }
+            if (participantNames.contains(participant.name().value())) {
+                throw new DuplicateParticipantNameError(participant, this);
+            }
+            participantNames.add(participant.name().value());
 
-    // Behavior methods
+        }
 
-    /**
-     * Rename the split.
-     */
-    public void rename(String newName) {
-        this.name = new Name(newName);
+        // Validate expenses
+        for (Expense expense : expenses) {
+            if (expense == null) {
+                throw new IllegalArgumentException("Expenses cannot be null");
+            }
+        }
     }
 
     /**
@@ -84,6 +109,7 @@ public class Split {
             throw new IllegalArgumentException("Participant cannot be null");
         }
         this.participants.add(participant);
+        validate();
     }
 
     /**
@@ -94,6 +120,7 @@ public class Split {
             throw new IllegalArgumentException("Expense cannot be null");
         }
         this.expenses.add(expense);
+        validate();
     }
 
     /**
@@ -111,12 +138,13 @@ public class Split {
      * @throws ParticipantNotFoundError
      *             if no participant with the given ID exists
      */
-    public Participant updateParticipant(Participant.Id participantId, String newName, int newNights) {
+    public Participant updateParticipant(Participant.Id participantId, String newName, double newNights) {
         for (int i = 0; i < participants.size(); i++) {
             if (participants.get(i).id().equals(participantId)) {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
                         new Participant.Nights(newNights));
                 participants.set(i, updated);
+                validate();
                 return updated;
             }
         }
@@ -167,6 +195,7 @@ public class Split {
             throw new ParticipantHasExpensesError();
         }
         boolean removed = participants.removeIf(p -> p.id().equals(participantId));
+        validate();
         if (!removed) {
             throw new ParticipantNotFoundError(participantId.value(), id.value());
         }
@@ -206,6 +235,7 @@ public class Split {
                 Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
                         existing.getCreatedAt());
                 expenses.set(i, updated);
+                validate();
                 return updated;
             }
         }
@@ -226,6 +256,7 @@ public class Split {
         if (!removed) {
             throw new ExpenseNotFoundError(expenseId.value(), id.value());
         }
+        validate();
     }
 
     /**

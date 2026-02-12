@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.math.BigDecimal;
 
-import org.asymetrik.web.fairnsquare.expense.api.mapper.ExpenseMapper;
 import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import io.quarkus.test.junit.QuarkusTest;

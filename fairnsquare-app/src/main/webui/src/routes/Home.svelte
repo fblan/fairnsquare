@@ -38,7 +38,7 @@
 
   let nightsError = $derived.by(() => {
     if (!nightsTouched) return null;
-    if (!Number.isInteger(nights) || nights < 1) return 'Nights must be at least 1';
+    if (nights < 0.5) return 'Nights must be at least 0.5';
     if (nights > 365) return 'Nights cannot exceed 365';
     return null;
   });
@@ -49,8 +49,7 @@
     splitName.length <= 100 &&
     participantName.trim().length > 0 &&
     participantName.length <= 50 &&
-    Number.isInteger(nights) &&
-    nights >= 1 &&
+    nights >= 0.5 &&
     nights <= 365
   );
 
@@ -158,7 +157,8 @@
                 bind:value={nights}
                 onblur={() => { nightsTouched = true; }}
                 oninput={() => { nightsTouched = true; }}
-                min={1}
+                step={0.5}
+                min={0.5}
                 max={365}
                 disabled={isLoading}
                 class="min-h-[44px]"

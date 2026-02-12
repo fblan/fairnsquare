@@ -1,5 +1,5 @@
 /**
- * AddExpenseModal Tests
+ * ExpenseEditModal Tests
  * Story FNS-002-3: Add Expense Modal
  *
  * Tests cover all 10 acceptance criteria:
@@ -17,12 +17,15 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import AddExpenseModal from './AddExpenseModal.svelte';
+import ExpenseEditModal from './ExpenseEditModal.svelte';
 import type { Participant } from '$lib/api/splits';
 
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
   addExpense: vi.fn(),
+  addFreeExpense: vi.fn(),
+  updateExpense: vi.fn(),
+  deleteExpense: vi.fn(),
 }));
 
 // Mock the toast store
@@ -33,7 +36,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
 import { addExpense } from '$lib/api/splits';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
-describe('AddExpenseModal', () => {
+describe('ExpenseEditModal', () => {
   const mockParticipants: Participant[] = [
     { id: 'p1', name: 'Alice', nights: 4 },
     { id: 'p2', name: 'Bob', nights: 2 },
@@ -61,7 +64,7 @@ describe('AddExpenseModal', () => {
 
   describe('Modal Rendering (AC1)', () => {
     it('renders modal with overlay when open is true', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       // Title is in h2
@@ -69,13 +72,13 @@ describe('AddExpenseModal', () => {
     });
 
     it('does not render modal when open is false', () => {
-      render(AddExpenseModal, { props: { ...defaultProps, open: false } });
+      render(ExpenseEditModal, { props: { ...defaultProps, open: false } });
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('renders close button with aria-label', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
     });
@@ -85,7 +88,7 @@ describe('AddExpenseModal', () => {
 
   describe('Form Fields (AC2)', () => {
     it('renders all required form fields', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
@@ -94,14 +97,14 @@ describe('AddExpenseModal', () => {
     });
 
     it('pre-selects payer from preselectedPayerId prop', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Bob (p2) should be pre-selected
       expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
     it('has auto-focus on amount field', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       await waitFor(() => {
         const amountInput = screen.getByLabelText(/amount/i);
@@ -110,20 +113,20 @@ describe('AddExpenseModal', () => {
     });
 
     it('sets BY_NIGHT as default split mode', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const byNightRadio = screen.getByRole('radio', { name: /by night/i });
       expect(byNightRadio).toBeChecked();
     });
 
     it('renders Equal split mode option', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('radio', { name: /equal/i })).toBeInTheDocument();
     });
 
     it('description field has placeholder', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
       expect(descInput).toHaveAttribute('placeholder');
@@ -134,7 +137,7 @@ describe('AddExpenseModal', () => {
 
   describe('Submit Button State (AC3)', () => {
     it('shows validation errors when submitting with empty amount', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const submitButton = screen.getByRole('button', { name: /add expense/i });
       expect(submitButton).not.toBeDisabled();
@@ -145,7 +148,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('enables submit button when required fields are valid', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -159,7 +162,7 @@ describe('AddExpenseModal', () => {
 
   describe('Amount Validation (AC4)', () => {
     it('shows error when amount is less than 0.01', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '0.001' } });
@@ -171,7 +174,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('shows error when amount is zero', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '0' } });
@@ -183,7 +186,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('accepts valid amount', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '50.00' } });
@@ -196,32 +199,32 @@ describe('AddExpenseModal', () => {
   // --- AC5: Description validation ---
 
   describe('Description Validation (AC5)', () => {
-    it('shows error when description exceeds 100 characters', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+    it('shows error when description exceeds 200 characters', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
-      const longDescription = 'a'.repeat(101);
+      const longDescription = 'a'.repeat(201);
       await fireEvent.input(descInput, { target: { value: longDescription } });
       await fireEvent.blur(descInput);
 
       await waitFor(() => {
-        expect(screen.getByText(/100 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/200 characters/i)).toBeInTheDocument();
       });
     });
 
-    it('accepts description up to 100 characters', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+    it('accepts description up to 200 characters', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
-      const validDescription = 'a'.repeat(100);
+      const validDescription = 'a'.repeat(200);
       await fireEvent.input(descInput, { target: { value: validDescription } });
       await fireEvent.blur(descInput);
 
-      expect(screen.queryByText(/100 characters/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/200 characters/i)).not.toBeInTheDocument();
     });
 
     it('allows empty description (optional field)', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Just enter amount, leave description empty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -246,7 +249,7 @@ describe('AddExpenseModal', () => {
         shares: [],
       });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -270,7 +273,7 @@ describe('AddExpenseModal', () => {
     it('shows loading state on submit button during API call', async () => {
       vi.mocked(addExpense).mockImplementation(() => new Promise(() => {}));
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -294,7 +297,7 @@ describe('AddExpenseModal', () => {
         shares: [],
       });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -319,7 +322,7 @@ describe('AddExpenseModal', () => {
         shares: [],
       });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -342,7 +345,7 @@ describe('AddExpenseModal', () => {
     it('shows error toast when API fails', async () => {
       vi.mocked(addExpense).mockRejectedValue({ detail: 'Server error' });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -361,7 +364,7 @@ describe('AddExpenseModal', () => {
     it('keeps modal open and preserves form data on error', async () => {
       vi.mocked(addExpense).mockRejectedValue({ detail: 'Server error' });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
@@ -388,7 +391,7 @@ describe('AddExpenseModal', () => {
 
   describe('Dirty Form Confirmation (AC8)', () => {
     it('shows confirmation dialog when closing with dirty form via X button', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -405,7 +408,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('shows confirmation dialog when clicking Cancel with dirty form', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -422,7 +425,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('closes modal when confirming discard', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -444,7 +447,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('keeps modal open when canceling discard', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -472,7 +475,7 @@ describe('AddExpenseModal', () => {
 
   describe('Pristine Form Close (AC9)', () => {
     it('closes immediately when form is pristine via X button', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       await fireEvent.click(closeButton);
@@ -481,7 +484,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('closes immediately when form is pristine via Cancel button', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
       await fireEvent.click(cancelButton);
@@ -490,7 +493,7 @@ describe('AddExpenseModal', () => {
     });
 
     it('does not show confirmation dialog for pristine form', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       await fireEvent.click(closeButton);
@@ -503,7 +506,7 @@ describe('AddExpenseModal', () => {
 
   describe('Escape Key Handling (AC10)', () => {
     it('closes pristine modal on Escape key', async () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       await fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -513,7 +516,7 @@ describe('AddExpenseModal', () => {
     it('does not close dirty form on Escape key without confirmation', async () => {
       // This test verifies Escape doesn't close a dirty form without confirmation
       // The confirmation dialog flow is tested thoroughly in the X button tests
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Make form dirty
       const amountInput = screen.getByLabelText(/amount/i);
@@ -542,7 +545,7 @@ describe('AddExpenseModal', () => {
         shares: [],
       });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Select Equal mode
       const equalRadio = screen.getByRole('radio', { name: /equal/i });
@@ -580,7 +583,7 @@ describe('AddExpenseModal', () => {
         shares: [],
       });
 
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       // Fill amount and submit without changing payer
       const amountInput = screen.getByLabelText(/amount/i);
@@ -597,11 +600,251 @@ describe('AddExpenseModal', () => {
     });
   });
 
+  // --- Story 4.3: FREE Mode Manual Share Specification Tests ---
+
+  describe('FREE Mode Share Specification (Story 4.3)', () => {
+    it('renders FREE radio button option (AC1)', () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      expect(screen.getByRole('radio', { name: /manual/i })).toBeInTheDocument();
+    });
+
+    it('shows participant share inputs when FREE mode selected (AC1)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Alice')).toBeInTheDocument();
+        expect(screen.getByLabelText('Bob')).toBeInTheDocument();
+        expect(screen.getByLabelText('Charlie')).toBeInTheDocument();
+      });
+    });
+
+    it('share inputs are pre-filled with empty values (AC1)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        const aliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
+        const bobInput = screen.getByLabelText('Bob') as HTMLInputElement;
+        const charlieInput = screen.getByLabelText('Charlie') as HTMLInputElement;
+        
+        expect(aliceInput.value).toBe('');
+        expect(bobInput.value).toBe('');
+        expect(charlieInput.value).toBe('');
+      });
+    });
+
+    it('displays running total for parts (AC1)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        expect(screen.getByText(/total:/i)).toBeInTheDocument();
+      });
+    });
+
+    it('running total updates when share parts entered (AC2)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        expect(screen.getByText(/total: 0\.00 parts/i)).toBeInTheDocument();
+      });
+
+      const aliceInput = screen.getByLabelText('Alice');
+      await fireEvent.input(aliceInput, { target: { value: '2' } });
+      
+      await waitFor(() => {
+        expect(screen.getByText(/total: 2\.00 parts/i)).toBeInTheDocument();
+      });
+
+      const bobInput = screen.getByLabelText('Bob');
+      await fireEvent.input(bobInput, { target: { value: '3' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/total: 5\.00 parts/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows green checkmark when parts are valid (AC2)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      const aliceInput = screen.getByLabelText('Alice');
+      await fireEvent.input(aliceInput, { target: { value: '2' } });
+
+      await waitFor(() => {
+        expect(screen.getByText(/✓/)).toBeInTheDocument();
+      });
+    });
+
+    it('shows validation error when all parts are zero (AC3)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      // Set amount
+      const amountInput = screen.getByLabelText(/amount/i);
+      await fireEvent.input(amountInput, { target: { value: '100' } });
+
+      // Try to submit with zero parts
+      const submitButton = screen.getByRole('button', { name: /add expense/i });
+      await fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/at least one participant must have positive parts/i)).toBeInTheDocument();
+      });
+    });
+
+    it('enables submit when valid parts entered (AC2)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      await fireEvent.input(amountInput, { target: { value: '100' } });
+
+      const aliceInput = screen.getByLabelText('Alice');
+      await fireEvent.input(aliceInput, { target: { value: '2' } });
+
+      const bobInput = screen.getByLabelText('Bob');
+      await fireEvent.input(bobInput, { target: { value: '3' } });
+
+      const submitButton = screen.getByRole('button', { name: /add expense/i });
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    it('calls addFreeExpense API with correct request body (AC6)', async () => {
+      const { addFreeExpense } = await import('$lib/api/splits');
+      vi.mocked(addFreeExpense).mockResolvedValue({
+        id: 'e1',
+        description: 'Custom Split',
+        amount: 100.00,
+        payerId: 'p1',
+        splitMode: 'FREE',
+        type: 'FREE',
+        createdAt: '2026-02-10T12:00:00Z',
+        shares: [
+          { participantId: 'p1', amount: 40.00, parts: 2 },
+          { participantId: 'p2', amount: 60.00, parts: 3 },
+        ],
+      });
+
+      render(ExpenseEditModal, { props: defaultProps });
+
+      // Select FREE mode
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      // Fill form
+      const amountInput = screen.getByLabelText(/amount/i);
+      await fireEvent.input(amountInput, { target: { value: '100' } });
+
+      const aliceInput = screen.getByLabelText('Alice');
+      await fireEvent.input(aliceInput, { target: { value: '2' } });
+
+      const bobInput = screen.getByLabelText('Bob');
+      await fireEvent.input(bobInput, { target: { value: '3' } });
+
+      // Submit
+      const submitButton = screen.getByRole('button', { name: /add expense/i });
+      await fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(addFreeExpense).toHaveBeenCalledWith('test-split-id', {
+          amount: 100,
+          description: '',
+          payerId: 'p2',
+          shares: [
+            { participantId: 'p1', parts: 2 },
+            { participantId: 'p2', parts: 3 },
+            { participantId: 'p3', parts: 0 },
+          ],
+        });
+      });
+    });
+
+    it('form reset clears share inputs', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      const aliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
+      await fireEvent.input(aliceInput, { target: { value: '5' } });
+
+      expect(aliceInput.value).toBe('5');
+
+      // Close and reopen modal to trigger reset
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      await fireEvent.click(cancelButton);
+
+      // Re-render with open=true to trigger reset
+      const { rerender } = render(ExpenseEditModal, { props: { ...defaultProps, open: false } });
+      rerender({ props: { ...defaultProps, open: true } });
+
+      await waitFor(() => {
+        const resetAliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
+        expect(resetAliceInput.value).toBe('');
+      });
+    });
+
+    it('share inputs have numeric type with correct step (AC9)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        const aliceInput = screen.getByLabelText('Alice');
+        expect(aliceInput).toHaveAttribute('type', 'number');
+        expect(aliceInput).toHaveAttribute('step', '0.01');
+        expect(aliceInput).toHaveAttribute('min', '0');
+      });
+    });
+
+    it('share inputs have minimum 44px touch targets (AC9)', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        const aliceInput = screen.getByLabelText('Alice');
+        expect(aliceInput).toHaveClass('min-h-[44px]');
+      });
+    });
+
+    it('displays explanatory text about proportional calculation', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+
+      await waitFor(() => {
+        expect(screen.getByText(/amounts will be calculated proportionally/i)).toBeInTheDocument();
+      });
+    });
+  });
+
   // --- Accessibility ---
 
   describe('Accessibility', () => {
     it('has proper ARIA attributes on dialog', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const dialog = screen.getByRole('dialog');
       expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -609,14 +852,14 @@ describe('AddExpenseModal', () => {
     });
 
     it('all form fields have associated labels', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     });
 
     it('submit button has minimum 44px touch target', () => {
-      render(AddExpenseModal, { props: defaultProps });
+      render(ExpenseEditModal, { props: defaultProps });
 
       const submitButton = screen.getByRole('button', { name: /add expense/i });
       expect(submitButton).toHaveClass('min-h-[44px]');

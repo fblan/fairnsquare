@@ -1,10 +1,11 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -12,7 +13,7 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
  * calculation strategy.
  */
-public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
+public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual, ExpenseFree {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 
@@ -34,7 +35,8 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
         return switch (splitMode) {
             case BY_NIGHT -> new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now());
             case EQUAL -> new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now());
-            case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
+            case FREE -> throw new UnsupportedOperationException(
+                    "FREE mode requires shares - use ExpenseFree.create(amount, description, payerId, shares)");
         };
     }
 
@@ -52,7 +54,8 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
         return switch (mode) {
             case BY_NIGHT -> new ExpenseByNight(id, amount, description, payerId, createdAt);
             case EQUAL -> new ExpenseEqual(id, amount, description, payerId, createdAt);
-            case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
+            case FREE -> throw new UnsupportedOperationException(
+                    "FREE mode requires shares - use ExpenseFree.fromJson(id, amount, description, payerId, shares, createdAt)");
         };
     }
 
@@ -181,23 +184,41 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseEqual {
     }
 
     /**
-     * Value object representing a participant's share of an expense.
+     * Value object representing a participant's share of an expense. - For BY_NIGHT/EQUAL modes: amount is calculated,
+     * parts is null - For FREE mode: parts is stored, amount is calculated from parts
      */
-    public record Share(Participant.Id participantId, BigDecimal amount) {
+    public record Share(Participant.Id participantId, BigDecimal amount, BigDecimal parts) {
 
-        public static Share fromJson(Participant.Id participantId, BigDecimal amount) {
-            return new Share(participantId, amount);
+        /**
+         * Creates a share with calculated amount (used by BY_NIGHT/EQUAL).
+         */
+        public static Share withAmount(Participant.Id participantId, BigDecimal amount) {
+            return new Share(participantId, amount, null);
+        }
+
+        /**
+         * Creates a share with parts (used by FREE mode).
+         */
+        public static Share withParts(Participant.Id participantId, BigDecimal parts) {
+            return new Share(participantId, null, parts);
+        }
+
+        /**
+         * For JSON deserialization - reconstructs share from stored data.
+         */
+        public static Share fromJson(Participant.Id participantId, BigDecimal amount, BigDecimal parts) {
+            return new Share(participantId, amount, parts);
         }
 
         public Share {
             if (participantId == null) {
                 throw new IllegalArgumentException("Share participantId cannot be null");
             }
-            if (amount == null) {
-                throw new IllegalArgumentException("Share amount cannot be null");
-            }
-            if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            if (amount != null && amount.compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalArgumentException("Share amount cannot be negative");
+            }
+            if (parts != null && parts.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Share parts cannot be negative");
             }
         }
     }

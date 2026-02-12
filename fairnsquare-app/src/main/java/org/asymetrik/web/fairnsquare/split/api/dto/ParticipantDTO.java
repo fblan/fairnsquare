@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * DTO for Participant REST API responses. Decouples domain model from API contract.
  */
 public record ParticipantDTO(@JsonProperty("id") String id, @JsonProperty("name") String name,
-        @JsonProperty("nights") int nights) {
+        @JsonProperty("nights") double nights) {
 
     @JsonCreator
     public ParticipantDTO {

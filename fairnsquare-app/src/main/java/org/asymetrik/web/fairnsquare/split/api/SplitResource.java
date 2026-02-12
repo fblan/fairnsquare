@@ -18,21 +18,19 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
 import org.asymetrik.web.fairnsquare.expense.api.mapper.ExpenseMapper;
-import org.asymetrik.web.fairnsquare.split.api.dto.ParticipantDTO;
-import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
 import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
-import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
-import org.asymetrik.web.fairnsquare.split.domain.AddTypedExpenseRequest;
-import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
-import org.asymetrik.web.fairnsquare.split.domain.InvalidExpenseIdError;
-import org.asymetrik.web.fairnsquare.split.domain.InvalidParticipantIdError;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.service.AddExpenseRequest;
+import org.asymetrik.web.fairnsquare.split.service.AddFreeExpenseRequest;
+import org.asymetrik.web.fairnsquare.split.service.AddParticipantRequest;
+import org.asymetrik.web.fairnsquare.split.service.AddTypedExpenseRequest;
+import org.asymetrik.web.fairnsquare.split.service.CreateSplitRequest;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidExpenseIdError;
+import org.asymetrik.web.fairnsquare.split.domain.participant.InvalidParticipantIdError;
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
@@ -321,6 +319,32 @@ public class SplitResource {
                 .flatMap(expense -> splitService.getSplit(splitId)
                         .map(split -> Response.status(Response.Status.CREATED)
                                 .entity(expenseMapper.toDTO(expense, split)).build()))
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds a FREE expense with manually specified shares to a split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add free expense request with manual shares
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Add FREE expense", description = "Creates an expense with manually specified shares per participant")
+    @APIResponse(responseCode = "201", description = "Expense created successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid request or shares don't sum to amount")
+    @POST
+    @Path("/{splitId}/expenses/free")
+    public Response addExpenseFree(@PathParam("splitId") String splitId, @Valid AddFreeExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addExpenseFree(splitId, request).flatMap(expense -> splitService.getSplit(splitId).map(
+                split -> Response.status(Response.Status.CREATED).entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }

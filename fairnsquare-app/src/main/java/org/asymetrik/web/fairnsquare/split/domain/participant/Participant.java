@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.participant;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -18,7 +18,7 @@ public record Participant(Id id, Name name, Nights nights) {
      *
      * @return a new Participant with a generated NanoID
      */
-    public static Participant create(String name, int nights) {
+    public static Participant create(String name, double nights) {
         return new Participant(Id.generate(), new Name(name), new Nights(nights));
     }
 
@@ -108,17 +108,17 @@ public record Participant(Id id, Name name, Nights nights) {
     /**
      * Value object for number of nights with validation.
      */
-    public record Nights(int value) {
+    public record Nights(double value) {
 
-        private static final int MIN_NIGHTS = 1;
-        private static final int MAX_NIGHTS = 365;
+        private static final double MIN_NIGHTS = 0.5;
+        private static final double MAX_NIGHTS = 365;
 
         public Nights {
             if (value < MIN_NIGHTS) {
                 throw new IllegalArgumentException("Nights must be at least " + MIN_NIGHTS);
             }
             if (value > MAX_NIGHTS) {
-                throw new IllegalArgumentException("Nights cannot exceed " + MAX_NIGHTS);
+                throw new IllegalArgumentException("Nights cannot exceed " + (int) MAX_NIGHTS);
             }
         }
 

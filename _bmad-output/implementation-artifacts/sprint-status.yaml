@@ -66,7 +66,7 @@ development_status:
   epic-4: in-progress
   4-1-add-expense-with-split-mode-selection: done
   4-2-calculate-shares-by-split-mode: done
-  4-3-free-mode-manual-share-specification: backlog
+  4-3-free-mode-manual-share-specification: in-progress
   4-4-edit-expense: backlog
   4-5-remove-expense: backlog
   4-6-display-expenses-list-with-running-balances: backlog

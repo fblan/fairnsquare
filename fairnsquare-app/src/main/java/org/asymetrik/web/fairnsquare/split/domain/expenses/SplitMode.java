@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 /**
  * Expense split modes for distributing costs among participants.

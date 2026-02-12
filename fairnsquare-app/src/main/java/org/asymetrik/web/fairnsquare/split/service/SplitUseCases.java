@@ -3,22 +3,23 @@ package org.asymetrik.web.fairnsquare.split.service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.JsonFileRepository;
-import org.asymetrik.web.fairnsquare.split.domain.AddExpenseRequest;
-import org.asymetrik.web.fairnsquare.split.domain.AddParticipantRequest;
-import org.asymetrik.web.fairnsquare.split.domain.CreateSplitRequest;
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
-import org.asymetrik.web.fairnsquare.split.domain.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidSharesError;
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
-import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
+import org.asymetrik.web.fairnsquare.split.persistence.SplitRepository;
 import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMapper;
 
 /**
@@ -27,11 +28,11 @@ import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMa
 @ApplicationScoped
 public class SplitUseCases {
 
-    private final JsonFileRepository repository;
+    private final SplitRepository repository;
     private final SplitPersistenceMapper splitMapper;
 
     @Inject
-    public SplitUseCases(JsonFileRepository repository, SplitPersistenceMapper splitMapper) {
+    public SplitUseCases(SplitRepository repository, SplitPersistenceMapper splitMapper) {
         this.repository = repository;
         this.splitMapper = splitMapper;
     }
@@ -47,7 +48,7 @@ public class SplitUseCases {
     public Split createSplit(CreateSplitRequest request) {
         Split split = Split.create(request.getName());
 
-        repository.save(split.getId().value(), splitMapper.toPersistenceDTO(split));
+        repository.save(split);
 
         return split;
     }
@@ -61,7 +62,7 @@ public class SplitUseCases {
      * @return an Optional containing the split if found, empty otherwise
      */
     public Optional<Split> getSplit(String splitId) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain);
+        return repository.load(splitId);
     }
 
     /**
@@ -87,10 +88,10 @@ public class SplitUseCases {
      * @return an Optional containing the created participant if the split exists, empty otherwise
      */
     public Optional<Participant> addParticipant(String splitId, AddParticipantRequest request) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Participant participant = Participant.create(request.name(), request.nights());
             split.addParticipant(participant);
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
             return participant;
         });
     }
@@ -110,10 +111,10 @@ public class SplitUseCases {
      */
     public Optional<Participant> updateParticipant(String splitId, String participantId,
             UpdateParticipantRequest request) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             Participant updated = split.updateParticipant(partId, request.name(), request.nights());
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
             return updated;
         });
     }
@@ -131,10 +132,10 @@ public class SplitUseCases {
      *         ParticipantHasExpensesError if the participant has associated expenses.
      */
     public boolean removeParticipant(String splitId, String participantId) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             split.removeParticipant(partId);
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
             return true;
         }).orElse(false);
     }
@@ -151,10 +152,10 @@ public class SplitUseCases {
      *         if the expense doesn't exist within the split.
      */
     public boolean removeExpense(String splitId, String expenseId) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Expense.Id expId = Expense.Id.of(expenseId);
             split.removeExpense(expId);
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
             return true;
         }).orElse(false);
     }
@@ -173,12 +174,12 @@ public class SplitUseCases {
      *         ExpenseNotFoundError if the expense doesn't exist within the split.
      */
     public Optional<Expense> updateExpense(String splitId, String expenseId, UpdateExpenseRequest request) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Expense.Id expId = Expense.Id.of(expenseId);
             Participant.Id payerId = Participant.Id.of(request.payerId());
             Expense updated = split.updateExpense(expId, request.amount(), request.description(), payerId,
                     request.splitMode());
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
             return updated;
         });
     }
@@ -194,7 +195,7 @@ public class SplitUseCases {
      * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
      *         PayerNotFoundError if the payer is not a participant in the split.
      *
-     * @deprecated Use addExpenseByNight() or addExpenseEqual() instead.
+     * @deprecated Use addExpenseByNight(), addExpenseEqual(), or addExpenseFree() instead.
      */
     @Deprecated
     public Optional<Expense> addExpense(String splitId, AddExpenseRequest request) {
@@ -203,7 +204,8 @@ public class SplitUseCases {
                     addExpenseByNight(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case EQUAL ->
                     addExpenseEqual(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
-            case FREE -> throw new UnsupportedOperationException("FREE mode not yet implemented");
+            case FREE -> throw new UnsupportedOperationException(
+                    "FREE mode requires shares - use addExpenseFree() with AddFreeExpenseRequest");
         };
     }
 
@@ -223,14 +225,14 @@ public class SplitUseCases {
      */
     public Optional<ExpenseByNight> addExpenseByNight(String splitId, BigDecimal amount, String description,
             String payerId) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
 
             // Create expense and calculate shares using encapsulated logic
             ExpenseByNight expense = ExpenseByNight.create(amount, description, payer);
             split.addExpense(expense);
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
 
             return expense;
         });
@@ -252,16 +254,70 @@ public class SplitUseCases {
      */
     public Optional<ExpenseEqual> addExpenseEqual(String splitId, BigDecimal amount, String description,
             String payerId) {
-        return repository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain).map(split -> {
+        return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
 
             // Create expense and calculate shares using encapsulated logic
             ExpenseEqual expense = ExpenseEqual.create(amount, description, payer);
             split.addExpense(expense);
-            repository.save(splitId, splitMapper.toPersistenceDTO(split));
+            repository.save(split);
 
             return expense;
+        });
+    }
+
+    /**
+     * Adds a FREE expense with manually specified shares to an existing split.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add free expense request containing amount, description, payerId, and manual shares
+     *
+     * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
+     *         InvalidSharesError if shares don't sum to amount or if any participant ID is invalid.
+     */
+    public Optional<ExpenseFree> addExpenseFree(String splitId, AddFreeExpenseRequest request) {
+        return repository.load(splitId).map(split -> {
+            Participant.Id payer = Participant.Id.of(request.payerId());
+            split.validatePayerExists(payer);
+
+            // Validate all share participant IDs exist in split
+            for (AddFreeExpenseRequest.ShareRequest shareReq : request.shares()) {
+                try {
+                    Participant.Id participantId = Participant.Id.of(shareReq.participantId());
+                    split.getParticipant(participantId);
+                } catch (ParticipantNotFoundError e) {
+                    throw new InvalidSharesError("Participant with ID '" + shareReq.participantId()
+                            + "' not found in split. All share participants must exist.");
+                }
+            }
+
+            // AC8: Validate all split participants have a share specified
+            Set<String> shareParticipantIds = request.shares().stream()
+                    .map(AddFreeExpenseRequest.ShareRequest::participantId).collect(Collectors.toSet());
+            for (Participant participant : split.getParticipants()) {
+                if (!shareParticipantIds.contains(participant.id().value())) {
+                    throw new InvalidSharesError(
+                            "All participants must have a share specified. Missing share for participant '"
+                                    + participant.name().value() + "'.");
+                }
+            }
+
+            // Convert ShareRequest to Expense.Share with parts
+            List<Expense.Share> shares = request.shares().stream()
+                    .map(sr -> Expense.Share.withParts(Participant.Id.of(sr.participantId()), sr.parts())).toList();
+
+            // Create expense with manual shares (validation happens in ExpenseFree.create())
+            try {
+                ExpenseFree expense = ExpenseFree.create(request.amount(), request.description(), payer, shares);
+                split.addExpense(expense);
+                repository.save(split);
+                return expense;
+            } catch (IllegalArgumentException e) {
+                throw new InvalidSharesError(e.getMessage());
+            }
         });
     }
 }

@@ -1,8 +1,9 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -134,7 +135,7 @@ class ExpenseByNightTest {
         assertThat(expense.getPayerId()).isEqualTo(payerId);
     }
 
-    private Participant createParticipant(String name, int nights) {
+    private Participant createParticipant(String name, double nights) {
         return Participant.create(name, nights);
     }
 }

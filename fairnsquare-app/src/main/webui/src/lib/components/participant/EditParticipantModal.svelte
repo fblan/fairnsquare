@@ -73,7 +73,7 @@
   );
 
   const isNightsValid = $derived(
-    editNights >= 1 && editNights <= 365
+    editNights >= 0.5 && editNights <= 365
   );
 
   const isValid = $derived(isNameValid && isNightsValid);
@@ -117,8 +117,8 @@
   }
 
   function validateNights() {
-    if (editNights < 1) {
-      validationErrors.nights = 'Nights must be at least 1';
+    if (editNights < 0.5) {
+      validationErrors.nights = 'Nights must be at least 0.5';
     } else if (editNights > 365) {
       validationErrors.nights = 'Nights cannot exceed 365';
     } else {
@@ -327,7 +327,8 @@
           <Input
             id="edit-participant-nights-modal"
             type="number"
-            min="1"
+            step="0.5"
+            min="0.5"
             max="365"
             bind:value={editNights}
             onblur={handleNightsBlur}

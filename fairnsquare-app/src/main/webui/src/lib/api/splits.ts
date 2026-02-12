@@ -29,6 +29,7 @@ export type SplitMode = 'BY_NIGHT' | 'EQUAL' | 'FREE';
 export interface Share {
   participantId: string;
   amount: number;
+  parts?: number; // Only present for FREE mode
 }
 
 export interface Expense {
@@ -46,6 +47,16 @@ export interface AddExpenseRequest {
   description: string;
   payerId: string;
   splitMode: SplitMode;
+}
+
+export interface AddFreeExpenseRequest {
+  amount: number;
+  description: string;
+  payerId: string;
+  shares: Array<{
+    participantId: string;
+    parts: number;
+  }>;
 }
 
 export interface UpdateExpenseRequest {
@@ -134,7 +145,7 @@ export async function deleteParticipant(
 }
 
 /**
- * Adds an expense to a split.
+ * Adds an expense to a split, routing to the type-specific endpoint based on splitMode.
  * @param splitId The split identifier
  * @param request The add expense request
  * @returns The created expense with calculated shares
@@ -143,7 +154,27 @@ export async function addExpense(
   splitId: string,
   request: AddExpenseRequest
 ): Promise<Expense> {
-  return apiRequest<Expense>(`/splits/${splitId}/expenses`, {
+  const endpoint = request.splitMode === 'BY_NIGHT'
+    ? `/splits/${splitId}/expenses/by-night`
+    : `/splits/${splitId}/expenses/equal`;
+  const { splitMode: _, ...body } = request;
+  return apiRequest<Expense>(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Adds a FREE mode expense with manually specified shares to a split.
+ * @param splitId The split identifier
+ * @param request The add free expense request with manual shares
+ * @returns The created expense with the specified shares
+ */
+export async function addFreeExpense(
+  splitId: string,
+  request: AddFreeExpenseRequest
+): Promise<Expense> {
+  return apiRequest<Expense>(`/splits/${splitId}/expenses/free`, {
     method: 'POST',
     body: JSON.stringify(request),
   });

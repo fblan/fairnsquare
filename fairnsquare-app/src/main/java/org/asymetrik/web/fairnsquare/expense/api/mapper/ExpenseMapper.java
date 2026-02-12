@@ -6,10 +6,12 @@ import java.util.List;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByNightDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseEqualDTO;
+import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseFreeDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ShareDTO;
-import org.asymetrik.web.fairnsquare.split.domain.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -50,10 +52,13 @@ public class ExpenseMapper {
             case ExpenseEqual equal -> new ExpenseEqualDTO(equal.getId().value(), equal.getDescription(),
                     equal.getAmount(), equal.getPayerId() != null ? equal.getPayerId().value() : null, "EQUAL", "EQUAL",
                     equal.getCreatedAt().toString(), shares);
+            case ExpenseFree free -> new ExpenseFreeDTO(free.getId().value(), free.getDescription(), free.getAmount(),
+                    free.getPayerId() != null ? free.getPayerId().value() : null, "FREE", "FREE",
+                    free.getCreatedAt().toString(), shares);
         };
     }
 
     private List<ShareDTO> mapShares(List<Expense.Share> domainShares) {
-        return domainShares.stream().map(s -> new ShareDTO(s.participantId().value(), s.amount())).toList();
+        return domainShares.stream().map(s -> new ShareDTO(s.participantId().value(), s.amount(), s.parts())).toList();
     }
 }

@@ -5,7 +5,7 @@
   import Input from '$lib/components/ui/input/input.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-  import AddExpenseModal from '$lib/components/expense/AddExpenseModal.svelte';
+  import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import EditParticipantModal from '$lib/components/participant/EditParticipantModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { Plus } from 'lucide-svelte';
@@ -113,8 +113,8 @@
       errors.name = 'Name cannot exceed 50 characters';
     }
 
-    if (formNights < 1) {
-      errors.nights = 'Nights must be at least 1';
+    if (formNights < 0.5) {
+      errors.nights = 'Nights must be at least 0.5';
     } else if (formNights > 365) {
       errors.nights = 'Nights cannot exceed 365';
     }
@@ -267,7 +267,7 @@
             <div class="flex items-center gap-2 mb-2">
               <span class="font-semibold text-lg">{participant.name}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
-                {participant.nights} {participant.nights === 1 ? 'night' : 'nights'}
+                {participant.nights} {participant.nights <= 1 ? 'night' : 'nights'}
               </span>
             </div>
             <!-- Stats Row -->
@@ -346,6 +346,7 @@
             <Input
               id="participant-nights"
               type="number"
+              step="0.5"
               bind:value={formNights}
               class="min-h-[44px]"
               disabled={isSubmitting}
@@ -393,7 +394,7 @@
 />
 
 <!-- Add Expense Modal (Story FNS-002-3) -->
-<AddExpenseModal
+<ExpenseEditModal
   open={showAddExpenseModal}
   splitId={split.id}
   preselectedPayerId={selectedPayerId}

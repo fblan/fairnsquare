@@ -1,8 +1,8 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.domain.expenses;
 
 import java.math.BigDecimal;
-import java.util.List;
 
+import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,8 +40,7 @@ class ExpenseTest {
         Participant.Id payerId = Participant.Id.generate();
 
         assertThatThrownBy(() -> Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.FREE))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageContaining("FREE mode not yet implemented");
+                .isInstanceOf(UnsupportedOperationException.class).hasMessageContaining("FREE mode requires shares");
     }
 
     @Test
@@ -141,7 +140,7 @@ class ExpenseTest {
 
         assertThatThrownBy(() -> Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, SplitMode.FREE,
                 java.time.Instant.now())).isInstanceOf(UnsupportedOperationException.class)
-                        .hasMessageContaining("FREE mode not yet implemented");
+                        .hasMessageContaining("FREE mode requires shares");
     }
 
     @Test
@@ -233,30 +232,43 @@ class ExpenseTest {
 
     @Test
     void share_constructor_throwsForNullParticipantId() {
-        assertThatThrownBy(() -> new Expense.Share(null, new BigDecimal("10.00")))
+        assertThatThrownBy(() -> new Expense.Share(null, new BigDecimal("10.00"), null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("participantId cannot be null");
     }
 
     @Test
-    void share_constructor_throwsForNullAmount() {
-        assertThatThrownBy(() -> new Expense.Share(Participant.Id.generate(), null))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("amount cannot be null");
-    }
-
-    @Test
-    void share_constructor_throwsForNegativeAmount() {
-        assertThatThrownBy(() -> new Expense.Share(Participant.Id.generate(), new BigDecimal("-1.00")))
+    void share_withAmount_throwsForNegativeAmount() {
+        assertThatThrownBy(() -> Expense.Share.withAmount(Participant.Id.generate(), new BigDecimal("-1.00")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("amount cannot be negative");
     }
 
     @Test
-    void share_fromJson_createsValidShare() {
+    void share_withParts_throwsForNegativeParts() {
+        assertThatThrownBy(() -> Expense.Share.withParts(Participant.Id.generate(), new BigDecimal("-1.00")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("parts cannot be negative");
+    }
+
+    @Test
+    void share_fromJson_createsValidShareWithAmount() {
         Participant.Id participantId = Participant.Id.generate();
         BigDecimal amount = new BigDecimal("25.50");
 
-        Expense.Share share = Expense.Share.fromJson(participantId, amount);
+        Expense.Share share = Expense.Share.fromJson(participantId, amount, null);
 
         assertThat(share.participantId()).isEqualTo(participantId);
         assertThat(share.amount()).isEqualByComparingTo("25.50");
+        assertThat(share.parts()).isNull();
+    }
+
+    @Test
+    void share_fromJson_createsValidShareWithParts() {
+        Participant.Id participantId = Participant.Id.generate();
+        BigDecimal parts = new BigDecimal("2.5");
+
+        Expense.Share share = Expense.Share.fromJson(participantId, null, parts);
+
+        assertThat(share.participantId()).isEqualTo(participantId);
+        assertThat(share.amount()).isNull();
+        assertThat(share.parts()).isEqualByComparingTo("2.5");
     }
 }

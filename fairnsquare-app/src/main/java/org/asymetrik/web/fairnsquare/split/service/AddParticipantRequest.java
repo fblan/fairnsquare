@@ -1,7 +1,7 @@
-package org.asymetrik.web.fairnsquare.split.domain;
+package org.asymetrik.web.fairnsquare.split.service;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,5 +11,5 @@ import jakarta.validation.constraints.Size;
 public record AddParticipantRequest(
         @NotBlank(message = "Name is required") @Size(max = 50, message = "Name cannot exceed 50 characters") String name,
 
-        @Min(value = 1, message = "Nights must be at least 1") @Max(value = 365, message = "Nights cannot exceed 365") int nights) {
+        @DecimalMin(value = "0.5", message = "Nights must be at least 0.5") @DecimalMax(value = "365", message = "Nights cannot exceed 365") double nights) {
 }

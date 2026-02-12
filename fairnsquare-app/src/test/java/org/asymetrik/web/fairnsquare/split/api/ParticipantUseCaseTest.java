@@ -15,7 +15,7 @@ import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.sharedkernel.persistence.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.split.persistence.TenantPathResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -63,7 +63,27 @@ class ParticipantUseCaseTest {
                 {"name": "Alice", "nights": 2}
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201)
                 .body("id", notNullValue()).body("id", matchesPattern("^[A-Za-z0-9_-]{21}$"))
-                .body("name", equalTo("Alice")).body("nights", equalTo(2));
+                .body("name", equalTo("Alice")).body("nights", equalTo(2.0f));
+    }
+
+    @Test
+    void addParticipant_withTwiceSameName_returnsError() {
+        // First create a split
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Participant Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        // Add a participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201)
+                .body("id", notNullValue()).body("id", matchesPattern("^[A-Za-z0-9_-]{21}$"))
+                .body("name", equalTo("Alice")).body("nights", equalTo(2.0f));
+        // Add the same participant
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400);
+
     }
 
     /**
@@ -223,7 +243,7 @@ class ParticipantUseCaseTest {
         given().contentType(ContentType.JSON).body("""
                 {"name": "Bob", "nights": 4}
                 """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(200)
-                .body("id", equalTo(participantId)).body("name", equalTo("Bob")).body("nights", equalTo(4));
+                .body("id", equalTo(participantId)).body("name", equalTo("Bob")).body("nights", equalTo(4.0f));
     }
 
     /**
