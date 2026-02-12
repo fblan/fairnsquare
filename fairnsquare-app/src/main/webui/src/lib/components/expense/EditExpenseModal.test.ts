@@ -342,16 +342,16 @@ describe('ExpenseEditModal', () => {
       });
     });
 
-    it('shows error when description exceeds 100 characters', async () => {
+    it('shows error when description exceeds 200 characters', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
-      const longDescription = 'a'.repeat(101);
+      const longDescription = 'a'.repeat(201);
       await fireEvent.input(descInput, { target: { value: longDescription } });
       await fireEvent.blur(descInput);
 
       await waitFor(() => {
-        expect(screen.getByText(/100 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/200 characters/i)).toBeInTheDocument();
       });
     });
 
@@ -365,15 +365,15 @@ describe('ExpenseEditModal', () => {
       expect(screen.queryByText(/at least.*0\.01/i)).not.toBeInTheDocument();
     });
 
-    it('accepts description up to 100 characters', async () => {
+    it('accepts description up to 200 characters', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
       const descInput = screen.getByLabelText(/description/i);
-      const validDescription = 'a'.repeat(100);
+      const validDescription = 'a'.repeat(200);
       await fireEvent.input(descInput, { target: { value: validDescription } });
       await fireEvent.blur(descInput);
 
-      expect(screen.queryByText(/100 characters/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/200 characters/i)).not.toBeInTheDocument();
     });
   });
 
