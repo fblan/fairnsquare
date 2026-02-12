@@ -204,5 +204,30 @@
       </button>
     </section>
 
+    <!-- Solve Card (clickable → navigates to settlement page) -->
+    {#if expenseCount > 0 && participantCount > 0}
+      <section class="w-full">
+        <button
+          class="w-full text-left"
+          onclick={() => navigate(`/splits/${splitId}/settlement`)}
+          aria-label="View settlement"
+        >
+          <Card.Root class="border-teal-200 bg-teal-50/50 hover:bg-teal-50 transition-colors cursor-pointer">
+            <Card.Content class="py-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-muted-foreground">Settlement</p>
+                  <p class="text-lg font-semibold">Solve</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </Card.Content>
+          </Card.Root>
+        </button>
+      </section>
+    {/if}
+
   {/if}
 </div>

@@ -332,5 +332,87 @@ describe('Split', () => {
 
       expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/participants');
     });
+
+    // --- Solve Card ---
+
+    it('shows Solve card when split has both participants and expenses', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Solve')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: 'View settlement' })).toBeInTheDocument();
+    });
+
+    it('does not show Solve card when split has no expenses', async () => {
+      const mockSplitNoExpenses: SplitType = {
+        ...mockSplitEmpty,
+        participants: [{ id: 'p1', name: 'Alice', nights: 3 }],
+      };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitNoExpenses);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 participant')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Solve')).not.toBeInTheDocument();
+    });
+
+    it('does not show Solve card when split has no participants', async () => {
+      const mockSplitNoParticipants: SplitType = {
+        ...mockSplitEmpty,
+        expenses: [
+          {
+            id: 'e1',
+            description: 'Test',
+            amount: 10,
+            payerId: 'p1',
+            splitMode: 'EQUAL' as const,
+            createdAt: '2026-01-25T12:00:00Z',
+            shares: [],
+          },
+        ],
+      };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitNoParticipants);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 expense')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Solve')).not.toBeInTheDocument();
+    });
+
+    it('does not show Solve card when split is empty', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('0 expenses')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Solve')).not.toBeInTheDocument();
+    });
+
+    it('navigates to settlement page when Solve card is clicked', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Solve')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
+
+      expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/settlement');
+    });
   });
 });
