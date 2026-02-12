@@ -16,6 +16,8 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidSharesError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
+import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
@@ -63,6 +65,18 @@ public class SplitUseCases {
      */
     public Optional<Split> getSplit(String splitId) {
         return repository.load(splitId);
+    }
+
+    /**
+     * Calculates the settlement for a split: participant balances and reimbursement proposals.
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return an Optional containing the settlement if the split exists, empty otherwise
+     */
+    public Optional<Settlement> calculateSettlement(String splitId) {
+        return repository.load(splitId).map(SettlementCalculator::calculate);
     }
 
     /**

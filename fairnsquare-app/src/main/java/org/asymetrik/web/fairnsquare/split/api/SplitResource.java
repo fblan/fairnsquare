@@ -20,6 +20,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.asymetrik.web.fairnsquare.expense.api.mapper.ExpenseMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
+import org.asymetrik.web.fairnsquare.split.api.mapper.SettlementMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.service.AddExpenseRequest;
@@ -49,14 +50,16 @@ public class SplitResource {
     private final SplitMapper splitMapper;
     private final ParticipantMapper participantMapper;
     private final ExpenseMapper expenseMapper;
+    private final SettlementMapper settlementMapper;
 
     @Inject
     public SplitResource(SplitUseCases splitService, SplitMapper splitMapper, ParticipantMapper participantMapper,
-            ExpenseMapper expenseMapper) {
+            ExpenseMapper expenseMapper, SettlementMapper settlementMapper) {
         this.splitService = splitService;
         this.splitMapper = splitMapper;
         this.participantMapper = participantMapper;
         this.expenseMapper = expenseMapper;
+        this.settlementMapper = settlementMapper;
     }
 
     /**
@@ -92,6 +95,30 @@ public class SplitResource {
         }
 
         return splitService.getSplit(splitId).map(split -> Response.ok(splitMapper.toDTO(split)).build())
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Calculates the settlement for a split: participant balances and reimbursement proposals.
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return 200 OK with the settlement, or 404 Not Found, or 400 Bad Request for invalid ID
+     */
+    @Operation(summary = "Get settlement", description = "Calculates participant balances and reimbursement proposals for a split")
+    @APIResponse(responseCode = "200", description = "Settlement calculated successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid split ID format")
+    @GET
+    @Path("/{splitId}/settlement")
+    public Response getSettlement(@PathParam("splitId") String splitId) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.calculateSettlement(splitId)
+                .map(settlement -> Response.ok(settlementMapper.toDTO(settlement)).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 

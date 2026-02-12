@@ -74,6 +74,27 @@ export interface Split {
   expenses: Expense[];
 }
 
+export interface ParticipantBalance {
+  participantId: string;
+  participantName: string;
+  totalPaid: number;
+  totalCost: number;
+  balance: number;
+}
+
+export interface Reimbursement {
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  amount: number;
+}
+
+export interface Settlement {
+  balances: ParticipantBalance[];
+  reimbursements: Reimbursement[];
+}
+
 /**
  * Creates a new split.
  * @param request The create split request containing the name
@@ -210,4 +231,13 @@ export async function deleteExpense(
   await apiRequest<void>(`/splits/${splitId}/expenses/${expenseId}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * Gets the settlement for a split: participant balances and reimbursement proposals.
+ * @param splitId The split identifier
+ * @returns The settlement with balances and reimbursements
+ */
+export async function getSettlement(splitId: string): Promise<Settlement> {
+  return apiRequest<Settlement>(`/splits/${splitId}/settlement`);
 }
