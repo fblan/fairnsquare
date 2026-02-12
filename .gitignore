@@ -70,6 +70,7 @@ jacoco.exec
 
 # Application data (JSON file storage)
 fairnsquare-app/data/
+fairnsquare-app/test-data
 
 # Secrets (never commit)
 credentials.json
@@ -77,3 +78,4 @@ secrets.yaml
 *.pem
 *.key
 /nextstepforfred.md
+
