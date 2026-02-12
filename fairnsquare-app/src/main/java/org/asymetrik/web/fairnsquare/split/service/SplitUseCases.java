@@ -296,12 +296,12 @@ public class SplitUseCases {
 
             // AC8: Validate all split participants have a share specified
             Set<String> shareParticipantIds = request.shares().stream()
-                    .map(AddFreeExpenseRequest.ShareRequest::participantId)
-                    .collect(Collectors.toSet());
+                    .map(AddFreeExpenseRequest.ShareRequest::participantId).collect(Collectors.toSet());
             for (Participant participant : split.getParticipants()) {
                 if (!shareParticipantIds.contains(participant.id().value())) {
-                    throw new InvalidSharesError("All participants must have a share specified. Missing share for participant '"
-                            + participant.name().value() + "'.");
+                    throw new InvalidSharesError(
+                            "All participants must have a share specified. Missing share for participant '"
+                                    + participant.name().value() + "'.");
                 }
             }
 
