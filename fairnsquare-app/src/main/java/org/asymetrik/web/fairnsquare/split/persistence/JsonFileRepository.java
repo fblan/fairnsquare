@@ -167,11 +167,9 @@ public class JsonFileRepository {
 
         try {
             String json = Files.readString(filePath);
-            System.out.println("Loaded JSON from " + filePath + ": " + json); // Debug log
             T entity = objectMapper.readValue(json, entityClass);
             return Optional.of(entity);
         } catch (IOException e) {
-            System.out.println("Failed to load entity from " + filePath + ": " + e); // Debug log
             throw new PersistenceException("Failed to load entity " + entityClass.getName() + " from " + filePath, e);
         }
     }

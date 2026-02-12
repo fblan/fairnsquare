@@ -63,6 +63,11 @@
                 <artifactId>quarkus-quinoa</artifactId>
                 <version>${quarkus-quinoa.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.quinoa</groupId>
+                <artifactId>quarkus-quinoa-testing</artifactId>
+                <version>${quarkus-quinoa.version}</version>
+            </dependency>
 
             <!-- NanoID for cryptographically secure split identifiers -->
             <dependency>

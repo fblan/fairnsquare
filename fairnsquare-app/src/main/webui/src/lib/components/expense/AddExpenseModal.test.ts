@@ -778,24 +778,29 @@ describe('ExpenseEditModal', () => {
     });
 
     it('form reset clears share inputs', async () => {
-      render(ExpenseEditModal, { props: defaultProps });
+      const { rerender } = render(ExpenseEditModal, { props: defaultProps });
 
+      // Switch to FREE mode and set a share value
       const freeRadio = screen.getByRole('radio', { name: /manual/i });
       await fireEvent.click(freeRadio);
 
       const aliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
       await fireEvent.input(aliceInput, { target: { value: '5' } });
-
       expect(aliceInput.value).toBe('5');
 
-      // Close and reopen modal to trigger reset
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      await fireEvent.click(cancelButton);
+      // Close modal (toggle open to false)
+      await rerender({ ...defaultProps, open: false });
 
-      // Re-render with open=true to trigger reset
-      const { rerender } = render(ExpenseEditModal, { props: { ...defaultProps, open: false } });
-      rerender({ props: { ...defaultProps, open: true } });
+      // Reopen modal (toggle open to true → triggers resetForm via $effect)
+      await rerender({ ...defaultProps, open: true });
 
+      // After reset, splitMode goes back to BY_NIGHT — switch to FREE again
+      await waitFor(() => {
+        expect(screen.getByRole('radio', { name: /manual/i })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('radio', { name: /manual/i }));
+
+      // Verify share input was cleared by the reset
       await waitFor(() => {
         const resetAliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
         expect(resetAliceInput.value).toBe('');
