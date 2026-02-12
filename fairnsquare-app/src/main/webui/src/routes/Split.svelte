@@ -8,7 +8,6 @@
   import * as Card from '$lib/components/ui/card';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import ParticipantsSection from './ParticipantsSection.svelte';
 
   // Extract splitId from route params
   const splitId = $derived(route.params.splitId || '');
@@ -23,6 +22,14 @@
   const expenseCount = $derived(split?.expenses.length ?? 0);
   const expenseTotal = $derived(
     split?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0
+  );
+
+  // Participant summary stats
+  const participantCount = $derived(split?.participants.length ?? 0);
+  const participantSummary = $derived(
+    split?.participants
+      .map(p => `${p.name} (${p.nights})`)
+      .join(', ') ?? ''
   );
 
   // Fetch split data when splitId changes
@@ -176,8 +183,26 @@
       </button>
     </section>
 
-    <!-- Participants Section (cards with stats) -->
-    <ParticipantsSection {split} onSplitUpdated={() => loadSplit(splitId)} />
+    <!-- Participants Summary Card (clickable → navigates to participants page) -->
+    <section class="w-full">
+      <button
+        class="w-full text-left"
+        onclick={() => navigate(`/splits/${splitId}/participants`)}
+        aria-label="View all participants"
+      >
+        <Card.Root class="border-teal-200 bg-teal-50/50 hover:bg-teal-50 transition-colors cursor-pointer">
+          <Card.Content class="py-4">
+            <div>
+              <p class="text-sm text-muted-foreground">Participants</p>
+              <p class="text-lg font-semibold">{participantCount} {participantCount === 1 ? 'participant' : 'participants'}</p>
+              {#if participantSummary}
+                <p class="text-sm text-muted-foreground mt-1">{participantSummary}</p>
+              {/if}
+            </div>
+          </Card.Content>
+        </Card.Root>
+      </button>
+    </section>
 
   {/if}
 </div>
