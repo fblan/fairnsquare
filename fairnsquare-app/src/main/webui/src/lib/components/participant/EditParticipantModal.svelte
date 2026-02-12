@@ -98,7 +98,9 @@
 
       // Auto-focus name field
       setTimeout(() => {
-        document.getElementById('edit-participant-name-modal')?.focus();
+        if (typeof document !== 'undefined') {
+          document.getElementById('edit-participant-name-modal')?.focus();
+        }
       }, AUTO_FOCUS_DELAY_MS);
     }
   });

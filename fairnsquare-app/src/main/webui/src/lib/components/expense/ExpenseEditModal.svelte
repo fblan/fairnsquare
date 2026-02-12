@@ -111,7 +111,9 @@
     if (open) {
       untrack(() => resetForm());
       setTimeout(() => {
-        document.getElementById('expense-amount-modal')?.focus();
+        if (typeof document !== 'undefined') {
+          document.getElementById('expense-amount-modal')?.focus();
+        }
       }, 50);
     }
   });
