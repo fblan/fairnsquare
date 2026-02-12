@@ -143,6 +143,8 @@
       errors.name = 'Name is required';
     } else if (formName.trim().length > 50) {
       errors.name = 'Name cannot exceed 50 characters';
+    } else if (split?.participants.some(p => p.name.toLowerCase() === formName.trim().toLowerCase())) {
+      errors.name = 'A participant with this name already exists';
     }
 
     if (formNights < 0.5) {
