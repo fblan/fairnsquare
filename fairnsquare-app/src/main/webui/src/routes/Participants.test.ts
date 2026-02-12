@@ -375,6 +375,40 @@ describe('Participants', () => {
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
+    it('shows validation error when name duplicates an existing participant', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      expect(screen.getByText('A participant with this name already exists')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it('duplicate name validation is case-insensitive', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'aLiCe' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      expect(screen.getByText('A participant with this name already exists')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
     it('shows validation error for nights less than 0.5', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
