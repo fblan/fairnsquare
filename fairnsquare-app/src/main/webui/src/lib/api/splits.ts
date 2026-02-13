@@ -72,6 +72,7 @@ export interface Split {
   createdAt: string;
   participants: Participant[];
   expenses: Expense[];
+  settlement: Settlement | null;
 }
 
 export interface ParticipantBalance {

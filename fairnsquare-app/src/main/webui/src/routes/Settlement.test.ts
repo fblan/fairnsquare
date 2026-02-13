@@ -287,4 +287,27 @@ describe('Settlement', () => {
     // But after clicking, no reimbursement details appear since the list is empty
     expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
   });
+
+  // --- Auto-resolved via sessionStorage ---
+
+  it('shows reimbursements directly when settlement-resolved flag is set', async () => {
+    // Simulate flag set by Split dashboard
+    sessionStorage.setItem('settlement-resolved', 'true');
+
+    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+    render(Settlement);
+
+    await waitFor(() => {
+      // Reimbursements should be visible immediately without clicking Resolve
+      expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
+      expect(screen.getByText('Receive €50.00 from Bob')).toBeInTheDocument();
+    });
+
+    // Resolve button should not be visible
+    expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument();
+
+    // Flag should be consumed (removed from sessionStorage)
+    expect(sessionStorage.getItem('settlement-resolved')).toBeNull();
+  });
 });

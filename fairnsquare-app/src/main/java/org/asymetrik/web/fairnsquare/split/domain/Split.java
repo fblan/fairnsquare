@@ -15,6 +15,7 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.DuplicateParticipa
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantHasExpensesError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
+import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -47,6 +48,7 @@ public class Split {
     private final Instant createdAt;
     private final List<Participant> participants;
     private final List<Expense> expenses;
+    private Settlement settlement;
 
     /**
      * Factory method to create a new Split with generated ID.
@@ -109,6 +111,7 @@ public class Split {
             throw new IllegalArgumentException("Participant cannot be null");
         }
         this.participants.add(participant);
+        clearSettlement();
         validate();
     }
 
@@ -120,6 +123,7 @@ public class Split {
             throw new IllegalArgumentException("Expense cannot be null");
         }
         this.expenses.add(expense);
+        clearSettlement();
         validate();
     }
 
@@ -144,6 +148,7 @@ public class Split {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
                         new Participant.Nights(newNights));
                 participants.set(i, updated);
+                clearSettlement();
                 validate();
                 return updated;
             }
@@ -195,10 +200,11 @@ public class Split {
             throw new ParticipantHasExpensesError();
         }
         boolean removed = participants.removeIf(p -> p.id().equals(participantId));
-        validate();
         if (!removed) {
             throw new ParticipantNotFoundError(participantId.value(), id.value());
         }
+        clearSettlement();
+        validate();
     }
 
     /**
@@ -235,6 +241,7 @@ public class Split {
                 Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
                         existing.getCreatedAt());
                 expenses.set(i, updated);
+                clearSettlement();
                 validate();
                 return updated;
             }
@@ -256,6 +263,7 @@ public class Split {
         if (!removed) {
             throw new ExpenseNotFoundError(expenseId.value(), id.value());
         }
+        clearSettlement();
         validate();
     }
 
@@ -273,6 +281,21 @@ public class Split {
         if (!exists) {
             throw new PayerNotFoundError(payerId.value(), id.value());
         }
+    }
+
+    /**
+     * Persists a calculated settlement in this split.
+     */
+    public void settle(Settlement settlement) {
+        Objects.requireNonNull(settlement, "Settlement cannot be null");
+        this.settlement = settlement;
+    }
+
+    /**
+     * Clears the persisted settlement. Called automatically when participants or expenses are modified.
+     */
+    public void clearSettlement() {
+        this.settlement = null;
     }
 
     // Getters - return value objects and unmodifiable collections
@@ -295,6 +318,10 @@ public class Split {
 
     public List<Expense> getExpenses() {
         return Collections.unmodifiableList(expenses);
+    }
+
+    public Settlement getSettlement() {
+        return settlement;
     }
 
     /**

@@ -7,5 +7,6 @@ import java.util.List;
  * primitives, createdAt as ISO-8601 string.
  */
 public record SplitPersistenceDTO(String id, String name, String createdAt,
-        List<ParticipantPersistenceDTO> participants, List<ExpensePersistenceDTO> expenses) {
+        List<ParticipantPersistenceDTO> participants, List<ExpensePersistenceDTO> expenses,
+        SettlementPersistenceDTO settlement) {
 }
