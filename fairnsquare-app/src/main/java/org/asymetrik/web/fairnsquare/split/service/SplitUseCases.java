@@ -68,7 +68,7 @@ public class SplitUseCases {
     }
 
     /**
-     * Calculates the settlement for a split: participant balances and reimbursement proposals.
+     * Calculates the settlement for a split, persists it in the split, and returns it.
      *
      * @param splitId
      *            the split identifier
@@ -76,7 +76,12 @@ public class SplitUseCases {
      * @return an Optional containing the settlement if the split exists, empty otherwise
      */
     public Optional<Settlement> calculateSettlement(String splitId) {
-        return repository.load(splitId).map(SettlementCalculator::calculate);
+        return repository.load(splitId).map(split -> {
+            Settlement settlement = SettlementCalculator.calculate(split);
+            split.settle(settlement);
+            repository.save(split);
+            return settlement;
+        });
     }
 
     /**

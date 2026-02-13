@@ -12,7 +12,8 @@ import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
  */
 public record SplitResponseDTO(@JsonProperty("id") String id, @JsonProperty("name") String name,
         @JsonProperty("createdAt") String createdAt, @JsonProperty("participants") List<ParticipantDTO> participants,
-        @JsonProperty("expenses") List<ExpenseDTO> expenses) {
+        @JsonProperty("expenses") List<ExpenseDTO> expenses,
+        @JsonProperty("settlement") SettlementResponseDTO settlement) {
 
     @JsonCreator
     public SplitResponseDTO {

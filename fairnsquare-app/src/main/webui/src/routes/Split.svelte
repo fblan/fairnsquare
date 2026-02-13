@@ -24,6 +24,9 @@
     split?.expenses.reduce((sum, e) => sum + e.amount, 0) ?? 0
   );
 
+  // Settlement status
+  const isSettled = $derived(split?.settlement != null);
+
   // Participant summary stats
   const participantCount = $derived(split?.participants.length ?? 0);
   const participantSummary = $derived(
@@ -209,7 +212,10 @@
       <section class="w-full">
         <button
           class="w-full text-left"
-          onclick={() => navigate(`/splits/${splitId}/settlement`)}
+          onclick={() => {
+            if (isSettled) sessionStorage.setItem('settlement-resolved', 'true');
+            navigate(`/splits/${splitId}/settlement`);
+          }}
           aria-label="View settlement"
         >
           <Card.Root class="border-teal-200 bg-teal-50/50 hover:bg-teal-50 transition-colors cursor-pointer">
@@ -217,7 +223,7 @@
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm text-muted-foreground">Settlement</p>
-                  <p class="text-lg font-semibold">Solve</p>
+                  <p class="text-lg font-semibold">{isSettled ? 'Settled' : 'Solve'}</p>
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />

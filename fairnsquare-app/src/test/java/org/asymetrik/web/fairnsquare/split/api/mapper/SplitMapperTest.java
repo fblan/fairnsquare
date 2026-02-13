@@ -6,7 +6,9 @@ import java.math.BigDecimal;
 
 import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -53,5 +55,31 @@ class SplitMapperTest {
     @Test
     void shouldHandleNullInput() {
         assertThatNullPointerException().isThrownBy(() -> mapper.toDTO(null)).withMessage("Split cannot be null");
+    }
+
+    @Test
+    void shouldMapSettlementWhenPresent() {
+        Split split = Split.create("Settled Split");
+        Participant alice = Participant.create("Alice", 3);
+        Participant bob = Participant.create("Bob", 2);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addExpense(ExpenseEqual.create(BigDecimal.valueOf(100.00), "Hotel", alice.id()));
+        split.settle(SettlementCalculator.calculate(split));
+
+        SplitResponseDTO dto = mapper.toDTO(split);
+
+        assertThat(dto.settlement()).isNotNull();
+        assertThat(dto.settlement().balances()).hasSize(2);
+        assertThat(dto.settlement().reimbursements()).hasSize(1);
+    }
+
+    @Test
+    void shouldMapNullSettlementWhenNotPresent() {
+        Split split = Split.create("Unsettled Split");
+
+        SplitResponseDTO dto = mapper.toDTO(split);
+
+        assertThat(dto.settlement()).isNull();
     }
 }

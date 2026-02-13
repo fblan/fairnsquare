@@ -11,10 +11,18 @@
 
   const splitId = $derived(route.params.splitId || '');
 
+  // Check if we should show resolved view directly (coming from a persisted settlement)
+  function checkInitialResolved(): boolean {
+    if (typeof window === 'undefined') return false;
+    const resolved = sessionStorage.getItem('settlement-resolved') === 'true';
+    sessionStorage.removeItem('settlement-resolved');
+    return resolved;
+  }
+
   // State
   let settlement = $state<Settlement | null>(null);
   let isLoading = $state(true);
-  let showReimbursements = $state(false);
+  let showReimbursements = $state(checkInitialResolved());
 
   // Load settlement data
   $effect(() => {
@@ -26,7 +34,6 @@
   async function loadSettlement(id: string) {
     isLoading = true;
     settlement = null;
-    showReimbursements = false;
 
     try {
       settlement = await getSettlement(id);

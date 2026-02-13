@@ -91,6 +91,7 @@ describe('Split', () => {
         createdAt: '2026-01-24T12:00:00Z',
         participants: [],
         expenses: [],
+        settlement: null,
       });
 
     render(Split);
@@ -117,6 +118,7 @@ describe('Split', () => {
       createdAt: '2026-01-24T12:00:00Z',
       participants: [],
       expenses: [],
+      settlement: null,
     };
 
     const mockSplitWithData: SplitType = {
@@ -153,6 +155,7 @@ describe('Split', () => {
           ],
         },
       ],
+      settlement: null,
     };
 
     it('displays split name as header', async () => {
@@ -401,7 +404,7 @@ describe('Split', () => {
       expect(screen.queryByText('Solve')).not.toBeInTheDocument();
     });
 
-    it('navigates to settlement page when Solve card is clicked', async () => {
+    it('navigates to settlement page without query param when not settled', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
       render(Split);
@@ -413,6 +416,69 @@ describe('Split', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
 
       expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/settlement');
+    });
+
+    it('shows "Settled" when settlement is persisted', async () => {
+      const mockSplitSettled: SplitType = {
+        ...mockSplitWithData,
+        settlement: {
+          balances: [
+            { participantId: 'p1', participantName: 'Alice', totalPaid: 90, totalCost: 75, balance: 15 },
+            { participantId: 'p2', participantName: 'Bob', totalPaid: 60, totalCost: 75, balance: -15 },
+          ],
+          reimbursements: [
+            { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 15 },
+          ],
+        },
+      };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Settled')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Solve')).not.toBeInTheDocument();
+    });
+
+    it('sets sessionStorage flag and navigates when settlement is persisted', async () => {
+      const mockSplitSettled: SplitType = {
+        ...mockSplitWithData,
+        settlement: {
+          balances: [
+            { participantId: 'p1', participantName: 'Alice', totalPaid: 90, totalCost: 75, balance: 15 },
+            { participantId: 'p2', participantName: 'Bob', totalPaid: 60, totalCost: 75, balance: -15 },
+          ],
+          reimbursements: [
+            { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 15 },
+          ],
+        },
+      };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Settled')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
+
+      expect(sessionStorage.getItem('settlement-resolved')).toBe('true');
+      expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/settlement');
+    });
+
+    it('shows "Solve" when settlement is null', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Solve')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Settled')).not.toBeInTheDocument();
     });
   });
 });
