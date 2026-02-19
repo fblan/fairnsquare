@@ -38,4 +38,8 @@ public class SplitRepository {
     public boolean exists(final String splitId) {
         return jsonFileRepository.exists(splitId);
     }
+
+    public void delete(final String splitId) {
+        jsonFileRepository.delete(splitId);
+    }
 }

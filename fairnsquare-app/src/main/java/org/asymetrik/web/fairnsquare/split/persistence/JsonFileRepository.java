@@ -117,6 +117,24 @@ public class JsonFileRepository {
     }
 
     /**
+     * Deletes a split file for the default tenant.
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @throws PersistenceException
+     *             if the delete operation fails
+     */
+    void delete(String splitId) {
+        Path filePath = pathResolver.resolve(splitId);
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            throw new PersistenceException("Failed to delete entity at " + filePath, e);
+        }
+    }
+
+    /**
      * Checks if a split file exists for the default tenant.
      *
      * @param splitId
