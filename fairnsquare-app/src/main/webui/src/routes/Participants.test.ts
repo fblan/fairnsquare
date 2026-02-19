@@ -102,7 +102,7 @@ describe('Participants', () => {
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByText('Participants')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Participants' })).toBeInTheDocument();
     });
   });
 
@@ -118,6 +118,55 @@ describe('Participants', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }));
 
     expect(navigate).toHaveBeenCalledWith('/splits/test-split-id');
+  });
+
+  // --- Summary Card ---
+
+  it('displays participant summary card with count and names', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+    render(Participants);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 participants')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Alice (4), Bob (2)')).toBeInTheDocument();
+  });
+
+  it('displays summary card with 0 participants when empty', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+    render(Participants);
+
+    await waitFor(() => {
+      expect(screen.getByText('0 participants')).toBeInTheDocument();
+    });
+  });
+
+  it('displays participants sorted alphabetically', async () => {
+    const mockSplitUnsorted: SplitType = {
+      id: 'test-split-id',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-24T12:00:00Z',
+      participants: [
+        { id: 'p3', name: 'Charlie', nights: 3 },
+        { id: 'p1', name: 'Alice', nights: 2 },
+        { id: 'p2', name: 'Bob', nights: 1 },
+      ],
+      expenses: [],
+    };
+
+    vi.mocked(getSplit).mockResolvedValue(mockSplitUnsorted);
+
+    render(Participants);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    // Summary card shows names in sorted order
+    expect(screen.getByText('Alice (2), Bob (1), Charlie (3)')).toBeInTheDocument();
   });
 
   // --- Participant Cards ---
@@ -136,6 +185,22 @@ describe('Participants', () => {
     expect(screen.getByText('2 nights')).toBeInTheDocument();
   });
 
+  it('displays expense count badge on each participant card', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+    render(Participants);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    // Alice paid e1, Bob paid e2 → each has 1 expense paid
+    const expenseBadges = screen.getAllByText(/\d+ expense/);
+    expect(expenseBadges.length).toBe(2);
+    expect(expenseBadges[0].textContent).toMatch('1 expense');
+    expect(expenseBadges[1].textContent).toMatch('1 expense');
+  });
+
   it('displays participant stats: spent, cost, balance', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
@@ -145,10 +210,10 @@ describe('Participants', () => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 
-    const spentLabels = screen.getAllByText(/Spent:/);
+    const spentLabels = screen.getAllByTitle('Spent');
     expect(spentLabels.length).toBe(2);
 
-    const costLabels = screen.getAllByText(/Cost:/);
+    const costLabels = screen.getAllByTitle('Cost');
     expect(costLabels.length).toBe(2);
   });
 
@@ -185,15 +250,16 @@ describe('Participants', () => {
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 
-    // Alice: Spent €100, Cost €50 → Balance +€50 (Owed €50, green)
-    expect(screen.getByText('Owed €50.00')).toBeInTheDocument();
-    const owedEl = screen.getByText('Owed €50.00').parentElement;
-    expect(owedEl?.className).toContain('text-green-600');
+    // Alice: Spent €100, Cost €50 → Balance +€50 (green, icon + €50.00)
+    const balanceSpans = screen.getAllByTitle('Balance');
+    const aliceBalance = balanceSpans[0];
+    expect(aliceBalance.className).toContain('text-green-600');
+    expect(aliceBalance.textContent).toContain('€50.00');
 
-    // Bob: Spent €0, Cost €50 → Balance -€50 (Owes €50, red)
-    expect(screen.getByText('Owes €50.00')).toBeInTheDocument();
-    const owesEl = screen.getByText('Owes €50.00').parentElement;
-    expect(owesEl?.className).toContain('text-red-600');
+    // Bob: Spent €0, Cost €50 → Balance -€50 (red, icon + €50.00)
+    const bobBalance = balanceSpans[1];
+    expect(bobBalance.className).toContain('text-red-600');
+    expect(bobBalance.textContent).toContain('€50.00');
   });
 
   it('shows settled in gray when balance is zero', async () => {
@@ -375,6 +441,53 @@ describe('Participants', () => {
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
+    it('shows duplicate name error while typing without submitting', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+
+      expect(screen.getByText('A participant with this name already exists')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows length error while typing without submitting', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'A'.repeat(51) } });
+
+      expect(screen.getByText('Name cannot exceed 50 characters')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it('does not show required error while field is empty during typing', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: '' } });
+
+      expect(screen.queryByText('Name is required')).not.toBeInTheDocument();
+    });
+
     it('shows validation error when name duplicates an existing participant', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
@@ -406,6 +519,38 @@ describe('Participants', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       expect(screen.getByText('A participant with this name already exists')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows nights too low error while typing without submitting', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '0' } });
+
+      expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
+      expect(addParticipant).not.toHaveBeenCalled();
+    });
+
+    it('shows nights too high error while typing without submitting', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '400' } });
+
+      expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
@@ -490,7 +635,8 @@ describe('Participants', () => {
 
       expect(addToast).toHaveBeenCalledWith({
         type: 'success',
-        message: 'Participant added successfully',
+        message: 'Alice successfully added',
+        duration: 4000,
       });
     });
 
