@@ -186,13 +186,11 @@ describe('EditParticipantModal', () => {
   // AC 5: Nights validation errors
   describe('AC 5: Nights validation', () => {
     it('should show error for nights less than 0.5', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
 
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '0');
-      await user.tab();
+      await fireEvent.input(nightsInput, { target: { value: '0' } });
+      await fireEvent.blur(nightsInput);
 
       await waitFor(() => {
         expect(screen.getByText(/at least 0\.5/i)).toBeInTheDocument();
@@ -280,11 +278,10 @@ describe('EditParticipantModal', () => {
       vi.mocked(splitsApi.updateParticipant).mockResolvedValue(mockParticipant);
 
       render(EditParticipantModal, { props: { ...defaultProps, onSuccess } });
-      
+
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '5');
-      
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await user.click(saveButton);
       
@@ -299,11 +296,10 @@ describe('EditParticipantModal', () => {
       vi.mocked(splitsApi.updateParticipant).mockResolvedValue(mockParticipant);
 
       render(EditParticipantModal, { props: { ...defaultProps, onClose } });
-      
+
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '5');
-      
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await user.click(saveButton);
       
@@ -324,11 +320,10 @@ describe('EditParticipantModal', () => {
       });
 
       render(EditParticipantModal, { props: { ...defaultProps, onClose } });
-      
+
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '5');
-      
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await user.click(saveButton);
       
@@ -677,8 +672,7 @@ describe('EditParticipantModal', () => {
       render(EditParticipantModal, { props: defaultProps });
 
       const personsInput = screen.getByLabelText(/persons/i);
-      await user.clear(personsInput);
-      await user.type(personsInput, '2');
+      await fireEvent.input(personsInput, { target: { value: '2' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await user.click(saveButton);
@@ -693,13 +687,11 @@ describe('EditParticipantModal', () => {
     });
 
     it('should show error for persons less than 0.5', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
 
       const personsInput = screen.getByLabelText(/persons/i);
-      await user.clear(personsInput);
-      await user.type(personsInput, '0');
-      await user.tab();
+      await fireEvent.input(personsInput, { target: { value: '0' } });
+      await fireEvent.blur(personsInput);
 
       await waitFor(() => {
         expect(screen.getByText(/at least 0\.5/i)).toBeInTheDocument();
