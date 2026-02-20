@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByPerson;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidSharesError;
@@ -223,6 +224,8 @@ public class SplitUseCases {
         return switch (request.splitMode()) {
             case BY_NIGHT ->
                     addExpenseByNight(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
+            case BY_PERSON ->
+                    addExpenseByPerson(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case EQUAL ->
                     addExpenseEqual(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case FREE -> throw new UnsupportedOperationException(
@@ -252,6 +255,34 @@ public class SplitUseCases {
 
             // Create expense and calculate shares using encapsulated logic
             ExpenseByNight expense = ExpenseByNight.create(amount, description, payer);
+            split.addExpense(expense);
+            repository.save(split);
+
+            return expense;
+        });
+    }
+
+    /**
+     * Adds a BY_PERSON expense to an existing split. Shares are calculated proportionally based on number of persons.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param amount
+     *            the expense amount
+     * @param description
+     *            the expense description
+     * @param payerId
+     *            the ID of the participant who paid
+     *
+     * @return an Optional containing the created expense if the split exists, empty otherwise
+     */
+    public Optional<ExpenseByPerson> addExpenseByPerson(String splitId, BigDecimal amount, String description,
+            String payerId) {
+        return repository.load(splitId).map(split -> {
+            Participant.Id payer = Participant.Id.of(payerId);
+            split.validatePayerExists(payer);
+
+            ExpenseByPerson expense = ExpenseByPerson.create(amount, description, payer);
             split.addExpense(expense);
             repository.save(split);
 

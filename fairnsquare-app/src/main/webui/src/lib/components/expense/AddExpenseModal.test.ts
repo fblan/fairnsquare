@@ -223,15 +223,19 @@ describe('ExpenseEditModal', () => {
       expect(screen.queryByText(/200 characters/i)).not.toBeInTheDocument();
     });
 
-    it('allows empty description (optional field)', async () => {
+    it('shows error when description is empty on submit', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      // Just enter amount, leave description empty
+      // Enter amount but leave description empty
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.00' } });
 
       const submitButton = screen.getByRole('button', { name: /add expense/i });
-      expect(submitButton).not.toBeDisabled();
+      await fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Description is required')).toBeInTheDocument();
+      });
     });
   });
 
@@ -753,6 +757,9 @@ describe('ExpenseEditModal', () => {
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '100' } });
 
+      const descInput = screen.getByLabelText(/description/i);
+      await fireEvent.input(descInput, { target: { value: 'Custom Split' } });
+
       const aliceInput = screen.getByLabelText('Alice');
       await fireEvent.input(aliceInput, { target: { value: '2' } });
 
@@ -766,7 +773,7 @@ describe('ExpenseEditModal', () => {
       await waitFor(() => {
         expect(addFreeExpense).toHaveBeenCalledWith('test-split-id', {
           amount: 100,
-          description: '',
+          description: 'Custom Split',
           payerId: 'p2',
           shares: [
             { participantId: 'p1', parts: 2 },
@@ -842,6 +849,63 @@ describe('ExpenseEditModal', () => {
       await waitFor(() => {
         expect(screen.getByText(/amounts will be calculated proportionally/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  // --- BY_PERSON Split Mode ---
+
+  describe('BY_PERSON Split Mode', () => {
+    it('renders By Person radio button option', () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      expect(screen.getByRole('radio', { name: /by person/i })).toBeInTheDocument();
+    });
+
+    it('allows selecting By Person split mode', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
+      await fireEvent.click(byPersonRadio);
+
+      expect(byPersonRadio).toBeChecked();
+    });
+
+    it('calls addExpense with BY_PERSON splitMode when selected', async () => {
+      vi.mocked(addExpense).mockResolvedValue({
+        id: 'e1',
+        description: 'Test',
+        amount: 60.00,
+        payerId: 'p2',
+        splitMode: 'BY_PERSON',
+        createdAt: '2026-02-20T12:00:00Z',
+        shares: [],
+      });
+
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
+      await fireEvent.click(byPersonRadio);
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      await fireEvent.input(amountInput, { target: { value: '60.00' } });
+
+      const submitButton = screen.getByRole('button', { name: /add expense/i });
+      await fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(addExpense).toHaveBeenCalledWith('test-split-id', expect.objectContaining({
+          splitMode: 'BY_PERSON',
+        }));
+      });
+    });
+
+    it('does not show FREE mode share inputs when By Person is selected', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
+      await fireEvent.click(byPersonRadio);
+
+      expect(screen.queryByText(/share parts/i)).not.toBeInTheDocument();
     });
   });
 

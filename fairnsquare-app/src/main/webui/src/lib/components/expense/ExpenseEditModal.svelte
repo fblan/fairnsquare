@@ -14,7 +14,7 @@
   import * as RadioGroup from '$lib/components/ui/radio-group';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
-  import { Moon, Equal, Edit3, X } from 'lucide-svelte';
+  import { Moon, Equal, Edit3, Users, X } from 'lucide-svelte';
 
   // Props
   let {
@@ -81,7 +81,7 @@
   // Derived validation
   const amountValue = $derived(typeof amount === 'number' ? amount : parseFloat(amount as string) || 0);
   const isAmountValid = $derived(amountValue >= 0.01 && amountValue <= 999999.99);
-  const isDescriptionValid = $derived(description.length <= 200);
+  const isDescriptionValid = $derived(description.trim().length > 0 && description.length <= 200);
   const isPayerValid = $derived(payerId !== '');
 
   // FREE mode parts validation
@@ -175,7 +175,9 @@
   }
 
   function validateDescription() {
-    if (description.length > 200) {
+    if (description.trim().length === 0) {
+      validationErrors.description = 'Description is required';
+    } else if (description.length > 200) {
       validationErrors.description = 'Description cannot exceed 200 characters';
     } else {
       delete validationErrors.description;
@@ -191,6 +193,15 @@
   function handleDescriptionBlur() {
     descriptionTouched = true;
     validateDescription();
+  }
+
+  function handleAmountKeydown(event: KeyboardEvent) {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const current = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
+      const next = event.key === 'ArrowUp' ? current + 0.5 : Math.max(0, current - 0.5);
+      amount = Math.round(next * 100) / 100;
+    }
   }
 
   async function handleSubmit() {
@@ -377,11 +388,11 @@
           <Input
             id="expense-amount-modal"
             type="number"
-            step="0.5"
-            min="0.5"
+            step="any"
             placeholder="€0.00"
             bind:value={amount}
             onblur={handleAmountBlur}
+            onkeydown={handleAmountKeydown}
             class="min-h-[44px]"
             aria-invalid={amountTouched && !!validationErrors.amount}
             disabled={isLoading || isDeleting}
@@ -393,7 +404,7 @@
 
         <!-- Description Field -->
         <div class="space-y-2">
-          <Label for="expense-description-modal">Description (optional)</Label>
+          <Label for="expense-description-modal">Description</Label>
           <Input
             id="expense-description-modal"
             type="text"
@@ -450,6 +461,13 @@
               <Label for="modal-mode-equal" class="flex items-center gap-2 cursor-pointer flex-1">
                 <Equal class="h-4 w-4" aria-hidden="true" />
                 <span>Equal</span>
+              </Label>
+            </div>
+            <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
+              <RadioGroup.Item value="BY_PERSON" id="modal-mode-by-person" />
+              <Label for="modal-mode-by-person" class="flex items-center gap-2 cursor-pointer flex-1">
+                <Users class="h-4 w-4" aria-hidden="true" />
+                <span>By Person</span>
               </Label>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
