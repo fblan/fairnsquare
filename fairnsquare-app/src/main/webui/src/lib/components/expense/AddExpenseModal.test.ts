@@ -845,6 +845,56 @@ describe('ExpenseEditModal', () => {
     });
   });
 
+  // --- Amount Input: free entry and arrow key step ---
+
+  describe('Amount Input Behavior', () => {
+    it('accepts arbitrary decimal amounts not on a 0.5 boundary', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const amountInput = screen.getByLabelText(/amount/i);
+      await fireEvent.input(amountInput, { target: { value: '12.30' } });
+      await fireEvent.blur(amountInput);
+
+      expect(screen.queryByText(/amount must be/i)).not.toBeInTheDocument();
+    });
+
+    it('increments amount by 0.5 on ArrowUp key', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
+      await fireEvent.input(amountInput, { target: { value: '10' } });
+      await fireEvent.keyDown(amountInput, { key: 'ArrowUp' });
+
+      await waitFor(() => {
+        expect(Number(amountInput.value)).toBeCloseTo(10.5);
+      });
+    });
+
+    it('decrements amount by 0.5 on ArrowDown key', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
+      await fireEvent.input(amountInput, { target: { value: '10' } });
+      await fireEvent.keyDown(amountInput, { key: 'ArrowDown' });
+
+      await waitFor(() => {
+        expect(Number(amountInput.value)).toBeCloseTo(9.5);
+      });
+    });
+
+    it('does not go below 0 on ArrowDown key when amount is 0', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      const amountInput = screen.getByLabelText(/amount/i) as HTMLInputElement;
+      await fireEvent.input(amountInput, { target: { value: '0' } });
+      await fireEvent.keyDown(amountInput, { key: 'ArrowDown' });
+
+      await waitFor(() => {
+        expect(Number(amountInput.value)).toBeGreaterThanOrEqual(0);
+      });
+    });
+  });
+
   // --- Accessibility ---
 
   describe('Accessibility', () => {
