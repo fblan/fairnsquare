@@ -21,11 +21,12 @@ describe('EditParticipantModal', () => {
     id: 'participant-1',
     name: 'Alice',
     nights: 3,
+    numberOfPersons: 1,
   };
 
   const mockParticipants: Participant[] = [
     mockParticipant,
-    { id: 'participant-2', name: 'Bob', nights: 2 },
+    { id: 'participant-2', name: 'Bob', nights: 2, numberOfPersons: 1 },
   ];
 
   const mockSplit: Split = {
@@ -34,6 +35,7 @@ describe('EditParticipantModal', () => {
     createdAt: '2026-01-01T00:00:00Z',
     participants: mockParticipants,
     expenses: [],
+    settlement: null,
   };
 
   const defaultProps = {
@@ -255,6 +257,7 @@ describe('EditParticipantModal', () => {
       vi.mocked(splitsApi.updateParticipant).mockResolvedValue({
         ...mockParticipant,
         name: 'Alice Updated',
+        numberOfPersons: 1,
       });
 
       render(EditParticipantModal, { props: defaultProps });
@@ -270,7 +273,7 @@ describe('EditParticipantModal', () => {
         expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
           'split-1',
           'participant-1',
-          { name: 'Alice Updated', nights: 3 }
+          { name: 'Alice Updated', nights: 3, numberOfPersons: 1 }
         );
       });
     });
@@ -462,6 +465,7 @@ describe('EditParticipantModal', () => {
             shares: [],
           },
         ],
+        settlement: null,
       };
 
       render(EditParticipantModal, {
@@ -486,6 +490,7 @@ describe('EditParticipantModal', () => {
             shares: [],
           },
         ],
+        settlement: null,
       };
 
       render(EditParticipantModal, {
@@ -627,6 +632,98 @@ describe('EditParticipantModal', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       // And onClose should not have been called yet
       expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  // Number of Persons
+  describe('Number of Persons field', () => {
+    it('should display persons input field', () => {
+      render(EditParticipantModal, { props: defaultProps });
+
+      expect(screen.getByLabelText(/persons/i)).toBeInTheDocument();
+    });
+
+    it('should pre-fill persons field with participant numberOfPersons', () => {
+      const familyParticipant: Participant = {
+        id: 'participant-1',
+        name: 'Alice',
+        nights: 3,
+        numberOfPersons: 2.5,
+      };
+
+      render(EditParticipantModal, {
+        props: { ...defaultProps, participant: familyParticipant },
+      });
+
+      const personsInput = screen.getByLabelText(/persons/i) as HTMLInputElement;
+      expect(personsInput.value).toBe('2.5');
+    });
+
+    it('should enable Save when numberOfPersons changes', async () => {
+      const user = userEvent.setup();
+      render(EditParticipantModal, { props: defaultProps });
+
+      const personsInput = screen.getByLabelText(/persons/i);
+      await user.clear(personsInput);
+      await user.type(personsInput, '2');
+
+      await waitFor(() => {
+        const saveButton = screen.getByRole('button', { name: /save changes/i });
+        expect(saveButton).not.toBeDisabled();
+      });
+    });
+
+    it('should include numberOfPersons in update API call', async () => {
+      const user = userEvent.setup();
+      vi.mocked(splitsApi.updateParticipant).mockResolvedValue({
+        ...mockParticipant,
+        numberOfPersons: 2,
+      });
+
+      render(EditParticipantModal, { props: defaultProps });
+
+      const personsInput = screen.getByLabelText(/persons/i);
+      await user.clear(personsInput);
+      await user.type(personsInput, '2');
+
+      const saveButton = screen.getByRole('button', { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
+          'split-1',
+          'participant-1',
+          { name: 'Alice', nights: 3, numberOfPersons: 2 }
+        );
+      });
+    });
+
+    it('should show error for persons less than 0.5', async () => {
+      const user = userEvent.setup();
+      render(EditParticipantModal, { props: defaultProps });
+
+      const personsInput = screen.getByLabelText(/persons/i);
+      await user.clear(personsInput);
+      await user.type(personsInput, '0');
+      await user.tab();
+
+      await waitFor(() => {
+        expect(screen.getByText(/at least 0\.5/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show error for persons greater than 50', async () => {
+      const user = userEvent.setup();
+      render(EditParticipantModal, { props: defaultProps });
+
+      const personsInput = screen.getByLabelText(/persons/i);
+      await user.clear(personsInput);
+      await user.type(personsInput, '51');
+      await user.tab();
+
+      await waitFor(() => {
+        expect(screen.getByText(/cannot exceed 50/i)).toBeInTheDocument();
+      });
     });
   });
 });

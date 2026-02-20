@@ -4,12 +4,12 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 /**
  * Participant entity - represents a person participating in a split with their stay duration. Rich domain model with
- * value objects for fields.
+ * value objects for fields. A participant can represent a family or group via the numberOfPersons field.
  */
-public record Participant(Id id, Name name, Nights nights) {
+public record Participant(Id id, Name name, Nights nights, NumberOfPersons numberOfPersons) {
 
     /**
-     * Factory method to create a new Participant with generated ID.
+     * Factory method to create a new Participant with generated ID and default 1 person.
      *
      * @param name
      *            the participant's name
@@ -19,7 +19,23 @@ public record Participant(Id id, Name name, Nights nights) {
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights));
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new NumberOfPersons(1.0));
+    }
+
+    /**
+     * Factory method to create a new Participant with generated ID and specified number of persons.
+     *
+     * @param name
+     *            the participant's name
+     * @param nights
+     *            the number of nights stayed
+     * @param numberOfPersons
+     *            the number of persons this participant represents (e.g. family)
+     *
+     * @return a new Participant with a generated NanoID
+     */
+    public static Participant create(String name, double nights, double numberOfPersons) {
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new NumberOfPersons(numberOfPersons));
     }
 
     /**
@@ -119,6 +135,34 @@ public record Participant(Id id, Name name, Nights nights) {
             }
             if (value > MAX_NIGHTS) {
                 throw new IllegalArgumentException("Nights cannot exceed " + (int) MAX_NIGHTS);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
+    }
+
+    /**
+     * Value object for number of persons this participant represents. Allows representing families or groups. Children
+     * can be counted as 0.5.
+     */
+    public record NumberOfPersons(double value) {
+
+        private static final double MIN_PERSONS = 0.5;
+        private static final double MAX_PERSONS = 50;
+        private static final double STEP = 0.5;
+
+        public NumberOfPersons {
+            if (value < MIN_PERSONS) {
+                throw new IllegalArgumentException("Number of persons must be at least " + MIN_PERSONS);
+            }
+            if (value > MAX_PERSONS) {
+                throw new IllegalArgumentException("Number of persons cannot exceed " + (int) MAX_PERSONS);
+            }
+            if (value % STEP != 0) {
+                throw new IllegalArgumentException("Number of persons must be a multiple of " + STEP);
             }
         }
 

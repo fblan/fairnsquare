@@ -27,6 +27,7 @@ public class ParticipantMapper {
             throw new NullPointerException("Participant cannot be null");
         }
 
-        return new ParticipantDTO(participant.id().value(), participant.name().value(), participant.nights().value());
+        return new ParticipantDTO(participant.id().value(), participant.name().value(), participant.nights().value(),
+                participant.numberOfPersons().value());
     }
 }

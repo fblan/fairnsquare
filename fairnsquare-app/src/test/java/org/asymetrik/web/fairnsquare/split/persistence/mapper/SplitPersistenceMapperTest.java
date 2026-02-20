@@ -46,7 +46,8 @@ class SplitPersistenceMapperTest {
     void shouldMapPersistenceDTOToDomain() {
         SplitPersistenceDTO dto = new SplitPersistenceDTO(Split.Id.generate().value(), "Beach House",
                 "2026-01-30T10:00:00Z",
-                List.of(new ParticipantPersistenceDTO(Participant.Id.generate().value(), "Bob", 5)), List.of(), null);
+                List.of(new ParticipantPersistenceDTO(Participant.Id.generate().value(), "Bob", 5, 1.0)), List.of(),
+                null);
 
         Split split = mapper.toDomain(dto);
 

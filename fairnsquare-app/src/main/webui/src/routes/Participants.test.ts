@@ -12,6 +12,7 @@ vi.mock('$lib/router', () => {
     route: {
       params: { splitId: 'test-split-id' },
       pathname: '/splits/test-split-id/participants',
+      search: {},
     },
   };
 });
@@ -38,6 +39,7 @@ describe('Participants', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id' };
+    (route as any).search = {};
     localStorage.removeItem('fairnsquare_lastParticipantNights');
   });
 
@@ -47,6 +49,7 @@ describe('Participants', () => {
     createdAt: '2026-01-24T12:00:00Z',
     participants: [],
     expenses: [],
+    settlement: null,
   };
 
   const mockSplitWithData: SplitType = {
@@ -54,8 +57,8 @@ describe('Participants', () => {
     name: 'Weekend Trip',
     createdAt: '2026-01-24T12:00:00Z',
     participants: [
-      { id: 'p1', name: 'Alice', nights: 4 },
-      { id: 'p2', name: 'Bob', nights: 2 },
+      { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 1 },
+      { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
     ],
     expenses: [
       {
@@ -83,6 +86,7 @@ describe('Participants', () => {
         ],
       },
     ],
+    settlement: null,
   };
 
   // --- Loading State ---
@@ -96,13 +100,23 @@ describe('Participants', () => {
 
   // --- Page Header ---
 
-  it('displays Participants title', async () => {
+  it('displays Participants title with count', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Participants' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Participants (0)' })).toBeInTheDocument();
+    });
+  });
+
+  it('displays participant count in title', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+    render(Participants);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Participants (2)' })).toBeInTheDocument();
     });
   });
 
@@ -122,26 +136,28 @@ describe('Participants', () => {
 
   // --- Summary Card ---
 
-  it('displays participant summary card with count and names', async () => {
+  it('displays participant summary card with names only (no count)', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByText('2 participants')).toBeInTheDocument();
+      expect(screen.getByText('Alice (4n), Bob (2n)')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Alice (4), Bob (2)')).toBeInTheDocument();
+    expect(screen.queryByText('2 participants')).not.toBeInTheDocument();
   });
 
-  it('displays summary card with 0 participants when empty', async () => {
+  it('does not display summary card when no participants', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByText('0 participants')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Participants (0)' })).toBeInTheDocument();
     });
+
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
   });
 
   it('displays participants sorted alphabetically', async () => {
@@ -150,11 +166,12 @@ describe('Participants', () => {
       name: 'Weekend Trip',
       createdAt: '2026-01-24T12:00:00Z',
       participants: [
-        { id: 'p3', name: 'Charlie', nights: 3 },
-        { id: 'p1', name: 'Alice', nights: 2 },
-        { id: 'p2', name: 'Bob', nights: 1 },
+        { id: 'p3', name: 'Charlie', nights: 3, numberOfPersons: 1 },
+        { id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 1 },
+        { id: 'p2', name: 'Bob', nights: 1, numberOfPersons: 1 },
       ],
       expenses: [],
+      settlement: null,
     };
 
     vi.mocked(getSplit).mockResolvedValue(mockSplitUnsorted);
@@ -166,7 +183,7 @@ describe('Participants', () => {
     });
 
     // Summary card shows names in sorted order
-    expect(screen.getByText('Alice (2), Bob (1), Charlie (3)')).toBeInTheDocument();
+    expect(screen.getByText('Alice (2n), Bob (1n), Charlie (3n)')).toBeInTheDocument();
   });
 
   // --- Participant Cards ---
@@ -223,8 +240,8 @@ describe('Participants', () => {
       name: 'Weekend Trip',
       createdAt: '2026-01-24T12:00:00Z',
       participants: [
-        { id: 'p1', name: 'Alice', nights: 2 },
-        { id: 'p2', name: 'Bob', nights: 2 },
+        { id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 1 },
+        { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
       ],
       expenses: [
         {
@@ -240,6 +257,7 @@ describe('Participants', () => {
           ],
         },
       ],
+      settlement: null,
     };
 
     vi.mocked(getSplit).mockResolvedValue(mockSplitUnbalanced);
@@ -340,10 +358,11 @@ describe('Participants', () => {
       name: 'Weekend Trip',
       createdAt: '2026-01-24T12:00:00Z',
       participants: [
-        { id: 'p1', name: 'Alice', nights: 2 },
-        { id: 'p2', name: 'Bob', nights: 3 },
+        { id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 1 },
+        { id: 'p2', name: 'Bob', nights: 3, numberOfPersons: 1 },
       ],
       expenses: [],
+      settlement: null,
     };
 
     it('opens edit modal when clicking edit button', async () => {
@@ -597,7 +616,7 @@ describe('Participants', () => {
     it('calls API and refreshes list on successful submission', async () => {
       const mockSplitWithParticipant: SplitType = {
         ...mockSplitEmpty,
-        participants: [{ id: 'p1', name: 'Alice', nights: 2 }],
+        participants: [{ id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 1 }],
       };
 
       vi.mocked(getSplit)
@@ -608,6 +627,7 @@ describe('Participants', () => {
         id: 'p1',
         name: 'Alice',
         nights: 2,
+        numberOfPersons: 1,
       });
 
       render(Participants);
@@ -626,6 +646,7 @@ describe('Participants', () => {
         expect(addParticipant).toHaveBeenCalledWith('test-split-id', {
           name: 'Alice',
           nights: 2,
+          numberOfPersons: 1,
         });
       });
 
@@ -697,10 +718,11 @@ describe('Participants', () => {
       name: 'Weekend Trip',
       createdAt: '2026-01-24T12:00:00Z',
       participants: [
-        { id: 'p1', name: 'Alice', nights: 2 },
-        { id: 'p2', name: 'Bob', nights: 3 },
+        { id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 1 },
+        { id: 'p2', name: 'Bob', nights: 3, numberOfPersons: 1 },
       ],
       expenses: [],
+      settlement: null,
     };
 
     it('shows confirmation dialog when delete button is clicked', async () => {
@@ -749,7 +771,7 @@ describe('Participants', () => {
     it('calls API and removes participant on confirm', async () => {
       const updatedSplit: SplitType = {
         ...mockSplit,
-        participants: [{ id: 'p2', name: 'Bob', nights: 3 }],
+        participants: [{ id: 'p2', name: 'Bob', nights: 3, numberOfPersons: 1 }],
       };
 
       vi.mocked(getSplit)
@@ -785,7 +807,7 @@ describe('Participants', () => {
     it('shows success toast after deletion', async () => {
       const updatedSplit: SplitType = {
         ...mockSplit,
-        participants: [{ id: 'p2', name: 'Bob', nights: 3 }],
+        participants: [{ id: 'p2', name: 'Bob', nights: 3, numberOfPersons: 1 }],
       };
 
       vi.mocked(getSplit)
@@ -845,6 +867,175 @@ describe('Participants', () => {
       });
 
       expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+  });
+
+  // --- Number of Persons ---
+
+  describe('Number of Persons', () => {
+    it('shows Persons input field in add form', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+
+      expect(screen.getByLabelText('Persons')).toBeInTheDocument();
+    });
+
+    it('defaults Persons to 1 in add form', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+
+      const personsInput = screen.getByLabelText('Persons') as HTMLInputElement;
+      expect(personsInput.value).toBe('1');
+    });
+
+    it('sends numberOfPersons in API call', async () => {
+      const mockSplitWithParticipant: SplitType = {
+        ...mockSplitEmpty,
+        participants: [{ id: 'p1', name: 'Alice', nights: 2, numberOfPersons: 2 }],
+      };
+
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(mockSplitEmpty)
+        .mockResolvedValueOnce(mockSplitWithParticipant);
+
+      vi.mocked(addParticipant).mockResolvedValue({
+        id: 'p1',
+        name: 'Alice',
+        nights: 2,
+        numberOfPersons: 2,
+      });
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+      await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '2' } });
+      await fireEvent.input(screen.getByLabelText('Persons'), { target: { value: '2' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      await waitFor(() => {
+        expect(addParticipant).toHaveBeenCalledWith('test-split-id', {
+          name: 'Alice',
+          nights: 2,
+          numberOfPersons: 2,
+        });
+      });
+    });
+
+    it('shows persons badge on participant card when numberOfPersons > 1', async () => {
+      const mockSplitFamily: SplitType = {
+        ...mockSplitEmpty,
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 2.5 },
+          { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
+        ],
+      };
+
+      vi.mocked(getSplit).mockResolvedValue(mockSplitFamily);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      // Alice has 2.5 persons → badge visible
+      expect(screen.getByText('2.5 persons')).toBeInTheDocument();
+      // Bob has 1 person → no badge
+      expect(screen.queryByText('1 person')).not.toBeInTheDocument();
+    });
+
+    it('shows persons info in summary card when numberOfPersons > 1', async () => {
+      const mockSplitFamily: SplitType = {
+        ...mockSplitEmpty,
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 2 },
+          { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
+        ],
+      };
+
+      vi.mocked(getSplit).mockResolvedValue(mockSplitFamily);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice (4n, 2p), Bob (2n)')).toBeInTheDocument();
+      });
+    });
+
+    it('shows persons too low error while typing', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Persons'), { target: { value: '0' } });
+
+      expect(screen.getByText('Must be at least 0.5')).toBeInTheDocument();
+    });
+
+    it('shows persons too high error while typing', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
+      await fireEvent.input(screen.getByLabelText('Persons'), { target: { value: '51' } });
+
+      expect(screen.getByText('Cannot exceed 50')).toBeInTheDocument();
+    });
+  });
+
+  describe('Auto-open from Home creation flow', () => {
+    it('auto-opens add form when addParticipant search param is present', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      (route as any).search = { addParticipant: 'true' };
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('New Participant')).toBeInTheDocument();
+      });
+    });
+
+    it('does not auto-open add form when addParticipant search param is absent', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      (route as any).search = {};
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Participant/i })).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('New Participant')).not.toBeInTheDocument();
     });
   });
 });

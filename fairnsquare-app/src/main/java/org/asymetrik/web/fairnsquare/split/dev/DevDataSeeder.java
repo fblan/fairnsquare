@@ -46,13 +46,13 @@ public class DevDataSeeder {
 
         // --- Participants ---
         // Full week (7 nights): arrived Saturday, left Saturday
-        Participant alice = Participant.create("Alice", 7);
+        Participant alice = Participant.create("Alice", 7, 2.0); // couple
         Participant bob = Participant.create("Bob", 7);
-        Participant charlie = Participant.create("Charlie", 7);
+        Participant charlie = Participant.create("Charlie", 7, 2.5); // couple + child
         Participant diana = Participant.create("Diana", 7);
         // Arrived Sunday, left Saturday (5 nights)
         Participant eve = Participant.create("Eve", 5);
-        Participant frank = Participant.create("Frank", 5);
+        Participant frank = Participant.create("Frank", 5, 1.5); // parent + child
         // Joined Wednesday, left Saturday (3 nights)
         Participant grace = Participant.create("Grace", 3);
         Participant henry = Participant.create("Henry", 3);

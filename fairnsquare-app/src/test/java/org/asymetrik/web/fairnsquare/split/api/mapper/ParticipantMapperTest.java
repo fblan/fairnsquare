@@ -17,13 +17,14 @@ class ParticipantMapperTest {
 
     @Test
     void shouldMapParticipantToDTO() {
-        Participant participant = Participant.create("Alice", 3);
+        Participant participant = Participant.create("Alice", 3, 2.5);
 
         ParticipantDTO dto = mapper.toDTO(participant);
 
         assertThat(dto.id()).isEqualTo(participant.id().value());
         assertThat(dto.name()).isEqualTo("Alice");
         assertThat(dto.nights()).isEqualTo(3);
+        assertThat(dto.numberOfPersons()).isEqualTo(2.5);
     }
 
     @Test

@@ -126,8 +126,8 @@ describe('Split', () => {
       name: 'Weekend Trip',
       createdAt: '2026-01-24T12:00:00Z',
       participants: [
-        { id: 'p1', name: 'Alice', nights: 4 },
-        { id: 'p2', name: 'Bob', nights: 2 },
+        { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 1 },
+        { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
       ],
       expenses: [
         {
@@ -278,7 +278,7 @@ describe('Split', () => {
     it('displays singular "participant" when only one', async () => {
       const mockSplitOneParticipant: SplitType = {
         ...mockSplitEmpty,
-        participants: [{ id: 'p1', name: 'Alice', nights: 3 }],
+        participants: [{ id: 'p1', name: 'Alice', nights: 3, numberOfPersons: 1 }],
       };
       vi.mocked(getSplit).mockResolvedValue(mockSplitOneParticipant);
 
@@ -295,7 +295,24 @@ describe('Split', () => {
       render(Split);
 
       await waitFor(() => {
-        expect(screen.getByText('Alice (4), Bob (2)')).toBeInTheDocument();
+        expect(screen.getByText('Alice (4n), Bob (2n)')).toBeInTheDocument();
+      });
+    });
+
+    it('displays persons info in participant summary when numberOfPersons > 1', async () => {
+      const mockSplitFamily: SplitType = {
+        ...mockSplitEmpty,
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 2 },
+          { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
+        ],
+      };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitFamily);
+
+      render(Split);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice (4n, 2p), Bob (2n)')).toBeInTheDocument();
       });
     });
 
@@ -353,7 +370,7 @@ describe('Split', () => {
     it('does not show Solve card when split has no expenses', async () => {
       const mockSplitNoExpenses: SplitType = {
         ...mockSplitEmpty,
-        participants: [{ id: 'p1', name: 'Alice', nights: 3 }],
+        participants: [{ id: 'p1', name: 'Alice', nights: 3, numberOfPersons: 1 }],
       };
       vi.mocked(getSplit).mockResolvedValue(mockSplitNoExpenses);
 

@@ -135,6 +135,64 @@ class ExpenseByNightTest {
         assertThat(expense.getPayerId()).isEqualTo(payerId);
     }
 
+    @Test
+    void calculateShares_withDifferentNumberOfPersons_weightsProportionally() {
+        // Alice: 4 nights, 2 persons → weight 8
+        // Bob: 4 nights, 1 person → weight 4
+        // Total weight: 12
+        // Expense: €120
+        Participant alice = Participant.create("Alice", 4, 2.0);
+        Participant bob = Participant.create("Bob", 4, 1.0);
+        List<Participant> participants = List.of(alice, bob);
+
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("120.00"), "Hotel", alice.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(2);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("80.00"); // Alice: 8/12 * 120 = 80
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("40.00"); // Bob: 4/12 * 120 = 40
+    }
+
+    @Test
+    void calculateShares_withHalfPersonChild_weightsCorrectly() {
+        // Family scenario: Alice (2 adults + 1 child = 2.5 persons, 3 nights) → weight 7.5
+        // Bob (1 person, 3 nights) → weight 3
+        // Total weight: 10.5
+        // Expense: €210
+        Participant aliceFamily = Participant.create("Alice Family", 3, 2.5);
+        Participant bob = Participant.create("Bob", 3, 1.0);
+        List<Participant> participants = List.of(aliceFamily, bob);
+
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("210.00"), "Accommodation", aliceFamily.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(2);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("150.00"); // 7.5/10.5 * 210 = 150
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("60.00"); // 3/10.5 * 210 = 60
+
+        // Verify sum equals total
+        BigDecimal total = shares.stream().map(Expense.Share::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo("210.00");
+    }
+
+    @Test
+    void calculateShares_withDefaultOnePersonPerParticipant_sameAsOldBehavior() {
+        // When all participants have 1 person, behavior is identical to the original nights-only formula
+        Participant alice = Participant.create("Alice", 4); // default 1.0 person
+        Participant bob = Participant.create("Bob", 2); // default 1.0 person
+        List<Participant> participants = List.of(alice, bob);
+
+        ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("180.00"), "Hotel", alice.id());
+
+        List<Expense.Share> shares = expense.calculateShares(participants);
+
+        assertThat(shares).hasSize(2);
+        assertThat(shares.get(0).amount()).isEqualByComparingTo("120.00"); // 4/6 * 180
+        assertThat(shares.get(1).amount()).isEqualByComparingTo("60.00"); // 2/6 * 180
+    }
+
     private Participant createParticipant(String name, double nights) {
         return Participant.create(name, nights);
     }
