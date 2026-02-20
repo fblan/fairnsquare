@@ -32,7 +32,7 @@ describe('Home', () => {
 
   // --- Task 1: Form renders all fields (AC: 1) ---
 
-  it('renders all form fields: split name, participant name, nights', () => {
+  it('renders all form fields: split name, participant name, nights, persons', () => {
     render(Home);
 
     expect(screen.getByText('FairNSquare')).toBeInTheDocument();
@@ -40,15 +40,23 @@ describe('Home', () => {
     expect(screen.getByLabelText('Split Name')).toBeInTheDocument();
     expect(screen.getByText('First Participant')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
-    expect(screen.getByLabelText('Number of Nights')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nights')).toBeInTheDocument();
+    expect(screen.getByLabelText('Persons')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create Split' })).toBeInTheDocument();
   });
 
   it('defaults nights to 1', () => {
     render(Home);
 
-    const nightsInput = screen.getByLabelText('Number of Nights') as HTMLInputElement;
+    const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
     expect(nightsInput.value).toBe('1');
+  });
+
+  it('defaults persons to 1', () => {
+    render(Home);
+
+    const personsInput = screen.getByLabelText('Persons') as HTMLInputElement;
+    expect(personsInput.value).toBe('1');
   });
 
   // --- Task 2: Validation (AC: 2, 3, 4, 5) ---
@@ -106,7 +114,7 @@ describe('Home', () => {
   it('shows validation error for nights less than 0.5', async () => {
     render(Home);
 
-    const nightsInput = screen.getByLabelText('Number of Nights');
+    const nightsInput = screen.getByLabelText('Nights');
     await fireEvent.input(nightsInput, { target: { value: 0 } });
 
     expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
@@ -115,10 +123,28 @@ describe('Home', () => {
   it('shows validation error for nights greater than 365', async () => {
     render(Home);
 
-    const nightsInput = screen.getByLabelText('Number of Nights');
+    const nightsInput = screen.getByLabelText('Nights');
     await fireEvent.input(nightsInput, { target: { value: 366 } });
 
     expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
+  });
+
+  it('shows validation error for persons less than 0.5', async () => {
+    render(Home);
+
+    const personsInput = screen.getByLabelText('Persons');
+    await fireEvent.input(personsInput, { target: { value: 0 } });
+
+    expect(screen.getByText('Persons must be at least 0.5')).toBeInTheDocument();
+  });
+
+  it('shows validation error for persons greater than 50', async () => {
+    render(Home);
+
+    const personsInput = screen.getByLabelText('Persons');
+    await fireEvent.input(personsInput, { target: { value: 51 } });
+
+    expect(screen.getByText('Persons cannot exceed 50')).toBeInTheDocument();
   });
 
   // --- Task 3: Create flow & redirect (AC: 6) ---
@@ -135,6 +161,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 3,
+      numberOfPersons: 1,
     };
     vi.mocked(createSplit).mockResolvedValue(mockSplit);
     vi.mocked(addParticipant).mockResolvedValue(mockParticipant);
@@ -147,7 +174,7 @@ describe('Home', () => {
     await fireEvent.input(screen.getByLabelText('Name'), {
       target: { value: 'Alice' },
     });
-    await fireEvent.input(screen.getByLabelText('Number of Nights'), {
+    await fireEvent.input(screen.getByLabelText('Nights'), {
       target: { value: 3 },
     });
 
@@ -159,9 +186,53 @@ describe('Home', () => {
       expect(addParticipant).toHaveBeenCalledWith('abc123', {
         name: 'Alice',
         nights: 3,
+        numberOfPersons: 1,
       });
-      expect(navigate).toHaveBeenCalledWith('/splits/:splitId', {
+      expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
         params: { splitId: 'abc123' },
+        search: { addParticipant: 'true' },
+      });
+    });
+  });
+
+  it('sends numberOfPersons in API call', async () => {
+    const mockSplit = {
+      id: 'abc123',
+      name: 'Weekend Trip',
+      createdAt: '2026-02-04T12:00:00Z',
+      participants: [],
+      expenses: [],
+    };
+    vi.mocked(createSplit).mockResolvedValue(mockSplit);
+    vi.mocked(addParticipant).mockResolvedValue({
+      id: 'p1',
+      name: 'Alice',
+      nights: 2,
+      numberOfPersons: 3,
+    });
+
+    render(Home);
+
+    await fireEvent.input(screen.getByLabelText('Split Name'), {
+      target: { value: 'Weekend Trip' },
+    });
+    await fireEvent.input(screen.getByLabelText('Name'), {
+      target: { value: 'Alice' },
+    });
+    await fireEvent.input(screen.getByLabelText('Nights'), {
+      target: { value: 2 },
+    });
+    await fireEvent.input(screen.getByLabelText('Persons'), {
+      target: { value: 3 },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+    await waitFor(() => {
+      expect(addParticipant).toHaveBeenCalledWith('abc123', {
+        name: 'Alice',
+        nights: 2,
+        numberOfPersons: 3,
       });
     });
   });
@@ -181,6 +252,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 1,
+      numberOfPersons: 1,
     });
 
     render(Home);

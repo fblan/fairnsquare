@@ -11,7 +11,8 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
- * Expense split proportionally based on nights stayed. Share calculation: participant's nights / total nights × amount
+ * Expense split proportionally based on nights stayed weighted by number of persons. Share calculation:
+ * (participant_nights × participant_persons) / total_weighted_nights × amount
  */
 public final class ExpenseByNight extends Expense {
 
@@ -68,9 +69,10 @@ public final class ExpenseByNight extends Expense {
             return Collections.emptyList();
         }
 
-        double totalNights = participants.stream().mapToDouble(p -> p.nights().value()).sum();
+        double totalWeight = participants.stream().mapToDouble(p -> p.nights().value() * p.numberOfPersons().value())
+                .sum();
 
-        if (totalNights == 0) {
+        if (totalWeight == 0) {
             return Collections.emptyList();
         }
 
@@ -79,14 +81,15 @@ public final class ExpenseByNight extends Expense {
 
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
+            double weight = p.nights().value() * p.numberOfPersons().value();
             BigDecimal share;
 
             if (i == participants.size() - 1) {
                 // Last participant gets the remainder to ensure sum = amount
                 share = getAmount().subtract(totalAssigned);
             } else {
-                share = getAmount().multiply(BigDecimal.valueOf(p.nights().value()))
-                        .divide(BigDecimal.valueOf(totalNights), SCALE, ROUNDING_MODE);
+                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalWeight), SCALE,
+                        ROUNDING_MODE);
                 totalAssigned = totalAssigned.add(share);
             }
 

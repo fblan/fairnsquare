@@ -69,7 +69,7 @@ class SplitSettlementTest {
         split.settle(SettlementCalculator.calculate(split));
         assertThat(split.getSettlement()).isNotNull();
 
-        split.updateParticipant(alice.id(), "Alice Updated", 5);
+        split.updateParticipant(alice.id(), "Alice Updated", 5, 1.0);
 
         assertThat(split.getSettlement()).isNull();
     }

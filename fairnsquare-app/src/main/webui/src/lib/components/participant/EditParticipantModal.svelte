@@ -37,12 +37,14 @@
   // Form state
   let editName = $state('');
   let editNights = $state(1);
+  let editNumberOfPersons = $state(1);
   let isLoading = $state(false);
 
   // Validation state
-  let validationErrors = $state<{ name?: string; nights?: string }>({});
+  let validationErrors = $state<{ name?: string; nights?: string; numberOfPersons?: string }>({});
   let nameTouched = $state(false);
   let nightsTouched = $state(false);
+  let numberOfPersonsTouched = $state(false);
 
   // Confirmation dialogs
   let showDiscardConfirm = $state(false);
@@ -53,7 +55,8 @@
   const isDirty = $derived(
     participant != null && (
       editName !== participant.name ||
-      editNights !== participant.nights
+      editNights !== participant.nights ||
+      editNumberOfPersons !== participant.numberOfPersons
     )
   );
 
@@ -76,7 +79,11 @@
     editNights >= 0.5 && editNights <= 365
   );
 
-  const isValid = $derived(isNameValid && isNightsValid);
+  const isNumberOfPersonsValid = $derived(
+    editNumberOfPersons >= 0.5 && editNumberOfPersons <= 50
+  );
+
+  const isValid = $derived(isNameValid && isNightsValid && isNumberOfPersonsValid);
 
   // Has expenses check for delete button
   const hasExpenses = $derived(
@@ -88,9 +95,11 @@
     if (open && participant) {
       editName = participant.name;
       editNights = participant.nights;
+      editNumberOfPersons = participant.numberOfPersons;
       validationErrors = {};
       nameTouched = false;
       nightsTouched = false;
+      numberOfPersonsTouched = false;
       showDiscardConfirm = false;
       showDeleteConfirm = false;
       isLoading = false;
@@ -139,16 +148,34 @@
     validateNights();
   }
 
+  function validateNumberOfPersons() {
+    if (editNumberOfPersons < 0.5) {
+      validationErrors.numberOfPersons = 'Must be at least 0.5';
+    } else if (editNumberOfPersons > 50) {
+      validationErrors.numberOfPersons = 'Cannot exceed 50';
+    } else {
+      delete validationErrors.numberOfPersons;
+      validationErrors = { ...validationErrors };
+    }
+  }
+
+  function handleNumberOfPersonsBlur() {
+    numberOfPersonsTouched = true;
+    validateNumberOfPersons();
+  }
+
   async function handleSubmit() {
     if (!participant) return;
 
     // Touch all fields to show validation errors
     nameTouched = true;
     nightsTouched = true;
+    numberOfPersonsTouched = true;
 
     // Final validation
     validateName();
     validateNights();
+    validateNumberOfPersons();
 
     if (!isValid || !isDirty) return;
     if (isLoading) return;
@@ -159,6 +186,7 @@
       await updateParticipant(splitId, participant.id, {
         name: editName.trim(),
         nights: editNights,
+        numberOfPersons: editNumberOfPersons,
       });
 
       addToast({
@@ -323,24 +351,45 @@
           {/if}
         </div>
 
-        <!-- Nights Field -->
-        <div class="space-y-2">
-          <Label for="edit-participant-nights-modal">Nights</Label>
-          <Input
-            id="edit-participant-nights-modal"
-            type="number"
-            step="0.5"
-            min="0.5"
-            max="365"
-            bind:value={editNights}
-            onblur={handleNightsBlur}
-            class="min-h-[44px]"
-            aria-invalid={nightsTouched && !!validationErrors.nights}
-            disabled={isLoading}
-          />
-          {#if nightsTouched && validationErrors.nights}
-            <p class="text-sm text-destructive">{validationErrors.nights}</p>
-          {/if}
+        <!-- Nights & Persons Fields -->
+        <div class="flex gap-3">
+          <div class="space-y-2 flex-1">
+            <Label for="edit-participant-nights-modal">Nights</Label>
+            <Input
+              id="edit-participant-nights-modal"
+              type="number"
+              step="0.5"
+              min="0.5"
+              max="365"
+              bind:value={editNights}
+              onblur={handleNightsBlur}
+              class="min-h-[44px]"
+              aria-invalid={nightsTouched && !!validationErrors.nights}
+              disabled={isLoading}
+            />
+            {#if nightsTouched && validationErrors.nights}
+              <p class="text-sm text-destructive">{validationErrors.nights}</p>
+            {/if}
+          </div>
+
+          <div class="space-y-2 flex-1">
+            <Label for="edit-participant-persons-modal">Persons</Label>
+            <Input
+              id="edit-participant-persons-modal"
+              type="number"
+              step="0.5"
+              min="0.5"
+              max="50"
+              bind:value={editNumberOfPersons}
+              onblur={handleNumberOfPersonsBlur}
+              class="min-h-[44px]"
+              aria-invalid={numberOfPersonsTouched && !!validationErrors.numberOfPersons}
+              disabled={isLoading}
+            />
+            {#if numberOfPersonsTouched && validationErrors.numberOfPersons}
+              <p class="text-sm text-destructive">{validationErrors.numberOfPersons}</p>
+            {/if}
+          </div>
         </div>
 
         <!-- Action Buttons -->

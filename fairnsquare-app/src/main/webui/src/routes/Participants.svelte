@@ -10,6 +10,7 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import EditParticipantModal from '$lib/components/participant/EditParticipantModal.svelte';
+  import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import { ArrowLeft, Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus } from 'lucide-svelte';
@@ -29,7 +30,8 @@
   let nameInputEl = $state<HTMLInputElement | null>(null);
   let formName = $state('');
   let formNights = $state(1);
-  let validationErrors = $state<{name?: string; nights?: string}>({});
+  let formNumberOfPersons = $state(1);
+  let validationErrors = $state<{name?: string; nights?: string; numberOfPersons?: string}>({});
   let isSubmitting = $state(false);
 
   // Edit Participant state
@@ -65,6 +67,17 @@
   $effect(() => {
     if (splitId) {
       loadSplit(splitId);
+    }
+  });
+
+  // Auto-open add form when navigated from the Home creation flow
+  $effect(() => {
+    if (route.search?.addParticipant) {
+      handleShowAddForm();
+      // Remove the param from the URL without triggering re-navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete('addParticipant');
+      window.history.replaceState(null, '', url.toString());
     }
   });
 
@@ -140,6 +153,7 @@
     showAddForm = true;
     formName = '';
     formNights = getSmartDefaultNights();
+    formNumberOfPersons = 1;
     validationErrors = {};
     await tick();
     nameInputEl?.focus();
@@ -149,6 +163,7 @@
     showAddForm = false;
     formName = '';
     formNights = 1;
+    formNumberOfPersons = 1;
     validationErrors = {};
   }
 
@@ -176,8 +191,18 @@
     validationErrors = { ...validationErrors, nights: nightsError };
   }
 
+  function validateNumberOfPersonsOnInput() {
+    let error: string | undefined;
+    if (formNumberOfPersons < 0.5) {
+      error = 'Must be at least 0.5';
+    } else if (formNumberOfPersons > 50) {
+      error = 'Cannot exceed 50';
+    }
+    validationErrors = { ...validationErrors, numberOfPersons: error };
+  }
+
   function validateAddForm(): boolean {
-    const errors: {name?: string; nights?: string} = {};
+    const errors: {name?: string; nights?: string; numberOfPersons?: string} = {};
 
     if (!formName.trim()) {
       errors.name = 'Name is required';
@@ -191,6 +216,12 @@
       errors.nights = 'Nights must be at least 0.5';
     } else if (formNights > 365) {
       errors.nights = 'Nights cannot exceed 365';
+    }
+
+    if (formNumberOfPersons < 0.5) {
+      errors.numberOfPersons = 'Must be at least 0.5';
+    } else if (formNumberOfPersons > 50) {
+      errors.numberOfPersons = 'Cannot exceed 50';
     }
 
     validationErrors = errors;
@@ -207,12 +238,14 @@
       await addParticipant(splitId, {
         name: addedName,
         nights: formNights,
+        numberOfPersons: formNumberOfPersons,
       });
 
       saveSmartDefaultNights(formNights);
       showAddForm = false;
       formName = '';
       formNights = 1;
+      formNumberOfPersons = 1;
       validationErrors = {};
       await loadSplit(splitId);
 
@@ -353,24 +386,12 @@
         >
           <ArrowLeft class="h-5 w-5" />
         </Button>
-        <h1 class="text-xl font-bold text-primary">Participants</h1>
+        <h1 class="text-xl font-bold text-primary">Participants ({split.participants.length})</h1>
       </div>
     </header>
 
     <!-- Participants Summary Card -->
-    <Card.Root class="w-full border-teal-200 bg-teal-50/50">
-      <Card.Content class="py-4">
-        <p class="text-sm text-muted-foreground">Participants</p>
-        <p class="text-lg font-semibold">
-          {split.participants.length} {split.participants.length === 1 ? 'participant' : 'participants'}
-        </p>
-        {#if sortedParticipants.length > 0}
-          <p class="text-sm text-muted-foreground mt-1">
-            {sortedParticipants.map(p => `${formatName(p.name)} (${p.nights})`).join(', ')}
-          </p>
-        {/if}
-      </Card.Content>
-    </Card.Root>
+    <ParticipantSummaryCard participants={split.participants} showTitle={false} />
 
     <!-- Add Participant Form / Button -->
     {#if showAddForm}
@@ -396,20 +417,40 @@
               {/if}
             </div>
 
-            <div class="space-y-2">
-              <Label for="participant-nights">Nights</Label>
-              <Input
-                id="participant-nights"
-                type="number"
-                step="0.5"
-                bind:value={formNights}
-                oninput={validateNightsOnInput}
-                class="min-h-[44px]"
-                disabled={isSubmitting}
-              />
-              {#if validationErrors.nights}
-                <p class="text-sm text-destructive">{validationErrors.nights}</p>
-              {/if}
+            <div class="flex gap-3">
+              <div class="space-y-2 flex-1">
+                <Label for="participant-nights">Nights</Label>
+                <Input
+                  id="participant-nights"
+                  type="number"
+                  step="0.5"
+                  bind:value={formNights}
+                  oninput={validateNightsOnInput}
+                  class="min-h-[44px]"
+                  disabled={isSubmitting}
+                />
+                {#if validationErrors.nights}
+                  <p class="text-sm text-destructive">{validationErrors.nights}</p>
+                {/if}
+              </div>
+
+              <div class="space-y-2 flex-1">
+                <Label for="participant-persons">Persons</Label>
+                <Input
+                  id="participant-persons"
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="50"
+                  bind:value={formNumberOfPersons}
+                  oninput={validateNumberOfPersonsOnInput}
+                  class="min-h-[44px]"
+                  disabled={isSubmitting}
+                />
+                {#if validationErrors.numberOfPersons}
+                  <p class="text-sm text-destructive">{validationErrors.numberOfPersons}</p>
+                {/if}
+              </div>
             </div>
 
             <div class="flex gap-2">
@@ -446,19 +487,11 @@
       <Card.Root class="w-full">
         <Card.Content class="py-4 transition-colors duration-500 {highlightedParticipantId === participant.id ? 'bg-teal-50' : ''}">
           <div class="flex flex-col gap-1">
-            <!-- Row 1: name + nights badge + action buttons -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="font-semibold text-lg">{formatName(participant.name)}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
-                  {participant.nights} {participant.nights <= 1 ? 'night' : 'nights'}
-                </span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  {stats.expenseCount} {stats.expenseCount === 1 ? 'expense' : 'expenses'}
-                </span>
-              </div>
+            <!-- Row 1: name + action buttons -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-semibold text-lg truncate min-w-0 flex-1">{formatName(participant.name)}</span>
               <!-- Action Buttons -->
-              <div class="flex items-center gap-1">
+              <div class="flex-none flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -492,7 +525,21 @@
                 </Button>
               </div>
             </div>
-            <!-- Row 2: stats (full width) -->
+            <!-- Row 2: badges -->
+            <div class="flex flex-wrap items-center gap-1">
+              <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+                {participant.nights} {participant.nights <= 1 ? 'night' : 'nights'}
+              </span>
+              {#if participant.numberOfPersons > 1}
+                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                  {participant.numberOfPersons} {participant.numberOfPersons <= 1 ? 'person' : 'persons'}
+                </span>
+              {/if}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {stats.expenseCount} {stats.expenseCount === 1 ? 'expense' : 'expenses'}
+              </span>
+            </div>
+            <!-- Row 3: stats (full width) -->
             <div class="flex items-center justify-between text-base">
               <span class="flex items-center gap-1 text-muted-foreground" title="Spent">
                 <Wallet class="h-4 w-4 shrink-0" />

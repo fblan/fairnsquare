@@ -221,6 +221,7 @@ class PersistenceRoundTripTest {
         assertThat(loaded.getName().value()).isEqualTo("Legacy Split");
         assertThat(loaded.getParticipants()).hasSize(1);
         assertThat(loaded.getParticipants().getFirst().name().value()).isEqualTo("Alice");
+        assertThat(loaded.getParticipants().getFirst().numberOfPersons().value()).isEqualTo(1.0);
         assertThat(loaded.getExpenses()).isEmpty();
     }
 }

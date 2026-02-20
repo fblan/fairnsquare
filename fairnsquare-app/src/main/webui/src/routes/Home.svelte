@@ -14,12 +14,14 @@
   let splitName = $state('');
   let participantName = $state('');
   let nights = $state(1);
+  let numberOfPersons = $state(1);
   let isLoading = $state(false);
 
   // Track whether fields have been touched for validation display
   let splitNameTouched = $state(false);
   let participantNameTouched = $state(false);
   let nightsTouched = $state(false);
+  let numberOfPersonsTouched = $state(false);
 
   // Derived validation errors (only shown after field is touched)
   let splitNameError = $derived.by(() => {
@@ -43,6 +45,13 @@
     return null;
   });
 
+  let numberOfPersonsError = $derived.by(() => {
+    if (!numberOfPersonsTouched) return null;
+    if (numberOfPersons < 0.5) return 'Persons must be at least 0.5';
+    if (numberOfPersons > 50) return 'Persons cannot exceed 50';
+    return null;
+  });
+
   // Derived: form validity (independent of touched state)
   let isValid = $derived(
     splitName.trim().length > 0 &&
@@ -50,7 +59,9 @@
     participantName.trim().length > 0 &&
     participantName.length <= 50 &&
     nights >= 0.5 &&
-    nights <= 365
+    nights <= 365 &&
+    numberOfPersons >= 0.5 &&
+    numberOfPersons <= 50
   );
 
   async function handleCreateSplit() {
@@ -58,6 +69,7 @@
     splitNameTouched = true;
     participantNameTouched = true;
     nightsTouched = true;
+    numberOfPersonsTouched = true;
 
     if (!isValid) return;
 
@@ -71,10 +83,11 @@
       await addParticipant(split.id, {
         name: participantName.trim(),
         nights,
+        numberOfPersons,
       });
 
-      // Step 3: Redirect directly to split page (no intermediate screen)
-      navigate('/splits/:splitId', { params: { splitId: split.id } });
+      // Step 3: Go to participants page with form pre-opened to add next participant
+      navigate('/splits/:splitId/participants', { params: { splitId: split.id }, search: { addParticipant: 'true' } });
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
@@ -149,27 +162,52 @@
               {/if}
             </div>
 
-            <div class="space-y-2">
-              <Label for="nights">Number of Nights</Label>
-              <Input
-                type="number"
-                id="nights"
-                bind:value={nights}
-                onblur={() => { nightsTouched = true; }}
-                oninput={() => { nightsTouched = true; }}
-                step={0.5}
-                min={0.5}
-                max={365}
-                disabled={isLoading}
-                class="min-h-[44px]"
-                aria-invalid={nightsError ? 'true' : undefined}
-                aria-describedby={nightsError ? 'nights-error' : undefined}
-              />
-              {#if nightsError}
-                <p id="nights-error" class="text-sm text-destructive">
-                  {nightsError}
-                </p>
-              {/if}
+            <div class="flex gap-3">
+              <div class="space-y-2 flex-1">
+                <Label for="nights">Nights</Label>
+                <Input
+                  type="number"
+                  id="nights"
+                  bind:value={nights}
+                  onblur={() => { nightsTouched = true; }}
+                  oninput={() => { nightsTouched = true; }}
+                  step={0.5}
+                  min={0.5}
+                  max={365}
+                  disabled={isLoading}
+                  class="min-h-[44px]"
+                  aria-invalid={nightsError ? 'true' : undefined}
+                  aria-describedby={nightsError ? 'nights-error' : undefined}
+                />
+                {#if nightsError}
+                  <p id="nights-error" class="text-sm text-destructive">
+                    {nightsError}
+                  </p>
+                {/if}
+              </div>
+
+              <div class="space-y-2 flex-1">
+                <Label for="numberOfPersons">Persons</Label>
+                <Input
+                  type="number"
+                  id="numberOfPersons"
+                  bind:value={numberOfPersons}
+                  onblur={() => { numberOfPersonsTouched = true; }}
+                  oninput={() => { numberOfPersonsTouched = true; }}
+                  step={0.5}
+                  min={0.5}
+                  max={50}
+                  disabled={isLoading}
+                  class="min-h-[44px]"
+                  aria-invalid={numberOfPersonsError ? 'true' : undefined}
+                  aria-describedby={numberOfPersonsError ? 'numberOfPersons-error' : undefined}
+                />
+                {#if numberOfPersonsError}
+                  <p id="numberOfPersons-error" class="text-sm text-destructive">
+                    {numberOfPersonsError}
+                  </p>
+                {/if}
+              </div>
             </div>
           </div>
 
