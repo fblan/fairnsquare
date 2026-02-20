@@ -16,6 +16,11 @@ public enum SplitMode {
     EQUAL("EQUAL"),
 
     /**
+     * Distribute expense proportionally based on number of persons.
+     */
+    BY_PERSON("BY_PERSON"),
+
+    /**
      * Allow manual specification of each participant's share.
      */
     FREE("FREE");

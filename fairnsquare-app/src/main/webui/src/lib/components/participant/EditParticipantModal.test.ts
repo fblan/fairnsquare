@@ -200,14 +200,12 @@ describe('EditParticipantModal', () => {
     });
 
     it('should show error for nights greater than 365', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
-      
+
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '366');
-      await user.tab();
-      
+      await fireEvent.input(nightsInput, { target: { value: '366' } });
+      await fireEvent.blur(nightsInput);
+
       await waitFor(() => {
         expect(screen.getByText(/cannot exceed 365/i)).toBeInTheDocument();
       });
@@ -236,13 +234,11 @@ describe('EditParticipantModal', () => {
     });
 
     it('should enable Save Changes button when nights changes', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
-      
+
       const nightsInput = screen.getByLabelText(/nights/i);
-      await user.clear(nightsInput);
-      await user.type(nightsInput, '5');
-      
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
       await waitFor(() => {
         const saveButton = screen.getByRole('button', { name: /save changes/i });
         expect(saveButton).not.toBeDisabled();
@@ -660,12 +656,10 @@ describe('EditParticipantModal', () => {
     });
 
     it('should enable Save when numberOfPersons changes', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
 
       const personsInput = screen.getByLabelText(/persons/i);
-      await user.clear(personsInput);
-      await user.type(personsInput, '2');
+      await fireEvent.input(personsInput, { target: { value: '2' } });
 
       await waitFor(() => {
         const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -713,13 +707,11 @@ describe('EditParticipantModal', () => {
     });
 
     it('should show error for persons greater than 50', async () => {
-      const user = userEvent.setup();
       render(EditParticipantModal, { props: defaultProps });
 
       const personsInput = screen.getByLabelText(/persons/i);
-      await user.clear(personsInput);
-      await user.type(personsInput, '51');
-      await user.tab();
+      await fireEvent.input(personsInput, { target: { value: '51' } });
+      await fireEvent.blur(personsInput);
 
       await waitFor(() => {
         expect(screen.getByText(/cannot exceed 50/i)).toBeInTheDocument();
