@@ -1,9 +1,15 @@
 package org.asymetrik.web.fairnsquare.split.persistence;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,17 +19,24 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /**
- * Generic JSON file repository for persisting entities to the file system. Provides automatic directory creation and
- * JSON serialization/deserialization.
+ * ZIP-based file repository for persisting entities to the file system. Each entity is stored as a ZIP archive
+ * containing:
+ * <ul>
+ * <li>{@code metadata.json} — format version and deserializer code</li>
+ * <li>{@code data.bin} — the JSON-serialized entity data</li>
+ * </ul>
  */
 @ApplicationScoped
-public class JsonFileRepository {
+public class ZipFileRepository {
+
+    static final String METADATA_ENTRY = "metadata.json";
+    static final String DATA_ENTRY = "data.bin";
 
     private final ObjectMapper objectMapper;
     private final TenantPathResolver pathResolver;
 
     @Inject
-    public JsonFileRepository(TenantPathResolver pathResolver) {
+    public ZipFileRepository(TenantPathResolver pathResolver) {
         this.pathResolver = pathResolver;
         this.objectMapper = createObjectMapper();
     }
@@ -37,7 +50,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Saves an entity to a JSON file for the default tenant. Creates parent directories if they don't exist.
+     * Saves an entity to a ZIP archive for the default tenant.
      *
      * @param splitId
      *            the split identifier (used as filename)
@@ -55,7 +68,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Saves an entity to a JSON file for a specific tenant. Creates parent directories if they don't exist.
+     * Saves an entity to a ZIP archive for a specific tenant.
      *
      * @param tenantId
      *            the tenant identifier
@@ -75,7 +88,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Loads an entity from a JSON file for the default tenant.
+     * Loads an entity from a ZIP archive for the default tenant.
      *
      * @param splitId
      *            the split identifier
@@ -95,7 +108,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Loads an entity from a JSON file for a specific tenant.
+     * Loads an entity from a ZIP archive for a specific tenant.
      *
      * @param tenantId
      *            the tenant identifier
@@ -117,7 +130,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Deletes a split file for the default tenant.
+     * Deletes a split archive for the default tenant.
      *
      * @param splitId
      *            the split identifier
@@ -135,7 +148,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Checks if a split file exists for the default tenant.
+     * Checks if a split archive exists for the default tenant.
      *
      * @param splitId
      *            the split identifier
@@ -148,7 +161,7 @@ public class JsonFileRepository {
     }
 
     /**
-     * Checks if a split file exists for a specific tenant.
+     * Checks if a split archive exists for a specific tenant.
      *
      * @param tenantId
      *            the tenant identifier
@@ -164,15 +177,23 @@ public class JsonFileRepository {
 
     private <T> void saveToPath(Path filePath, T entity) {
         try {
-            // Create parent directories if they don't exist
             Path parentDir = filePath.getParent();
             if (parentDir != null && !Files.exists(parentDir)) {
                 Files.createDirectories(parentDir);
             }
 
-            // Write entity as JSON
-            String json = objectMapper.writeValueAsString(entity);
-            Files.writeString(filePath, json);
+            byte[] metadataBytes = objectMapper.writeValueAsBytes(PersistenceMetadata.current());
+            byte[] dataBytes = objectMapper.writeValueAsString(entity).getBytes(StandardCharsets.UTF_8);
+
+            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(filePath))) {
+                zos.putNextEntry(new ZipEntry(METADATA_ENTRY));
+                zos.write(metadataBytes);
+                zos.closeEntry();
+
+                zos.putNextEntry(new ZipEntry(DATA_ENTRY));
+                zos.write(dataBytes);
+                zos.closeEntry();
+            }
         } catch (IOException e) {
             throw new PersistenceException("Failed to save entity to " + filePath, e);
         }
@@ -183,13 +204,50 @@ public class JsonFileRepository {
             return Optional.empty();
         }
 
-        try {
-            String json = Files.readString(filePath);
-            T entity = objectMapper.readValue(json, entityClass);
+        try (InputStream fis = Files.newInputStream(filePath);
+                ZipInputStream zis = new ZipInputStream(fis)) {
+
+            PersistenceMetadata metadata = null;
+            byte[] dataBytes = null;
+
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                byte[] content = readAllBytes(zis);
+                switch (entry.getName()) {
+                    case METADATA_ENTRY -> metadata = objectMapper.readValue(content, PersistenceMetadata.class);
+                    case DATA_ENTRY -> dataBytes = content;
+                }
+                zis.closeEntry();
+            }
+
+            if (metadata == null) {
+                throw new PersistenceException("Missing " + METADATA_ENTRY + " in " + filePath, null);
+            }
+            if (dataBytes == null) {
+                throw new PersistenceException("Missing " + DATA_ENTRY + " in " + filePath, null);
+            }
+            if (!PersistenceMetadata.CLEAR_DESERIALIZER.equals(metadata.deserializer())) {
+                throw new PersistenceException(
+                        "Unsupported deserializer '" + metadata.deserializer() + "' in " + filePath, null);
+            }
+
+            T entity = objectMapper.readValue(dataBytes, entityClass);
             return Optional.of(entity);
+        } catch (PersistenceException e) {
+            throw e;
         } catch (IOException e) {
             throw new PersistenceException("Failed to load entity " + entityClass.getName() + " from " + filePath, e);
         }
+    }
+
+    private byte[] readAllBytes(ZipInputStream zis) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = zis.read(buffer)) != -1) {
+            baos.write(buffer, 0, len);
+        }
+        return baos.toByteArray();
     }
 
     /**

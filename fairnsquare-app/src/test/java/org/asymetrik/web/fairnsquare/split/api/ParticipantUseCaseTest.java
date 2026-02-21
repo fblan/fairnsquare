@@ -9,9 +9,13 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
@@ -103,7 +107,7 @@ class ParticipantUseCaseTest {
 
         // Verify file contains participant
         Path splitFile = pathResolver.resolve(splitId);
-        String content = Files.readString(splitFile);
+        String content = readZipDataEntry(splitFile);
         assertThat(content.contains("\"Bob\"")).as("File should contain participant name").isTrue();
         assertThat(content.contains("\"nights\"")).as("File should contain nights field").isTrue();
     }
@@ -268,7 +272,7 @@ class ParticipantUseCaseTest {
 
         // Verify file contains updated values
         Path splitFile = pathResolver.resolve(splitId);
-        String content = Files.readString(splitFile);
+        String content = readZipDataEntry(splitFile);
         assertThat(content.contains("\"UpdatedName\"")).as("File should contain updated participant name").isTrue();
         assertThat(content.contains("7")).as("File should contain updated nights value").isTrue();
     }
@@ -432,7 +436,7 @@ class ParticipantUseCaseTest {
 
         // Verify participant exists
         Path splitFile = pathResolver.resolve(splitId);
-        String contentBefore = Files.readString(splitFile);
+        String contentBefore = readZipDataEntry(splitFile);
         assertThat(contentBefore.contains("\"ToBeDeleted\"")).as("File should contain participant before deletion")
                 .isTrue();
 
@@ -440,7 +444,7 @@ class ParticipantUseCaseTest {
         given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(204);
 
         // Verify participant is removed from file
-        String contentAfter = Files.readString(splitFile);
+        String contentAfter = readZipDataEntry(splitFile);
         assertThat(contentAfter.contains("\"ToBeDeleted\"")).as("File should not contain participant after deletion")
                 .isFalse();
     }
@@ -543,6 +547,22 @@ class ParticipantUseCaseTest {
 
         // Try to delete with invalid participant ID format
         given().when().delete("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
+    }
+
+    private String readZipDataEntry(Path zipPath) throws IOException {
+        try (InputStream fis = Files.newInputStream(zipPath);
+                ZipInputStream zis = new ZipInputStream(fis)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if ("data.bin".equals(entry.getName())) {
+                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                    zis.closeEntry();
+                    return content;
+                }
+                zis.closeEntry();
+            }
+        }
+        throw new AssertionError("data.bin entry not found in " + zipPath);
     }
 
 }
