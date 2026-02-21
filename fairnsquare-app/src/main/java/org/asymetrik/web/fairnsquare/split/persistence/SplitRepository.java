@@ -13,12 +13,12 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class SplitRepository {
 
-    private final JsonFileRepository jsonFileRepository;
+    private final ZipFileRepository zipFileRepository;
     private final SplitPersistenceMapper splitMapper;
 
     @Inject
-    public SplitRepository(final JsonFileRepository jsonFileRepository, final SplitPersistenceMapper splitMapper) {
-        this.jsonFileRepository = jsonFileRepository;
+    public SplitRepository(final ZipFileRepository zipFileRepository, final SplitPersistenceMapper splitMapper) {
+        this.zipFileRepository = zipFileRepository;
         this.splitMapper = splitMapper;
     }
 
@@ -27,19 +27,19 @@ public class SplitRepository {
                 || split.getId().value().isBlank()) {
             throw new InvalidSplitIdError("Split ID cannot be null or blank");
         }
-        jsonFileRepository.save(split.getId().value(), splitMapper.toPersistenceDTO(split));
+        zipFileRepository.save(split.getId().value(), splitMapper.toPersistenceDTO(split));
     }
 
     public Optional<Split> load(String splitId) {
-        Optional<Split> split = jsonFileRepository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain);
+        Optional<Split> split = zipFileRepository.load(splitId, SplitPersistenceDTO.class).map(splitMapper::toDomain);
         return split;
     }
 
     public boolean exists(final String splitId) {
-        return jsonFileRepository.exists(splitId);
+        return zipFileRepository.exists(splitId);
     }
 
     public void delete(final String splitId) {
-        jsonFileRepository.delete(splitId);
+        zipFileRepository.delete(splitId);
     }
 }

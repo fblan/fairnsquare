@@ -8,13 +8,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
- * Resolves file paths for tenant-scoped data storage. Pattern: {dataPath}/{tenantId}/{splitId}.json
+ * Resolves file paths for tenant-scoped data storage. Pattern: {dataPath}/{tenantId}/{splitId}.zip
  */
 @ApplicationScoped
 public class TenantPathResolver {
 
     private static final String DEFAULT_TENANT = "default";
-    private static final String JSON_EXTENSION = ".json";
+    private static final String ZIP_EXTENSION = ".zip";
 
     @ConfigProperty(name = "fairnsquare.data.path", defaultValue = "data")
     String dataPath;
@@ -42,7 +42,7 @@ public class TenantPathResolver {
      * @return the resolved file path
      */
     public Path resolve(String tenantId, String splitId) {
-        return Paths.get(dataPath, tenantId, splitId + JSON_EXTENSION);
+        return Paths.get(dataPath, tenantId, splitId + ZIP_EXTENSION);
     }
 
     /**

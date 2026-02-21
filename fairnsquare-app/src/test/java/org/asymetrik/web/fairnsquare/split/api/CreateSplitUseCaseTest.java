@@ -9,9 +9,13 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
@@ -77,7 +81,7 @@ class CreateSplitUseCaseTest {
         Path splitFile = pathResolver.resolve(splitId);
         assertThat(Files.exists(splitFile)).as("Split file should exist").isTrue();
 
-        String content = Files.readString(splitFile);
+        String content = readZipDataEntry(splitFile);
         assertThat(content.contains("\"id\"")).as("File should contain id field").isTrue();
         assertThat(content.contains("\"name\"")).as("File should contain name field").isTrue();
         assertThat(content.contains("\"createdAt\"")).as("File should contain createdAt field").isTrue();
@@ -193,5 +197,21 @@ class CreateSplitUseCaseTest {
         given().when().get("/api/splits/invalid..id").then().statusCode(400);
         given().when().get("/api/splits/has/slash").then().statusCode(404); // Different path
         given().when().get("/api/splits/has%00null").then().statusCode(400);
+    }
+
+    private String readZipDataEntry(Path zipPath) throws IOException {
+        try (InputStream fis = Files.newInputStream(zipPath);
+                ZipInputStream zis = new ZipInputStream(fis)) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if ("data.bin".equals(entry.getName())) {
+                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                    zis.closeEntry();
+                    return content;
+                }
+                zis.closeEntry();
+            }
+        }
+        throw new AssertionError("data.bin entry not found in " + zipPath);
     }
 }
