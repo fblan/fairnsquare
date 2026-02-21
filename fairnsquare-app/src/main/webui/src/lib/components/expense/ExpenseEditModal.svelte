@@ -14,6 +14,7 @@
   import * as RadioGroup from '$lib/components/ui/radio-group';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
+  import ShareEditModal from './ShareEditModal.svelte';
   import { Moon, Equal, Edit3, Users, X } from 'lucide-svelte';
 
   // Props
@@ -45,6 +46,8 @@
   let payerSelected = $state<{ value: string; label: string }>({ value: '', label: '' });
   let splitMode = $state<SplitMode>('BY_NIGHT');
   let shareParts = $state<Record<string, number | ''>>({});
+  let shareChecked = $state<Record<string, boolean>>({});
+  let sharePreviousValues = $state<Record<string, number>>({});
   let isLoading = $state(false);
 
   // Validation state
@@ -55,15 +58,28 @@
   // Confirmation state
   let showDiscardConfirm = $state(false);
   let showDeleteConfirm = $state(false);
+  let showShareEditModal = $state(false);
   let isDeleting = $state(false);
 
   // Dirty tracking (edit mode)
+  const isSharesDirty = $derived(
+    expense != null && expense.splitMode === 'FREE' && participants.some(p => {
+      const currentVal = typeof shareParts[p.id] === 'number'
+        ? shareParts[p.id] as number
+        : parseFloat(String(shareParts[p.id])) || 0;
+      const originalShare = expense.shares?.find(s => s.participantId === p.id);
+      const originalVal = originalShare?.parts ?? 0;
+      return currentVal !== originalVal;
+    })
+  );
+
   const isDirtyEdit = $derived(
     expense != null && (
       (typeof amount === 'number' ? amount : parseFloat(amount as string) || 0) !== expense.amount ||
       description !== expense.description ||
       payerId !== expense.payerId ||
-      splitMode !== expense.splitMode
+      splitMode !== expense.splitMode ||
+      isSharesDirty
     )
   );
 
@@ -73,7 +89,10 @@
     description !== '' ||
     (payerId !== '' && payerId !== preselectedPayerId) ||
     splitMode !== 'BY_NIGHT' ||
-    Object.values(shareParts).some(val => val !== '')
+    Object.entries(shareParts).some(([id, val]) => {
+      if (id === payerId) return val !== 1;
+      return val !== '' && val !== 0;
+    })
   );
 
   const isDirty = $derived(isEditMode ? isDirtyEdit : isDirtyAdd);
@@ -127,10 +146,14 @@
     isLoading = false;
     isDeleting = false;
 
-    // Initialize share parts for all participants
+    // Initialize share parts, checkboxes, and previous values for all participants
     shareParts = {};
+    shareChecked = {};
+    sharePreviousValues = {};
     for (const participant of participants) {
       shareParts[participant.id] = '';
+      shareChecked[participant.id] = false;
+      sharePreviousValues[participant.id] = 1;
     }
 
     if (expense) {
@@ -143,6 +166,18 @@
       const payer = participants.find(p => p.id === expense.payerId);
       if (payer) {
         payerSelected = { value: payer.id, label: payer.name };
+      }
+
+      // Populate share data from existing expense shares (FREE mode)
+      if (expense.splitMode === 'FREE' && expense.shares) {
+        for (const share of expense.shares) {
+          const parts = share.parts ?? 0;
+          if (parts > 0) {
+            shareChecked[share.participantId] = true;
+            shareParts[share.participantId] = parts;
+            sharePreviousValues[share.participantId] = parts;
+          }
+        }
       }
     } else {
       // Add mode: blank form with optional pre-selected payer
@@ -159,6 +194,12 @@
       } else if (participants.length > 0) {
         payerId = participants[0].id;
         payerSelected = { value: participants[0].id, label: participants[0].name };
+      }
+
+      // Default: payer checked with value 1
+      if (payerId) {
+        shareChecked[payerId] = true;
+        shareParts[payerId] = 1;
       }
     }
   }
@@ -204,6 +245,25 @@
     }
   }
 
+  // Shares summary: list of checked participants with their parts
+  const checkedShares = $derived(
+    participants
+      .filter(p => shareChecked[p.id])
+      .map(p => {
+        const val = typeof shareParts[p.id] === 'number'
+          ? shareParts[p.id] as number
+          : parseFloat(String(shareParts[p.id])) || 0;
+        return { name: p.name, parts: val };
+      })
+  );
+
+  function handleShareEditConfirm(data: { shareParts: Record<string, number | ''>; shareChecked: Record<string, boolean>; sharePreviousValues: Record<string, number> }) {
+    shareParts = data.shareParts;
+    shareChecked = data.shareChecked;
+    sharePreviousValues = data.sharePreviousValues;
+    showShareEditModal = false;
+  }
+
   async function handleSubmit() {
     amountTouched = true;
     descriptionTouched = true;
@@ -216,7 +276,25 @@
     isLoading = true;
 
     try {
-      if (isEditMode && expense) {
+      if (splitMode === 'FREE') {
+        const shares = participants.map(p => ({
+          participantId: p.id,
+          parts: typeof shareParts[p.id] === 'number'
+            ? shareParts[p.id] as number
+            : parseFloat(shareParts[p.id] as string) || 0,
+        }));
+        if (isEditMode && expense) {
+          // FREE mode update: delete old + create new (backend doesn't support updating shares)
+          await deleteExpense(splitId, expense.id);
+        }
+        await addFreeExpense(splitId, {
+          amount: amountValue,
+          description: description.trim(),
+          payerId,
+          shares,
+        });
+        addToast({ type: 'success', message: isEditMode ? 'Expense updated' : 'Expense added' });
+      } else if (isEditMode && expense) {
         await updateExpense(splitId, expense.id, {
           amount: amountValue,
           description: description.trim(),
@@ -224,20 +302,6 @@
           splitMode,
         });
         addToast({ type: 'success', message: 'Expense updated' });
-      } else if (splitMode === 'FREE') {
-        const shares = participants.map(p => ({
-          participantId: p.id,
-          parts: typeof shareParts[p.id] === 'number'
-            ? shareParts[p.id] as number
-            : parseFloat(shareParts[p.id] as string) || 0,
-        }));
-        await addFreeExpense(splitId, {
-          amount: amountValue,
-          description: description.trim(),
-          payerId,
-          shares,
-        });
-        addToast({ type: 'success', message: 'Expense added' });
       } else {
         await addExpense(splitId, {
           amount: amountValue,
@@ -310,7 +374,7 @@
   function handleKeydown(event: KeyboardEvent) {
     if (!open) return;
 
-    if (event.key === 'Escape' && !isLoading && !showDiscardConfirm && !showDeleteConfirm) {
+    if (event.key === 'Escape' && !isLoading && !showDiscardConfirm && !showDeleteConfirm && !showShareEditModal) {
       handleCloseAttempt();
     }
 
@@ -358,8 +422,9 @@
     tabindex="-1"
   >
     <!-- Modal Content -->
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
+      role="presentation"
       class="bg-background rounded-lg shadow-lg w-full max-w-[420px] animate-in fade-in zoom-in-95"
       onclick={(e) => e.stopPropagation()}
     >
@@ -480,38 +545,38 @@
           </RadioGroup.Root>
         </div>
 
-        <!-- FREE Mode Parts Inputs -->
+        <!-- FREE Mode Shares Summary -->
         {#if splitMode === 'FREE'}
-          <div class="space-y-3 p-4 border rounded-lg bg-muted/30">
+          <div class="space-y-2 p-4 border rounded-lg bg-muted/30">
             <div class="flex items-center justify-between">
               <Label class="text-sm font-medium">Share Parts</Label>
               <span class="text-sm {isPartsValid ? 'text-green-600' : 'text-destructive'}">
-                Total: {totalParts.toFixed(2)} parts {totalParts > 0 ? '✓' : '⚠'}
+                {totalParts.toFixed(2)} parts {totalParts > 0 ? '✓' : '⚠'}
               </span>
             </div>
-            <p class="text-xs text-muted-foreground">
-              Amounts will be calculated proportionally. E.g., 2 parts & 3 parts splits €100 as €40 & €60
-            </p>
+            {#if checkedShares.length > 0}
+              <div class="text-sm text-muted-foreground">
+                {#each checkedShares as share, i}
+                  <span>{share.name}: {share.parts}{#if i < checkedShares.length - 1}, {/if}</span>
+                {/each}
+              </div>
+            {:else}
+              <p class="text-sm text-muted-foreground">No participants selected</p>
+            {/if}
             {#if !isPartsValid && (amountTouched || descriptionTouched)}
               <p class="text-xs text-destructive">At least one participant must have positive parts</p>
             {/if}
-            {#each participants as participant (participant.id)}
-              <div class="flex items-center gap-2">
-                <Label for="share-{participant.id}" class="flex-1 text-sm">
-                  {participant.name}
-                </Label>
-                <Input
-                  id="share-{participant.id}"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0"
-                  bind:value={shareParts[participant.id]}
-                  disabled={isLoading || isDeleting}
-                  class="w-32 min-h-[44px]"
-                />
-              </div>
-            {/each}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onclick={() => { showShareEditModal = true; }}
+              disabled={isLoading || isDeleting}
+              class="w-full min-h-[44px]"
+            >
+              <Edit3 class="h-4 w-4 mr-2" />
+              Edit shares
+            </Button>
           </div>
         {/if}
 
@@ -584,4 +649,13 @@
   isLoading={isDeleting}
   onConfirm={handleConfirmDelete}
   onCancel={handleCancelDelete}
+/>
+
+<!-- Share Edit Sub-Modal (FREE mode) -->
+<ShareEditModal
+  open={showShareEditModal}
+  {participants}
+  initialData={{ shareParts, shareChecked, sharePreviousValues }}
+  onConfirm={handleShareEditConfirm}
+  onCancel={() => { showShareEditModal = false; }}
 />

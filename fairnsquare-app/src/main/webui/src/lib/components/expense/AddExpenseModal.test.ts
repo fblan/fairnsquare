@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import ExpenseEditModal from './ExpenseEditModal.svelte';
 import type { Participant } from '$lib/api/splits';
 
@@ -607,128 +607,181 @@ describe('ExpenseEditModal', () => {
   // --- Story 4.3: FREE Mode Manual Share Specification Tests ---
 
   describe('FREE Mode Share Specification (Story 4.3)', () => {
+    // Helper: select FREE mode and return the edit shares button
+    async function selectFreeMode() {
+      const freeRadio = screen.getByRole('radio', { name: /manual/i });
+      await fireEvent.click(freeRadio);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /edit shares/i })).toBeInTheDocument();
+      });
+      return screen.getByRole('button', { name: /edit shares/i });
+    }
+
+    // Helper: open the share edit sub-modal
+    async function openShareEditModal() {
+      const editButton = await selectFreeMode();
+      await fireEvent.click(editButton);
+      await waitFor(() => {
+        expect(screen.getByText('Edit Shares')).toBeInTheDocument();
+      });
+    }
+
     it('renders FREE radio button option (AC1)', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
       expect(screen.getByRole('radio', { name: /manual/i })).toBeInTheDocument();
     });
 
-    it('shows participant share inputs when FREE mode selected (AC1)', async () => {
+    it('shows summary with payer checked by default when FREE mode selected', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await selectFreeMode();
 
+      // Bob (p2) is the pre-selected payer, should be shown in summary with value 1
       await waitFor(() => {
-        expect(screen.getByLabelText('Alice')).toBeInTheDocument();
-        expect(screen.getByLabelText('Bob')).toBeInTheDocument();
-        expect(screen.getByLabelText('Charlie')).toBeInTheDocument();
+        expect(screen.getByText(/Bob: 1/)).toBeInTheDocument();
       });
     });
 
-    it('share inputs are pre-filled with empty values (AC1)', async () => {
+    it('shows edit shares button when FREE mode selected', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
-
-      await waitFor(() => {
-        const aliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
-        const bobInput = screen.getByLabelText('Bob') as HTMLInputElement;
-        const charlieInput = screen.getByLabelText('Charlie') as HTMLInputElement;
-        
-        expect(aliceInput.value).toBe('');
-        expect(bobInput.value).toBe('');
-        expect(charlieInput.value).toBe('');
-      });
+      const editButton = await selectFreeMode();
+      expect(editButton).toBeInTheDocument();
     });
 
-    it('displays running total for parts (AC1)', async () => {
+    it('displays parts total in summary (AC1)', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await selectFreeMode();
 
+      // Payer (Bob) has 1 part by default
       await waitFor(() => {
-        expect(screen.getByText(/total:/i)).toBeInTheDocument();
-      });
-    });
-
-    it('running total updates when share parts entered (AC2)', async () => {
-      render(ExpenseEditModal, { props: defaultProps });
-
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
-
-      await waitFor(() => {
-        expect(screen.getByText(/total: 0\.00 parts/i)).toBeInTheDocument();
-      });
-
-      const aliceInput = screen.getByLabelText('Alice');
-      await fireEvent.input(aliceInput, { target: { value: '2' } });
-      
-      await waitFor(() => {
-        expect(screen.getByText(/total: 2\.00 parts/i)).toBeInTheDocument();
-      });
-
-      const bobInput = screen.getByLabelText('Bob');
-      await fireEvent.input(bobInput, { target: { value: '3' } });
-
-      await waitFor(() => {
-        expect(screen.getByText(/total: 5\.00 parts/i)).toBeInTheDocument();
+        expect(screen.getByText(/1\.00 parts/)).toBeInTheDocument();
       });
     });
 
     it('shows green checkmark when parts are valid (AC2)', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await selectFreeMode();
 
-      const aliceInput = screen.getByLabelText('Alice');
-      await fireEvent.input(aliceInput, { target: { value: '2' } });
-
+      // Payer has 1 part by default, so it's valid
       await waitFor(() => {
         expect(screen.getByText(/✓/)).toBeInTheDocument();
       });
     });
 
-    it('shows validation error when all parts are zero (AC3)', async () => {
+    it('opens share edit sub-modal with participant checkboxes', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await openShareEditModal();
 
-      // Set amount
-      const amountInput = screen.getByLabelText(/amount/i);
-      await fireEvent.input(amountInput, { target: { value: '100' } });
+      // All participants should be visible with checkboxes
+      expect(screen.getByRole('checkbox', { name: /include alice/i })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: /include bob/i })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: /include charlie/i })).toBeInTheDocument();
+    });
 
-      // Try to submit with zero parts
-      const submitButton = screen.getByRole('button', { name: /add expense/i });
-      await fireEvent.click(submitButton);
+    it('payer checkbox is checked by default in sub-modal', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
 
+      await openShareEditModal();
+
+      // Bob (p2) is payer, should be checked
+      const bobCheckbox = screen.getByRole('checkbox', { name: /include bob/i });
+      expect(bobCheckbox).toBeChecked();
+
+      // Others should not be checked
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      expect(aliceCheckbox).not.toBeChecked();
+    });
+
+    it('checking a participant sets value to 1 by default', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      await openShareEditModal();
+
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
+
+      const aliceInput = screen.getByLabelText(/alice parts/i) as HTMLInputElement;
+      expect(aliceInput.value).toBe('1');
+    });
+
+    it('unchecking a participant disables their input', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      await openShareEditModal();
+
+      // Alice is unchecked, her input should be disabled
+      const aliceInput = screen.getByLabelText(/alice parts/i) as HTMLInputElement;
+      expect(aliceInput).toBeDisabled();
+    });
+
+    it('re-checking a participant restores previous value', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      await openShareEditModal();
+
+      // Check Alice and set value to 5
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
+      const aliceInput = screen.getByLabelText(/alice parts/i) as HTMLInputElement;
+      await fireEvent.input(aliceInput, { target: { value: '5' } });
+      expect(aliceInput.value).toBe('5');
+
+      // Uncheck Alice
+      await fireEvent.click(aliceCheckbox);
+      expect(aliceInput.value).toBe('0');
+
+      // Re-check Alice — value should restore to 5
+      await fireEvent.click(aliceCheckbox);
+      expect(aliceInput.value).toBe('5');
+    });
+
+    it('confirm button updates summary in parent modal', async () => {
+      render(ExpenseEditModal, { props: defaultProps });
+
+      await openShareEditModal();
+
+      // Check Alice and set value to 2
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
+      const aliceInput = screen.getByLabelText(/alice parts/i);
+      await fireEvent.input(aliceInput, { target: { value: '2' } });
+
+      // Confirm
+      const confirmButton = screen.getByRole('button', { name: /^confirm$/i });
+      await fireEvent.click(confirmButton);
+
+      // Summary should show both Alice and Bob
       await waitFor(() => {
-        expect(screen.getByText(/at least one participant must have positive parts/i)).toBeInTheDocument();
+        expect(screen.getByText(/Alice: 2/)).toBeInTheDocument();
+        expect(screen.getByText(/Bob: 1/)).toBeInTheDocument();
       });
     });
 
-    it('enables submit when valid parts entered (AC2)', async () => {
+    it('cancel button in sub-modal discards changes', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await openShareEditModal();
 
-      const amountInput = screen.getByLabelText(/amount/i);
-      await fireEvent.input(amountInput, { target: { value: '100' } });
+      // Check Alice
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
 
-      const aliceInput = screen.getByLabelText('Alice');
-      await fireEvent.input(aliceInput, { target: { value: '2' } });
+      // Find the sub-modal's Cancel button (the one inside the share edit dialog)
+      const dialogs = screen.getAllByRole('dialog');
+      const shareDialog = dialogs[dialogs.length - 1];
+      const cancelButton = within(shareDialog).getByRole('button', { name: /^cancel$/i });
+      await fireEvent.click(cancelButton);
 
-      const bobInput = screen.getByLabelText('Bob');
-      await fireEvent.input(bobInput, { target: { value: '3' } });
-
-      const submitButton = screen.getByRole('button', { name: /add expense/i });
-      expect(submitButton).not.toBeDisabled();
+      // Summary should only show Bob (payer default)
+      await waitFor(() => {
+        expect(screen.getByText(/Bob: 1/)).toBeInTheDocument();
+        expect(screen.queryByText(/Alice/)).not.toBeInTheDocument();
+      });
     });
 
     it('calls addFreeExpense API with correct request body (AC6)', async () => {
@@ -749,24 +802,30 @@ describe('ExpenseEditModal', () => {
 
       render(ExpenseEditModal, { props: defaultProps });
 
-      // Select FREE mode
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
-
-      // Fill form
+      // Fill form fields
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '100' } });
-
       const descInput = screen.getByLabelText(/description/i);
       await fireEvent.input(descInput, { target: { value: 'Custom Split' } });
 
-      const aliceInput = screen.getByLabelText('Alice');
+      // Select FREE mode and edit shares
+      await openShareEditModal();
+
+      // Check Alice with value 2
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
+      const aliceInput = screen.getByLabelText(/alice parts/i);
       await fireEvent.input(aliceInput, { target: { value: '2' } });
 
-      const bobInput = screen.getByLabelText('Bob');
+      // Set Bob's value to 3
+      const bobInput = screen.getByLabelText(/bob parts/i);
       await fireEvent.input(bobInput, { target: { value: '3' } });
 
-      // Submit
+      // Confirm shares
+      const confirmButton = screen.getByRole('button', { name: /^confirm$/i });
+      await fireEvent.click(confirmButton);
+
+      // Submit the expense
       const submitButton = screen.getByRole('button', { name: /add expense/i });
       await fireEvent.click(submitButton);
 
@@ -784,21 +843,27 @@ describe('ExpenseEditModal', () => {
       });
     });
 
-    it('form reset clears share inputs', async () => {
+    it('form reset clears share data', async () => {
       const { rerender } = render(ExpenseEditModal, { props: defaultProps });
 
-      // Switch to FREE mode and set a share value
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      // Switch to FREE mode, edit shares
+      await openShareEditModal();
 
-      const aliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
+      const aliceCheckbox = screen.getByRole('checkbox', { name: /include alice/i });
+      await fireEvent.click(aliceCheckbox);
+      const aliceInput = screen.getByLabelText(/alice parts/i);
       await fireEvent.input(aliceInput, { target: { value: '5' } });
-      expect(aliceInput.value).toBe('5');
 
-      // Close modal (toggle open to false)
+      const confirmButton = screen.getByRole('button', { name: /^confirm$/i });
+      await fireEvent.click(confirmButton);
+
+      // Verify Alice is in summary
+      await waitFor(() => {
+        expect(screen.getByText(/Alice: 5/)).toBeInTheDocument();
+      });
+
+      // Close and reopen modal
       await rerender({ ...defaultProps, open: false });
-
-      // Reopen modal (toggle open to true → triggers resetForm via $effect)
       await rerender({ ...defaultProps, open: true });
 
       // After reset, splitMode goes back to BY_NIGHT — switch to FREE again
@@ -807,48 +872,42 @@ describe('ExpenseEditModal', () => {
       });
       await fireEvent.click(screen.getByRole('radio', { name: /manual/i }));
 
-      // Verify share input was cleared by the reset
+      // Summary should only show default payer (Bob: 1), not Alice
       await waitFor(() => {
-        const resetAliceInput = screen.getByLabelText('Alice') as HTMLInputElement;
-        expect(resetAliceInput.value).toBe('');
+        expect(screen.getByText(/Bob: 1/)).toBeInTheDocument();
+        expect(screen.queryByText(/Alice/)).not.toBeInTheDocument();
       });
     });
 
-    it('share inputs have numeric type with correct step (AC9)', async () => {
+    it('sub-modal has scrollable participant list', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await openShareEditModal();
 
-      await waitFor(() => {
-        const aliceInput = screen.getByLabelText('Alice');
-        expect(aliceInput).toHaveAttribute('type', 'number');
-        expect(aliceInput).toHaveAttribute('step', '0.01');
-        expect(aliceInput).toHaveAttribute('min', '0');
-      });
+      const list = screen.getByRole('list', { name: /participant shares/i });
+      expect(list).toHaveClass('max-h-[300px]');
+      expect(list).toHaveClass('overflow-y-auto');
     });
 
-    it('share inputs have minimum 44px touch targets (AC9)', async () => {
+    it('share inputs in sub-modal have numeric type with correct step (AC9)', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await openShareEditModal();
 
-      await waitFor(() => {
-        const aliceInput = screen.getByLabelText('Alice');
-        expect(aliceInput).toHaveClass('min-h-[44px]');
-      });
+      // Bob is checked, his input should be enabled with correct attributes
+      const bobInput = screen.getByLabelText(/bob parts/i);
+      expect(bobInput).toHaveAttribute('type', 'number');
+      expect(bobInput).toHaveAttribute('step', '0.01');
+      expect(bobInput).toHaveAttribute('min', '0');
     });
 
-    it('displays explanatory text about proportional calculation', async () => {
+    it('share inputs in sub-modal have minimum 44px touch targets (AC9)', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const freeRadio = screen.getByRole('radio', { name: /manual/i });
-      await fireEvent.click(freeRadio);
+      await openShareEditModal();
 
-      await waitFor(() => {
-        expect(screen.getByText(/amounts will be calculated proportionally/i)).toBeInTheDocument();
-      });
+      const bobInput = screen.getByLabelText(/bob parts/i);
+      expect(bobInput).toHaveClass('min-h-[44px]');
     });
   });
 
