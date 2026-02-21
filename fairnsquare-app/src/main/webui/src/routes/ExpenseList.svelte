@@ -9,7 +9,7 @@
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { ArrowLeft, Plus, Pencil, Trash2, Receipt } from 'lucide-svelte';
+  import { ArrowLeft, Plus, Pencil, Trash2, Receipt, ListFilter, X } from 'lucide-svelte';
 
   const splitId = $derived(route.params.splitId || '');
 
@@ -29,6 +29,11 @@
   let showEditExpense = $state(false);
   let expenseToEdit = $state<Expense | null>(null);
 
+  // Filter state — initialized from URL query params, then managed as local state
+  let selectedPayer = $state(String(route.search?.payer || ''));
+  let selectedBeneficiary = $state(String(route.search?.beneficiary || ''));
+  const hasActiveFilters = $derived(!!selectedPayer || !!selectedBeneficiary);
+
   // Derived values
   const sortedExpenses = $derived(
     split?.expenses
@@ -38,8 +43,22 @@
       : []
   );
 
-  const expenseCount = $derived(sortedExpenses.length);
-  const expenseTotal = $derived(sortedExpenses.reduce((sum, e) => sum + e.amount, 0));
+  const filteredExpenses = $derived(
+    sortedExpenses.filter((expense) => {
+      if (selectedPayer && expense.payerId !== selectedPayer) return false;
+      if (selectedBeneficiary) {
+        const activeShares = expense.splitMode === 'FREE'
+          ? expense.shares.filter((s) => s.parts != null && s.parts > 0)
+          : expense.shares;
+        if (!activeShares.some((s) => s.participantId === selectedBeneficiary)) return false;
+      }
+      return true;
+    })
+  );
+
+  const totalExpenseCount = $derived(sortedExpenses.length);
+  const expenseCount = $derived(filteredExpenses.length);
+  const expenseTotal = $derived(filteredExpenses.reduce((sum, e) => sum + e.amount, 0));
 
   // Load split data
   $effect(() => {
@@ -127,6 +146,37 @@
     return participantIds
       .map((id) => split!.participants.find((p) => p.id === id)?.name || 'Unknown')
       .join(', ');
+  }
+
+  function updateFilterUrl(payer: string, beneficiary: string) {
+    const url = new URL(window.location.href);
+    if (payer) {
+      url.searchParams.set('payer', payer);
+    } else {
+      url.searchParams.delete('payer');
+    }
+    if (beneficiary) {
+      url.searchParams.set('beneficiary', beneficiary);
+    } else {
+      url.searchParams.delete('beneficiary');
+    }
+    window.history.replaceState(null, '', url.toString());
+  }
+
+  function handlePayerFilterChange(payerId: string) {
+    selectedPayer = payerId;
+    updateFilterUrl(payerId, selectedBeneficiary);
+  }
+
+  function handleBeneficiaryFilterChange(participantId: string) {
+    selectedBeneficiary = participantId;
+    updateFilterUrl(selectedPayer, participantId);
+  }
+
+  function clearFilters() {
+    selectedPayer = '';
+    selectedBeneficiary = '';
+    updateFilterUrl('', '');
   }
 
   function handleBack() {
@@ -244,13 +294,59 @@
       </Button>
     </header>
 
+    <!-- Filter Bar -->
+    {#if split.participants.length > 0}
+      <section class="w-full" aria-label="Expense filters">
+        <div class="flex items-center gap-2">
+          <ListFilter class="h-4 w-4 text-muted-foreground shrink-0" />
+          <select
+            aria-label="Filter by payer"
+            value={selectedPayer}
+            onchange={(e) => handlePayerFilterChange(e.currentTarget.value)}
+            class="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <option value="">All payers</option>
+            {#each split.participants as participant}
+              <option value={participant.id}>{participant.name}</option>
+            {/each}
+          </select>
+          <select
+            aria-label="Filter by beneficiary"
+            value={selectedBeneficiary}
+            onchange={(e) => handleBeneficiaryFilterChange(e.currentTarget.value)}
+            class="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <option value="">All beneficiaries</option>
+            {#each split.participants as participant}
+              <option value={participant.id}>{participant.name}</option>
+            {/each}
+          </select>
+          {#if hasActiveFilters}
+            <Button
+              variant="ghost"
+              size="sm"
+              onclick={clearFilters}
+              class="min-h-[36px] min-w-[36px] p-1"
+              aria-label="Clear filters"
+            >
+              <X class="h-4 w-4" />
+            </Button>
+          {/if}
+        </div>
+      </section>
+    {/if}
+
     <!-- Summary Bar -->
     <section class="w-full">
       <div class="bg-teal-50/50 border border-teal-200 rounded-lg px-4 py-3">
         <div class="flex items-center justify-between">
-          <span class="text-sm font-medium"
-            >{expenseCount} total {expenseCount === 1 ? 'expense' : 'expenses'}</span
-          >
+          <span class="text-sm font-medium">
+            {#if hasActiveFilters}
+              {expenseCount} of {totalExpenseCount} {totalExpenseCount === 1 ? 'expense' : 'expenses'}
+            {:else}
+              {expenseCount} total {expenseCount === 1 ? 'expense' : 'expenses'}
+            {/if}
+          </span>
           <span class="text-sm font-semibold text-primary">{formatCurrency(expenseTotal)} total</span
           >
         </div>
@@ -258,16 +354,24 @@
     </section>
 
     {#if sortedExpenses.length === 0}
-      <!-- Empty State -->
+      <!-- Empty State - no expenses at all -->
       <div class="flex flex-col items-center justify-center py-12 space-y-3">
         <Receipt class="h-12 w-12 text-muted-foreground/50" />
         <h2 class="text-lg font-semibold text-muted-foreground">No expenses yet</h2>
         <p class="text-sm text-muted-foreground">Tap + to add your first expense</p>
       </div>
+    {:else if filteredExpenses.length === 0}
+      <!-- Empty State - filters produced no results -->
+      <div class="flex flex-col items-center justify-center py-12 space-y-3">
+        <ListFilter class="h-12 w-12 text-muted-foreground/50" />
+        <h2 class="text-lg font-semibold text-muted-foreground">No matching expenses</h2>
+        <p class="text-sm text-muted-foreground">Try adjusting your filters</p>
+        <Button variant="outline" size="sm" onclick={clearFilters}>Clear filters</Button>
+      </div>
     {:else}
       <!-- Expense Cards -->
       <div class="w-full space-y-3">
-        {#each sortedExpenses as expense (expense.id)}
+        {#each filteredExpenses as expense (expense.id)}
           <Card.Root class="w-full">
             <Card.Content class="py-3 px-4">
               <!-- Row 1: Description + Amount -->
