@@ -79,10 +79,62 @@ const mockSplitWithExpenses: SplitType = {
   ],
 };
 
+// Mock data with 3 participants for filter tests
+const mockSplitForFilters: SplitType = {
+  id: 'test-split-id-00001',
+  name: 'Weekend Trip',
+  createdAt: '2026-01-24T12:00:00Z',
+  participants: [
+    { id: 'p1', name: 'Alice', nights: 4 },
+    { id: 'p2', name: 'Bob', nights: 2 },
+    { id: 'p3', name: 'Charlie', nights: 3 },
+  ],
+  expenses: [
+    {
+      id: 'e1',
+      description: 'Groceries',
+      amount: 90.0,
+      payerId: 'p1',
+      splitMode: 'BY_NIGHT' as const,
+      createdAt: '2026-01-25T12:00:00Z',
+      shares: [
+        { participantId: 'p1', amount: 40.0 },
+        { participantId: 'p2', amount: 50.0 },
+      ],
+    },
+    {
+      id: 'e2',
+      description: 'Dinner',
+      amount: 60.0,
+      payerId: 'p2',
+      splitMode: 'EQUAL' as const,
+      createdAt: '2026-01-26T14:00:00Z',
+      shares: [
+        { participantId: 'p1', amount: 20.0 },
+        { participantId: 'p2', amount: 20.0 },
+        { participantId: 'p3', amount: 20.0 },
+      ],
+    },
+    {
+      id: 'e3',
+      description: 'Taxi',
+      amount: 30.0,
+      payerId: 'p1',
+      splitMode: 'EQUAL' as const,
+      createdAt: '2026-01-27T10:00:00Z',
+      shares: [
+        { participantId: 'p2', amount: 15.0 },
+        { participantId: 'p3', amount: 15.0 },
+      ],
+    },
+  ],
+};
+
 describe('ExpenseList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id-00001' };
+    (route as any).search = {};
   });
 
   // --- Task 1: Route and Navigation ---
@@ -380,6 +432,217 @@ describe('ExpenseList', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Add Expense' })).toBeInTheDocument();
+      });
+    });
+  });
+
+  // --- Task 7: Expense List Filtering ---
+
+  describe('Filtering', () => {
+    it('renders filter bar with payer and beneficiary selects', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Filter by payer')).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText('Filter by beneficiary')).toBeInTheDocument();
+    });
+
+    it('shows all expenses when no filters are set', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Dinner')).toBeInTheDocument();
+      expect(screen.getByText('Taxi')).toBeInTheDocument();
+      expect(screen.getByText('3 total expenses')).toBeInTheDocument();
+    });
+
+    it('filters by payer via URL query param', async () => {
+      (route as any).search = { payer: 'p1' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Taxi')).toBeInTheDocument();
+      // Dinner is paid by p2, should be hidden
+      expect(screen.queryByText('Dinner')).not.toBeInTheDocument();
+    });
+
+    it('filters by beneficiary via URL query param', async () => {
+      (route as any).search = { beneficiary: 'p3' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Dinner')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Taxi')).toBeInTheDocument();
+      // Groceries only has p1 and p2 shares, should be hidden
+      expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+    });
+
+    it('filters by both payer and beneficiary combined', async () => {
+      (route as any).search = { payer: 'p1', beneficiary: 'p3' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Taxi')).toBeInTheDocument();
+      });
+      // Groceries: paid by p1 but p3 is not a beneficiary
+      expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+      // Dinner: p3 is beneficiary but paid by p2
+      expect(screen.queryByText('Dinner')).not.toBeInTheDocument();
+    });
+
+    it('updates summary bar to show filtered count', async () => {
+      (route as any).search = { payer: 'p2' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        // Should show "1 of 3 expenses" when filtered
+        expect(screen.getByText(/1 of 3/)).toBeInTheDocument();
+      });
+      // Total should reflect only filtered expense (Dinner = €60)
+      expect(screen.getByText(/€60\.00 total/)).toBeInTheDocument();
+    });
+
+    it('shows "No matching expenses" when filter has no results', async () => {
+      // p3 never paid for anything
+      (route as any).search = { payer: 'p3' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('No matching expenses')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Try adjusting your filters')).toBeInTheDocument();
+      // Two "Clear filters" buttons: one in the filter bar (X icon) and one in the empty state
+      const clearButtons = screen.getAllByRole('button', { name: 'Clear filters' });
+      expect(clearButtons.length).toBe(2);
+    });
+
+    it('shows clear filters button when filters are active', async () => {
+      (route as any).search = { payer: 'p1' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Clear filters')).toBeInTheDocument();
+      });
+    });
+
+    it('does not show clear filters button when no filters active', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Filter by payer')).toBeInTheDocument();
+      });
+      expect(screen.queryByLabelText('Clear filters')).not.toBeInTheDocument();
+    });
+
+    it('filters expenses and updates URL when payer select is changed', async () => {
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+
+      const payerSelect = screen.getByLabelText('Filter by payer');
+      await fireEvent.change(payerSelect, { target: { value: 'p2' } });
+
+      // List should update reactively
+      await waitFor(() => {
+        expect(screen.getByText('Dinner')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+      expect(screen.queryByText('Taxi')).not.toBeInTheDocument();
+
+      // URL should be updated
+      expect(replaceStateSpy).toHaveBeenCalled();
+      const lastCall = replaceStateSpy.mock.calls[replaceStateSpy.mock.calls.length - 1];
+      const updatedUrl = new URL(lastCall[2] as string);
+      expect(updatedUrl.searchParams.get('payer')).toBe('p2');
+
+      replaceStateSpy.mockRestore();
+    });
+
+    it('filters expenses and updates URL when beneficiary select is changed', async () => {
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+
+      const beneficiarySelect = screen.getByLabelText('Filter by beneficiary');
+      await fireEvent.change(beneficiarySelect, { target: { value: 'p1' } });
+
+      // p1 is in shares of Groceries (p1,p2) and Dinner (p1,p2,p3) but NOT Taxi (p2,p3)
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Dinner')).toBeInTheDocument();
+      expect(screen.queryByText('Taxi')).not.toBeInTheDocument();
+
+      // URL should be updated
+      expect(replaceStateSpy).toHaveBeenCalled();
+      const lastCall = replaceStateSpy.mock.calls[replaceStateSpy.mock.calls.length - 1];
+      const updatedUrl = new URL(lastCall[2] as string);
+      expect(updatedUrl.searchParams.get('beneficiary')).toBe('p1');
+
+      replaceStateSpy.mockRestore();
+    });
+
+    it('payer select reflects URL param value', async () => {
+      (route as any).search = { payer: 'p1' };
+      vi.mocked(getSplit).mockResolvedValue(mockSplitForFilters);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        const payerSelect = screen.getByLabelText('Filter by payer') as HTMLSelectElement;
+        expect(payerSelect.value).toBe('p1');
+      });
+    });
+
+    it('handles FREE mode beneficiary filtering correctly', async () => {
+      const mockWithFree: SplitType = {
+        ...mockSplitForFilters,
+        expenses: [
+          {
+            id: 'e4',
+            description: 'Custom Split',
+            amount: 100.0,
+            payerId: 'p1',
+            splitMode: 'FREE' as const,
+            createdAt: '2026-01-28T10:00:00Z',
+            shares: [
+              { participantId: 'p1', amount: 50.0, parts: 2 },
+              { participantId: 'p2', amount: 50.0, parts: 0 }, // inactive share
+              { participantId: 'p3', amount: 0.0, parts: 3 },
+            ],
+          },
+        ],
+      };
+
+      // Filter by p2 as beneficiary - should NOT match because p2 has parts=0 in FREE mode
+      (route as any).search = { beneficiary: 'p2' };
+      vi.mocked(getSplit).mockResolvedValue(mockWithFree);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('No matching expenses')).toBeInTheDocument();
       });
     });
   });
