@@ -118,7 +118,11 @@
 
   function getParticipantNames(expense: Expense): string {
     if (!split) return '';
-    const participantIds = expense.shares.map((s) => s.participantId);
+    // For FREE mode, only show participants with positive parts
+    const activeShares = expense.splitMode === 'FREE'
+      ? expense.shares.filter((s) => s.parts != null && s.parts > 0)
+      : expense.shares;
+    const participantIds = activeShares.map((s) => s.participantId);
     if (participantIds.length === split.participants.length) return 'Everyone';
     return participantIds
       .map((id) => split!.participants.find((p) => p.id === id)?.name || 'Unknown')
