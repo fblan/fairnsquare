@@ -226,6 +226,15 @@
     }
   }
 
+  function handleAmountKeydown(event: KeyboardEvent) {
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const current = typeof amount === 'number' ? amount : parseFloat(amount as string) || 0;
+      const next = event.key === 'ArrowUp' ? current + 0.5 : Math.max(0, current - 0.5);
+      amount = Math.round(next * 100) / 100;
+    }
+  }
+
   function handleAmountBlur() {
     amountTouched = true;
     validateAmount();
@@ -456,6 +465,7 @@
             step="any"
             placeholder="€0.00"
             bind:value={amount}
+            onkeydown={handleAmountKeydown}
             onblur={handleAmountBlur}
             onkeydown={handleAmountKeydown}
             class="min-h-[44px]"
