@@ -327,6 +327,12 @@ public class Split {
         return settlement;
     }
 
+    @Override
+    public String toString() {
+        return "Split{id=%s, createdAt=%s, participants=%d, expenses=%d, settled=%s}".formatted(id.value(), createdAt,
+                participants.size(), expenses.size(), settlement != null);
+    }
+
     /**
      * Value object wrapping a NanoID for split identification. Generates cryptographically secure, URL-safe
      * identifiers.
