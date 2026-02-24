@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
+import org.asymetrik.web.fairnsquare.sharedkernel.logging.LogTag;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByPerson;
@@ -28,6 +30,7 @@ import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMa
 /**
  * Service for managing splits.
  */
+@Log
 @ApplicationScoped
 public class SplitUseCases {
 
@@ -64,7 +67,7 @@ public class SplitUseCases {
      *
      * @return an Optional containing the split if found, empty otherwise
      */
-    public Optional<Split> getSplit(String splitId) {
+    public Optional<Split> getSplit(@LogTag("splitId") String splitId) {
         return repository.load(splitId);
     }
 
@@ -76,7 +79,7 @@ public class SplitUseCases {
      *
      * @return an Optional containing the settlement if the split exists, empty otherwise
      */
-    public Optional<Settlement> calculateSettlement(String splitId) {
+    public Optional<Settlement> calculateSettlement(@LogTag("splitId") String splitId) {
         return repository.load(splitId).map(split -> {
             Settlement settlement = SettlementCalculator.calculate(split);
             split.settle(settlement);
@@ -93,7 +96,7 @@ public class SplitUseCases {
      *
      * @return true if the split exists, false otherwise
      */
-    public boolean exists(String splitId) {
+    public boolean exists(@LogTag("splitId") String splitId) {
         return repository.exists(splitId);
     }
 
@@ -107,7 +110,7 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created participant if the split exists, empty otherwise
      */
-    public Optional<Participant> addParticipant(String splitId, AddParticipantRequest request) {
+    public Optional<Participant> addParticipant(@LogTag("splitId") String splitId, AddParticipantRequest request) {
         return repository.load(splitId).map(split -> {
             Participant participant = Participant.create(request.name(), request.nights(),
                     request.numberOfPersonsOrDefault());
@@ -130,8 +133,8 @@ public class SplitUseCases {
      * @return an Optional containing the updated participant if the split exists, empty otherwise. Throws
      *         ParticipantNotFoundError if the participant doesn't exist within the split.
      */
-    public Optional<Participant> updateParticipant(String splitId, String participantId,
-            UpdateParticipantRequest request) {
+    public Optional<Participant> updateParticipant(@LogTag("splitId") String splitId,
+            @LogTag("participantId") String participantId, UpdateParticipantRequest request) {
         return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             Participant updated = split.updateParticipant(partId, request.name(), request.nights(),
@@ -153,7 +156,7 @@ public class SplitUseCases {
      *         ParticipantNotFoundError if the participant doesn't exist within the split. Throws
      *         ParticipantHasExpensesError if the participant has associated expenses.
      */
-    public boolean removeParticipant(String splitId, String participantId) {
+    public boolean removeParticipant(@LogTag("splitId") String splitId, @LogTag("participantId") String participantId) {
         return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             split.removeParticipant(partId);
@@ -173,7 +176,7 @@ public class SplitUseCases {
      * @return true if the split exists and expense was removed, false if split not found. Throws ExpenseNotFoundError
      *         if the expense doesn't exist within the split.
      */
-    public boolean removeExpense(String splitId, String expenseId) {
+    public boolean removeExpense(@LogTag("splitId") String splitId, @LogTag("expenseId") String expenseId) {
         return repository.load(splitId).map(split -> {
             Expense.Id expId = Expense.Id.of(expenseId);
             split.removeExpense(expId);
@@ -195,7 +198,8 @@ public class SplitUseCases {
      * @return an Optional containing the updated expense if the split exists, empty otherwise. Throws
      *         ExpenseNotFoundError if the expense doesn't exist within the split.
      */
-    public Optional<Expense> updateExpense(String splitId, String expenseId, UpdateExpenseRequest request) {
+    public Optional<Expense> updateExpense(@LogTag("splitId") String splitId, @LogTag("expenseId") String expenseId,
+            UpdateExpenseRequest request) {
         return repository.load(splitId).map(split -> {
             Expense.Id expId = Expense.Id.of(expenseId);
             Participant.Id payerId = Participant.Id.of(request.payerId());
@@ -220,7 +224,7 @@ public class SplitUseCases {
      * @deprecated Use addExpenseByNight(), addExpenseEqual(), or addExpenseFree() instead.
      */
     @Deprecated
-    public Optional<Expense> addExpense(String splitId, AddExpenseRequest request) {
+    public Optional<Expense> addExpense(@LogTag("splitId") String splitId, AddExpenseRequest request) {
         return switch (request.splitMode()) {
             case BY_NIGHT ->
                     addExpenseByNight(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
@@ -247,8 +251,8 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created expense if the split exists, empty otherwise
      */
-    public Optional<ExpenseByNight> addExpenseByNight(String splitId, BigDecimal amount, String description,
-            String payerId) {
+    public Optional<ExpenseByNight> addExpenseByNight(@LogTag("splitId") String splitId, BigDecimal amount,
+            String description, @LogTag("payerId") String payerId) {
         return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
@@ -276,8 +280,8 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created expense if the split exists, empty otherwise
      */
-    public Optional<ExpenseByPerson> addExpenseByPerson(String splitId, BigDecimal amount, String description,
-            String payerId) {
+    public Optional<ExpenseByPerson> addExpenseByPerson(@LogTag("splitId") String splitId, BigDecimal amount,
+            String description, @LogTag("payerId") String payerId) {
         return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
@@ -304,8 +308,8 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created expense if the split exists, empty otherwise
      */
-    public Optional<ExpenseEqual> addExpenseEqual(String splitId, BigDecimal amount, String description,
-            String payerId) {
+    public Optional<ExpenseEqual> addExpenseEqual(@LogTag("splitId") String splitId, BigDecimal amount,
+            String description, @LogTag("payerId") String payerId) {
         return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(payerId);
             split.validatePayerExists(payer);
@@ -330,7 +334,7 @@ public class SplitUseCases {
      * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
      *         InvalidSharesError if shares don't sum to amount or if any participant ID is invalid.
      */
-    public Optional<ExpenseFree> addExpenseFree(String splitId, AddFreeExpenseRequest request) {
+    public Optional<ExpenseFree> addExpenseFree(@LogTag("splitId") String splitId, AddFreeExpenseRequest request) {
         return repository.load(splitId).map(split -> {
             Participant.Id payer = Participant.Id.of(request.payerId());
             split.validatePayerExists(payer);
