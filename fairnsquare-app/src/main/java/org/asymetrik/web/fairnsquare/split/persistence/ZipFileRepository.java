@@ -34,10 +34,12 @@ public class ZipFileRepository {
 
     private final ObjectMapper objectMapper;
     private final TenantPathResolver pathResolver;
+    private final StorageConstraintsService storageConstraints;
 
     @Inject
-    public ZipFileRepository(TenantPathResolver pathResolver) {
+    public ZipFileRepository(TenantPathResolver pathResolver, StorageConstraintsService storageConstraints) {
         this.pathResolver = pathResolver;
+        this.storageConstraints = storageConstraints;
         this.objectMapper = createObjectMapper();
     }
 
@@ -185,7 +187,8 @@ public class ZipFileRepository {
             byte[] metadataBytes = objectMapper.writeValueAsBytes(PersistenceMetadata.current());
             byte[] dataBytes = objectMapper.writeValueAsString(entity).getBytes(StandardCharsets.UTF_8);
 
-            try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(filePath))) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
                 zos.putNextEntry(new ZipEntry(METADATA_ENTRY));
                 zos.write(metadataBytes);
                 zos.closeEntry();
@@ -194,6 +197,10 @@ public class ZipFileRepository {
                 zos.write(dataBytes);
                 zos.closeEntry();
             }
+
+            byte[] zipBytes = baos.toByteArray();
+            storageConstraints.checkSizeLimitBeforeSave(filePath, zipBytes.length);
+            Files.write(filePath, zipBytes);
         } catch (IOException e) {
             throw new PersistenceException("Failed to save entity to " + filePath, e);
         }

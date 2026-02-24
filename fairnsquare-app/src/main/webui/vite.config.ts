@@ -8,6 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte()],
+  server: {
+    allowedHosts: ['honest-camels-happen.loca.lt'],
+  },
   resolve: {
     alias: {
       $lib: path.resolve(__dirname, './src/lib'),

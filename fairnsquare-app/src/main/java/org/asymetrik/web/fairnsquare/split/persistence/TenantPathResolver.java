@@ -65,4 +65,13 @@ public class TenantPathResolver {
     public Path resolveDefaultTenantDirectory() {
         return resolveTenantDirectory(DEFAULT_TENANT);
     }
+
+    /**
+     * Resolves the root data directory containing all tenant directories.
+     *
+     * @return the root data directory path
+     */
+    public Path resolveRootDirectory() {
+        return Paths.get(dataPath);
+    }
 }
