@@ -96,6 +96,64 @@ class StorageConstraintsServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // Storage stats tests
+    // -------------------------------------------------------------------------
+
+    @Test
+    void shouldReturnZeroStatsWhenStorageIsEmpty() {
+        StorageStats stats = storageConstraints.computeStorageStats();
+
+        assertThat(stats.usedBytes()).isEqualTo(0);
+        assertThat(stats.fileCount()).isEqualTo(0);
+        assertThat(stats.remainingPercent()).isEqualTo(100.0);
+    }
+
+    @Test
+    void shouldReturnCorrectStatsWhenFilesExist() throws IOException {
+        writeTestFile("split1", 300);
+        writeTestFile("split2", 200);
+
+        StorageStats stats = storageConstraints.computeStorageStats();
+
+        assertThat(stats.usedBytes()).isEqualTo(500);
+        assertThat(stats.fileCount()).isEqualTo(2);
+        assertThat(stats.remainingPercent()).isLessThan(100.0);
+        assertThat(stats.remainingMb()).isPositive();
+    }
+
+    @Test
+    void shouldFormatStatsAsHumanReadableString() throws IOException {
+        writeTestFile("split1", 1024);
+
+        StorageStats stats = storageConstraints.computeStorageStats();
+
+        assertThat(stats.toString()).contains("usedSize=");
+        assertThat(stats.toString()).contains("remainingMo=");
+        assertThat(stats.toString()).contains("remainingPct=");
+        assertThat(stats.toString()).contains("fileCount=1");
+    }
+
+    @Test
+    void shouldFormatUsedSizeInKo() {
+        StorageStats stats = new StorageStats(512, 1024, 1);
+        assertThat(stats.formattedUsedSize()).isEqualTo("0.50Ko");
+    }
+
+    @Test
+    void shouldFormatUsedSizeInMo() {
+        long twoMb = 2L * 1024 * 1024;
+        StorageStats stats = new StorageStats(twoMb, twoMb * 10, 1);
+        assertThat(stats.formattedUsedSize()).isEqualTo("2.00Mo");
+    }
+
+    @Test
+    void shouldFormatUsedSizeInGo() {
+        long twoGb = 2L * 1024 * 1024 * 1024;
+        StorageStats stats = new StorageStats(twoGb, twoGb * 10, 1);
+        assertThat(stats.formattedUsedSize()).isEqualTo("2.00Go");
+    }
+
+    // -------------------------------------------------------------------------
     // Cleanup tests
     // -------------------------------------------------------------------------
 
