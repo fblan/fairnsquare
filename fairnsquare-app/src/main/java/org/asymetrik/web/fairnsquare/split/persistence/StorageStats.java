@@ -3,9 +3,12 @@ package org.asymetrik.web.fairnsquare.split.persistence;
 /**
  * Snapshot of storage usage after a split is persisted.
  *
- * @param usedBytes  total bytes currently occupied by all ZIP files
- * @param maxBytes   configured storage limit in bytes
- * @param fileCount  number of ZIP files currently stored
+ * @param usedBytes
+ *            total bytes currently occupied by all ZIP files
+ * @param maxBytes
+ *            configured storage limit in bytes
+ * @param fileCount
+ *            number of ZIP files currently stored
  */
 public record StorageStats(long usedBytes, long maxBytes, int fileCount) {
 
@@ -32,7 +35,7 @@ public record StorageStats(long usedBytes, long maxBytes, int fileCount) {
 
     @Override
     public String toString() {
-        return String.format("usedSize=%s remainingMo=%.1f remainingPct=%.1f%% fileCount=%d",
-                formattedUsedSize(), remainingMb(), remainingPercent(), fileCount);
+        return String.format("usedSize=%s remainingMo=%.1f remainingPct=%.1f%% fileCount=%d", formattedUsedSize(),
+                remainingMb(), remainingPercent(), fileCount);
     }
 }
