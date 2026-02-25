@@ -32,6 +32,10 @@
 - In flex rows that mix variable-width content (names, text) with fixed-width content (action buttons, badges), the variable-width element must have `flex-1 min-w-0` and `truncate` to prevent overflow on narrow screens. Fixed-width elements must have `flex-none` or `shrink-0`.
 - When a row risks crowding (e.g. name + multiple badges + multiple buttons), split it into separate rows rather than stacking everything horizontally.
 
+## Vite Dev Server Configuration
+
+- Developer-specific hostnames (tunnel URLs, etc.) must not be hardcoded in `vite.config.ts`. Use the `VITE_ALLOWED_HOSTS` env var read from `process.env`, falling back to `undefined` for Vite's default behavior. Local values go in `src/main/webui/.env.local` (gitignored via `*.local`).
+
 ## Shared Components with Page-Specific Variants
 
 - When a shared component needs to display differently depending on context (e.g. a summary card that shows a title on one page but not another), use a boolean prop with a sensible default rather than duplicating the component or adding conditional logic in each parent.

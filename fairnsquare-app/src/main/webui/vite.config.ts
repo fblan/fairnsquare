@@ -5,11 +5,15 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+const allowedHosts = process.env.VITE_ALLOWED_HOSTS
+  ? process.env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim())
+  : undefined
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte()],
   server: {
-    allowedHosts: ['honest-camels-happen.loca.lt'],
+    allowedHosts,
   },
   resolve: {
     alias: {

@@ -24,6 +24,10 @@
 
 - All domain entities (aggregate roots, entities, value objects) must implement `toString()` with a concise, bounded-length summary of their identity and key state (ID, counts, flags). Avoid dumping full collections or large fields. This ensures meaningful and readable log output when entities appear in interceptor or debug logs.
 
+## Application Configuration — Environment-Specific URLs
+
+- URLs that vary per developer or environment (tunnel URLs, external service endpoints, etc.) must not be hardcoded in `application.properties`. Use SmallRye Config's `${ENV_VAR:default}` substitution syntax. Local overrides go in `fairnsquare-app/.env` (gitignored).
+
 ## Logging Conventions
 
 - Use `org.jboss.logging.Logger` with format methods (`infof`, `errorf`, etc.). Log entries for service calls must use structured key=value format (e.g. `method=X splitId=Y result=Z duration=Nms`) to enable log parsing and filtering.
