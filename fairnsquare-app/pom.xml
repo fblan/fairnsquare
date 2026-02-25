@@ -50,6 +50,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-scheduler</artifactId>
         </dependency>
+        <!-- Container image build support via Docker -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-container-image-docker</artifactId>
+        </dependency>
 <!-- NanoID for cryptographically secure split identifiers -->
         <dependency>
             <groupId>com.aventrix.jnanoid</groupId>
