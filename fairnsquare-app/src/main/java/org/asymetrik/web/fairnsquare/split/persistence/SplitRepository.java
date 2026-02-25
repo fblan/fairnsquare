@@ -15,11 +15,14 @@ public class SplitRepository {
 
     private final ZipFileRepository zipFileRepository;
     private final SplitPersistenceMapper splitMapper;
+    private final StorageConstraintsService storageConstraintsService;
 
     @Inject
-    public SplitRepository(final ZipFileRepository zipFileRepository, final SplitPersistenceMapper splitMapper) {
+    public SplitRepository(final ZipFileRepository zipFileRepository, final SplitPersistenceMapper splitMapper,
+            final StorageConstraintsService storageConstraintsService) {
         this.zipFileRepository = zipFileRepository;
         this.splitMapper = splitMapper;
+        this.storageConstraintsService = storageConstraintsService;
     }
 
     public void save(Split split) {
@@ -28,6 +31,7 @@ public class SplitRepository {
             throw new InvalidSplitIdError("Split ID cannot be null or blank");
         }
         zipFileRepository.save(split.getId().value(), splitMapper.toPersistenceDTO(split));
+        storageConstraintsService.computeStorageStats();
     }
 
     public Optional<Split> load(String splitId) {

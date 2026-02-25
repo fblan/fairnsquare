@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -110,6 +111,37 @@ public class StorageConstraintsService {
         }
 
         LOG.infof("Storage cleanup complete: %d file(s) deleted, %d error(s).", deleted.get(), errors.get());
+    }
+
+    /**
+     * Computes a snapshot of current storage usage. Called after each split is persisted so that the result is logged
+     * via the {@link Log} interceptor, showing remaining space and file count.
+     *
+     * @return a {@link StorageStats} with used bytes, max bytes, and file count
+     */
+    @Log
+    public StorageStats computeStorageStats() {
+        Path rootDir = pathResolver.resolveRootDirectory();
+        if (!Files.exists(rootDir)) {
+            return new StorageStats(0, maxTotalSizeBytes, 0);
+        }
+
+        AtomicLong totalSize = new AtomicLong(0);
+        AtomicInteger fileCount = new AtomicInteger(0);
+        try {
+            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
+                    .forEach(path -> {
+                        try {
+                            totalSize.addAndGet(Files.size(path));
+                            fileCount.incrementAndGet();
+                        } catch (IOException e) {
+                            LOG.warnf("Could not read size of file %s: %s", path, e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            LOG.warnf("Could not walk data directory for stats computation: %s", e.getMessage());
+        }
+        return new StorageStats(totalSize.get(), maxTotalSizeBytes, fileCount.get());
     }
 
     private long computeTotalSize(Path rootDir) {
