@@ -1,44 +1,50 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const allowedHosts = process.env.VITE_ALLOWED_HOSTS
-  ? process.env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim())
-  : undefined
-
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [svelte()],
-  server: {
-    allowedHosts,
-  },
-  resolve: {
-    alias: {
-      $lib: path.resolve(__dirname, './src/lib'),
-    },
-    // Ensure browser conditions are used (important for Svelte 5)
-    conditions: ['browser', 'development'],
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.{js,ts}'],
-    setupFiles: ['src/test/setup.ts'],
-    alias: {
-      $lib: path.resolve(__dirname, './src/lib'),
-    },
-    // Ensure browser conditions for Svelte 5 in tests
+export default defineConfig(({ mode }) => {
+  // loadEnv reads .env, .env.local, .env.[mode], .env.[mode].local
+  // '' prefix loads all variables, not just VITE_-prefixed ones
+  const env = loadEnv(mode, process.cwd(), '')
+
+  const allowedHosts = env.VITE_ALLOWED_HOSTS
+    ? env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim())
+    : undefined
+
+  return {
+    plugins: [svelte()],
     server: {
-      deps: {
-        inline: [/svelte/],
-      },
+      allowedHosts,
     },
-    // Force browser export conditions
     resolve: {
+      alias: {
+        $lib: path.resolve(__dirname, './src/lib'),
+      },
+      // Ensure browser conditions are used (important for Svelte 5)
       conditions: ['browser', 'development'],
     },
-  },
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      include: ['src/**/*.{test,spec}.{js,ts}'],
+      setupFiles: ['src/test/setup.ts'],
+      alias: {
+        $lib: path.resolve(__dirname, './src/lib'),
+      },
+      // Ensure browser conditions for Svelte 5 in tests
+      server: {
+        deps: {
+          inline: [/svelte/],
+        },
+      },
+      // Force browser export conditions
+      resolve: {
+        conditions: ['browser', 'development'],
+      },
+    },
+  }
 })

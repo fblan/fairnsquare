@@ -29,7 +29,7 @@ Quarkus uses SmallRye Config, which supports `${VAR:default}` substitution in pr
 
 ### `fairnsquare-app/src/main/webui/vite.config.ts` (modified)
 
-Replaced the hardcoded `allowedHosts` array with dynamic resolution from `process.env.VITE_ALLOWED_HOSTS`. When the variable is not set, `allowedHosts` is `undefined`, which preserves Vite's default behavior.
+`process.env` in `vite.config.ts` only sees OS-level environment variables — Vite loads `.env*` files after the config is evaluated. To read `.env.local` at config time, the config is converted to the functional form of `defineConfig` and uses Vite's `loadEnv(mode, process.cwd(), '')` to explicitly load all env files before building the config object. `VITE_ALLOWED_HOSTS` is then read from the result, split by comma, and used as `allowedHosts`. When not set, `allowedHosts` is `undefined`, preserving Vite's default behavior.
 
 ### `fairnsquare-app/.env.example` (created)
 
