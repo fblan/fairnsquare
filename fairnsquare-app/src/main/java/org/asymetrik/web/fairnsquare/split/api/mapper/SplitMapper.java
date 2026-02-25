@@ -43,7 +43,7 @@ public class SplitMapper {
         }
 
         SettlementResponseDTO settlementDTO = split.getSettlement() != null
-                ? settlementMapper.toDTO(split.getSettlement())
+                ? settlementMapper.toDTO(split.getSettlement(), split.getParticipants())
                 : null;
 
         return new SplitResponseDTO(split.getId().value(), split.getName().value(), split.getCreatedAt().toString(),

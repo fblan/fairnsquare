@@ -9,11 +9,10 @@ import java.util.List;
 public record SettlementPersistenceDTO(List<ParticipantBalancePersistenceDTO> balances,
         List<ReimbursementPersistenceDTO> reimbursements) {
 
-    public record ParticipantBalancePersistenceDTO(String participantId, String participantName, BigDecimal totalPaid,
-            BigDecimal totalCost, BigDecimal balance) {
+    public record ParticipantBalancePersistenceDTO(String participantId, BigDecimal totalPaid, BigDecimal totalCost,
+            BigDecimal balance) {
     }
 
-    public record ReimbursementPersistenceDTO(String fromId, String fromName, String toId, String toName,
-            BigDecimal amount) {
+    public record ReimbursementPersistenceDTO(String fromId, String toId, BigDecimal amount) {
     }
 }

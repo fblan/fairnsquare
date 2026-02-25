@@ -36,6 +36,7 @@ import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
+import org.asymetrik.web.fairnsquare.split.service.SettlementResult;
 import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
 
 /**
@@ -118,7 +119,7 @@ public class SplitResource {
         }
 
         return splitService.calculateSettlement(splitId)
-                .map(settlement -> Response.ok(settlementMapper.toDTO(settlement)).build())
+                .map(result -> Response.ok(settlementMapper.toDTO(result.settlement(), result.participants())).build())
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 

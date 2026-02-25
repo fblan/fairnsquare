@@ -63,14 +63,14 @@ class SettlementCalculatorTest {
 
         // Alice: paid 100, cost 50, balance +50
         ParticipantBalance aliceBalance = settlement.balances().get(0);
-        assertThat(aliceBalance.participantName()).isEqualTo("Alice");
+        assertThat(aliceBalance.participantId()).isEqualTo(alice.id());
         assertThat(aliceBalance.totalPaid()).isEqualByComparingTo("100.00");
         assertThat(aliceBalance.totalCost()).isEqualByComparingTo("50.00");
         assertThat(aliceBalance.balance()).isEqualByComparingTo("50.00");
 
         // Bob: paid 0, cost 50, balance -50
         ParticipantBalance bobBalance = settlement.balances().get(1);
-        assertThat(bobBalance.participantName()).isEqualTo("Bob");
+        assertThat(bobBalance.participantId()).isEqualTo(bob.id());
         assertThat(bobBalance.totalPaid()).isEqualByComparingTo("0");
         assertThat(bobBalance.totalCost()).isEqualByComparingTo("50.00");
         assertThat(bobBalance.balance()).isEqualByComparingTo("-50.00");
@@ -147,8 +147,8 @@ class SettlementCalculatorTest {
 
         assertThat(settlement.reimbursements()).hasSize(1);
         Reimbursement r = settlement.reimbursements().get(0);
-        assertThat(r.fromName()).isEqualTo("Bob");
-        assertThat(r.toName()).isEqualTo("Alice");
+        assertThat(r.fromId()).isEqualTo(bob.id());
+        assertThat(r.toId()).isEqualTo(alice.id());
         assertThat(r.amount()).isEqualByComparingTo("50.00");
     }
 
@@ -170,12 +170,12 @@ class SettlementCalculatorTest {
 
         assertThat(settlement.reimbursements()).hasSize(2);
         // Bob pays Alice 50
-        assertThat(settlement.reimbursements().get(0).fromName()).isEqualTo("Bob");
-        assertThat(settlement.reimbursements().get(0).toName()).isEqualTo("Alice");
+        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(bob.id());
+        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(alice.id());
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
         // Charlie pays Alice 50
-        assertThat(settlement.reimbursements().get(1).fromName()).isEqualTo("Charlie");
-        assertThat(settlement.reimbursements().get(1).toName()).isEqualTo("Alice");
+        assertThat(settlement.reimbursements().get(1).fromId()).isEqualTo(charlie.id());
+        assertThat(settlement.reimbursements().get(1).toId()).isEqualTo(alice.id());
         assertThat(settlement.reimbursements().get(1).amount()).isEqualByComparingTo("50.00");
     }
 
@@ -224,8 +224,8 @@ class SettlementCalculatorTest {
         // Bob: paid 60, cost 30, balance +30
         // Charlie: paid 0, cost 30, balance -30
         assertThat(settlement.reimbursements()).hasSize(1);
-        assertThat(settlement.reimbursements().get(0).fromName()).isEqualTo("Charlie");
-        assertThat(settlement.reimbursements().get(0).toName()).isEqualTo("Bob");
+        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(charlie.id());
+        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(bob.id());
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("30.00");
     }
 
@@ -241,9 +241,9 @@ class SettlementCalculatorTest {
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
-        assertThat(settlement.balances().get(0).participantName()).isEqualTo("Charlie");
-        assertThat(settlement.balances().get(1).participantName()).isEqualTo("Alice");
-        assertThat(settlement.balances().get(2).participantName()).isEqualTo("Bob");
+        assertThat(settlement.balances().get(0).participantId()).isEqualTo(charlie.id());
+        assertThat(settlement.balances().get(1).participantId()).isEqualTo(alice.id());
+        assertThat(settlement.balances().get(2).participantId()).isEqualTo(bob.id());
     }
 
     private Split createSplit() {

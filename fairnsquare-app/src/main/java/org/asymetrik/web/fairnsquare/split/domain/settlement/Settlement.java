@@ -7,4 +7,9 @@ import java.util.List;
  * — not persisted.
  */
 public record Settlement(List<ParticipantBalance> balances, List<Reimbursement> reimbursements) {
+
+    @Override
+    public String toString() {
+        return "Settlement{balances=%d, reimbursements=%d}".formatted(balances.size(), reimbursements.size());
+    }
 }
