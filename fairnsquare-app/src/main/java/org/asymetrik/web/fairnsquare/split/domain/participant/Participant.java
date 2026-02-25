@@ -8,6 +8,11 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  */
 public record Participant(Id id, Name name, Nights nights, NumberOfPersons numberOfPersons) {
 
+    @Override
+    public String toString() {
+        return "Participant{id=%s, nights=%s, persons=%s}".formatted(id, nights, numberOfPersons);
+    }
+
     /**
      * Factory method to create a new Participant with generated ID and default 1 person.
      *

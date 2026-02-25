@@ -145,9 +145,9 @@ class SplitPersistenceMapperTest {
         assertThat(roundTrip.getSettlement()).isNotNull();
         assertThat(roundTrip.getSettlement().balances()).hasSize(2);
         assertThat(roundTrip.getSettlement().reimbursements()).hasSize(1);
-        assertThat(roundTrip.getSettlement().balances().get(0).participantName()).isEqualTo("Alice");
-        assertThat(roundTrip.getSettlement().reimbursements().get(0).fromName()).isEqualTo("Bob");
-        assertThat(roundTrip.getSettlement().reimbursements().get(0).toName()).isEqualTo("Alice");
+        assertThat(roundTrip.getSettlement().balances().get(0).participantId()).isEqualTo(alice.id());
+        assertThat(roundTrip.getSettlement().reimbursements().get(0).fromId()).isEqualTo(bob.id());
+        assertThat(roundTrip.getSettlement().reimbursements().get(0).toId()).isEqualTo(alice.id());
         assertThat(roundTrip.getSettlement().reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
     }
 

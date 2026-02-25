@@ -21,6 +21,7 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
+import org.asymetrik.web.fairnsquare.split.service.SettlementResult;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
@@ -79,12 +80,12 @@ public class SplitUseCases {
      *
      * @return an Optional containing the settlement if the split exists, empty otherwise
      */
-    public Optional<Settlement> calculateSettlement(@LogTag("splitId") String splitId) {
+    public Optional<SettlementResult> calculateSettlement(@LogTag("splitId") String splitId) {
         return repository.load(splitId).map(split -> {
             Settlement settlement = SettlementCalculator.calculate(split);
             split.settle(settlement);
             repository.save(split);
-            return settlement;
+            return new SettlementResult(settlement, split.getParticipants());
         });
     }
 

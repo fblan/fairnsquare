@@ -70,23 +70,22 @@ public class SplitPersistenceMapper {
         }
         List<SettlementPersistenceDTO.ParticipantBalancePersistenceDTO> balances = settlement.balances().stream()
                 .map(b -> new SettlementPersistenceDTO.ParticipantBalancePersistenceDTO(b.participantId().value(),
-                        b.participantName(), b.totalPaid(), b.totalCost(), b.balance()))
+                        b.totalPaid(), b.totalCost(), b.balance()))
                 .toList();
         List<SettlementPersistenceDTO.ReimbursementPersistenceDTO> reimbursements = settlement.reimbursements().stream()
-                .map(r -> new SettlementPersistenceDTO.ReimbursementPersistenceDTO(r.fromId().value(), r.fromName(),
-                        r.toId().value(), r.toName(), r.amount()))
+                .map(r -> new SettlementPersistenceDTO.ReimbursementPersistenceDTO(r.fromId().value(), r.toId().value(),
+                        r.amount()))
                 .toList();
         return new SettlementPersistenceDTO(balances, reimbursements);
     }
 
     private Settlement settlementToDomain(SettlementPersistenceDTO dto) {
         List<ParticipantBalance> balances = dto.balances().stream()
-                .map(b -> new ParticipantBalance(Participant.Id.of(b.participantId()), b.participantName(),
-                        b.totalPaid(), b.totalCost(), b.balance()))
+                .map(b -> new ParticipantBalance(Participant.Id.of(b.participantId()), b.totalPaid(), b.totalCost(),
+                        b.balance()))
                 .toList();
         List<Reimbursement> reimbursements = dto.reimbursements().stream()
-                .map(r -> new Reimbursement(Participant.Id.of(r.fromId()), r.fromName(), Participant.Id.of(r.toId()),
-                        r.toName(), r.amount()))
+                .map(r -> new Reimbursement(Participant.Id.of(r.fromId()), Participant.Id.of(r.toId()), r.amount()))
                 .toList();
         return new Settlement(balances, reimbursements);
     }

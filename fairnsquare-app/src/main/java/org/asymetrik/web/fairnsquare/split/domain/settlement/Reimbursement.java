@@ -7,6 +7,10 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 /**
  * Represents a proposed reimbursement transfer from a debtor to a creditor.
  */
-public record Reimbursement(Participant.Id fromId, String fromName, Participant.Id toId, String toName,
-        BigDecimal amount) {
+public record Reimbursement(Participant.Id fromId, Participant.Id toId, BigDecimal amount) {
+
+    @Override
+    public String toString() {
+        return "Reimbursement{from=%s, to=%s, amount=%s}".formatted(fromId, toId, amount);
+    }
 }

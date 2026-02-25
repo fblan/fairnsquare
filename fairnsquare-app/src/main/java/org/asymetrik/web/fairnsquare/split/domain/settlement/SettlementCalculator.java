@@ -63,7 +63,7 @@ public class SettlementCalculator {
             BigDecimal totalPaid = paid.getOrDefault(p.id(), BigDecimal.ZERO);
             BigDecimal totalCost = cost.getOrDefault(p.id(), BigDecimal.ZERO);
             BigDecimal balance = totalPaid.subtract(totalCost);
-            balances.add(new ParticipantBalance(p.id(), p.name().value(), totalPaid, totalCost, balance));
+            balances.add(new ParticipantBalance(p.id(), totalPaid, totalCost, balance));
         }
 
         return balances;
@@ -101,8 +101,7 @@ public class SettlementCalculator {
             if (transfer.compareTo(BigDecimal.ZERO) > 0) {
                 ParticipantBalance debtor = debtors.get(d);
                 ParticipantBalance creditor = creditors.get(c);
-                reimbursements.add(new Reimbursement(debtor.participantId(), debtor.participantName(),
-                        creditor.participantId(), creditor.participantName(), transfer));
+                reimbursements.add(new Reimbursement(debtor.participantId(), creditor.participantId(), transfer));
             }
 
             debtRemaining.set(d, debtRemaining.get(d).subtract(transfer));
