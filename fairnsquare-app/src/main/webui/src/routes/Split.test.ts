@@ -68,6 +68,29 @@ describe('Split', () => {
     });
   });
 
+  it('automatically redirects to home when split ID is invalid (400)', async () => {
+    vi.mocked(getSplit).mockRejectedValue({ status: 400, detail: 'Invalid split ID format' });
+
+    render(Split);
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('shows info toast when split ID is invalid (400)', async () => {
+    vi.mocked(getSplit).mockRejectedValue({ status: 400, detail: 'Invalid split ID format' });
+
+    render(Split);
+
+    await waitFor(() => {
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'Split not found — create a new one.',
+      });
+    });
+  });
+
   it('shows error state with retry button on network error', async () => {
     vi.mocked(getSplit).mockRejectedValue({ status: 500, detail: 'Server error' });
 

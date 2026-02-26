@@ -46,7 +46,7 @@
       split = await getSplit(id);
     } catch (err) {
       const apiError = err as ApiError;
-      if (apiError.status === 404) {
+      if (apiError.status === 404 || apiError.status === 400) {
         addToast({ type: 'info', message: 'Split not found — create a new one.' });
         navigate('/');
       } else {

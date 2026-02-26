@@ -137,6 +137,36 @@ describe('ExpenseList', () => {
     (route as any).search = {};
   });
 
+  // --- Split Not Found ---
+
+  it('redirects to home and shows info toast when split not found (404)', async () => {
+    vi.mocked(getSplit).mockRejectedValue({ status: 404, detail: 'Not found' });
+
+    render(ExpenseList);
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/');
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'Split not found — create a new one.',
+      });
+    });
+  });
+
+  it('redirects to home and shows info toast when split ID is invalid (400)', async () => {
+    vi.mocked(getSplit).mockRejectedValue({ status: 400, detail: 'Invalid split ID format' });
+
+    render(ExpenseList);
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith('/');
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'Split not found — create a new one.',
+      });
+    });
+  });
+
   // --- Task 1: Route and Navigation ---
 
   describe('Navigation', () => {
