@@ -31,8 +31,8 @@ public class ExpensePersistenceMapper {
         return switch (expense) {
             case ExpenseByNight _ -> new ExpenseByNightPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
-            case ExpenseByShare _ -> new ExpenseBySharePersistenceDTO(id, expense.getAmount(),
-                    expense.getDescription(), payerId, createdAt);
+            case ExpenseByShare _ -> new ExpenseBySharePersistenceDTO(id, expense.getAmount(), expense.getDescription(),
+                    payerId, createdAt);
             case ExpenseEqual _ -> new ExpenseEqualPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
             case ExpenseFree free -> {

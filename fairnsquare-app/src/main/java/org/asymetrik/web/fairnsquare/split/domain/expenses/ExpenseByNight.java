@@ -69,8 +69,7 @@ public final class ExpenseByNight extends Expense {
             return Collections.emptyList();
         }
 
-        double totalWeight = participants.stream().mapToDouble(p -> p.nights().value() * p.share().value())
-                .sum();
+        double totalWeight = participants.stream().mapToDouble(p -> p.nights().value() * p.share().value()).sum();
 
         if (totalWeight == 0) {
             return Collections.emptyList();

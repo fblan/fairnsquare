@@ -52,8 +52,8 @@ public class ExpenseMapper {
                     byNight.getAmount(), byNight.getPayerId() != null ? byNight.getPayerId().value() : null, "BY_NIGHT",
                     "BY_NIGHT", byNight.getCreatedAt().toString(), shares);
             case ExpenseByShare byShare -> new ExpenseByShareDTO(byShare.getId().value(), byShare.getDescription(),
-                    byShare.getAmount(), byShare.getPayerId() != null ? byShare.getPayerId().value() : null,
-                    "BY_SHARE", "BY_SHARE", byShare.getCreatedAt().toString(), shares);
+                    byShare.getAmount(), byShare.getPayerId() != null ? byShare.getPayerId().value() : null, "BY_SHARE",
+                    "BY_SHARE", byShare.getCreatedAt().toString(), shares);
             case ExpenseEqual equal -> new ExpenseEqualDTO(equal.getId().value(), equal.getDescription(),
                     equal.getAmount(), equal.getPayerId() != null ? equal.getPayerId().value() : null, "EQUAL", "EQUAL",
                     equal.getCreatedAt().toString(), shares);
