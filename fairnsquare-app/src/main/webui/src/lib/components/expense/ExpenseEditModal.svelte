@@ -529,10 +529,10 @@
               </Label>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
-              <RadioGroup.Item value="BY_PERSON" id="modal-mode-by-person" />
-              <Label for="modal-mode-by-person" class="flex items-center gap-2 cursor-pointer flex-1">
+              <RadioGroup.Item value="BY_SHARE" id="modal-mode-by-share" />
+              <Label for="modal-mode-by-share" class="flex items-center gap-2 cursor-pointer flex-1">
                 <Users class="h-4 w-4" aria-hidden="true" />
-                <span>By Person</span>
+                <span>By Share</span>
               </Label>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">

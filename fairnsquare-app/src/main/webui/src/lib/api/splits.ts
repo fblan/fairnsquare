@@ -11,23 +11,23 @@ export interface CreateSplitRequest {
 export interface AddParticipantRequest {
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
 export interface UpdateParticipantRequest {
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
 export interface Participant {
   id: string;
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
-export type SplitMode = 'BY_NIGHT' | 'BY_PERSON' | 'EQUAL' | 'FREE';
+export type SplitMode = 'BY_NIGHT' | 'BY_SHARE' | 'EQUAL' | 'FREE';
 
 export interface Share {
   participantId: string;
@@ -181,8 +181,8 @@ export async function addExpense(
 ): Promise<Expense> {
   const endpoint = request.splitMode === 'BY_NIGHT'
     ? `/splits/${splitId}/expenses/by-night`
-    : request.splitMode === 'BY_PERSON'
-    ? `/splits/${splitId}/expenses/by-person`
+    : request.splitMode === 'BY_SHARE'
+    ? `/splits/${splitId}/expenses/by-share`
     : `/splits/${splitId}/expenses/equal`;
   const { splitMode: _, ...body } = request;
   return apiRequest<Expense>(endpoint, {

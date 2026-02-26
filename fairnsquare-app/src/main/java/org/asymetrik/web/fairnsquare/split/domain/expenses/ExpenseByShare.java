@@ -11,16 +11,15 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
- * Expense split proportionally based on number of persons. Share calculation: participant_numberOfPersons /
- * total_numberOfPersons × amount
+ * Expense split proportionally based on share. Share calculation: participant_share / total_share × amount
  */
-public final class ExpenseByPerson extends Expense {
+public final class ExpenseByShare extends Expense {
 
     private static final int SCALE = 2;
     private static final RoundingMode ROUNDING_MODE = RoundingMode.HALF_UP;
 
     /**
-     * Factory method for creating new BY_PERSON expenses.
+     * Factory method for creating new BY_SHARE expenses.
      *
      * @param amount
      *            the expense amount (must be positive)
@@ -29,32 +28,32 @@ public final class ExpenseByPerson extends Expense {
      * @param payerId
      *            the ID of the participant who paid
      *
-     * @return a new ExpenseByPerson with generated ID and createdAt set to now
+     * @return a new ExpenseByShare with generated ID and createdAt set to now
      */
-    public static ExpenseByPerson create(BigDecimal amount, String description, Participant.Id payerId) {
+    public static ExpenseByShare create(BigDecimal amount, String description, Participant.Id payerId) {
         validateAmount(amount);
         validateDescription(description);
-        return new ExpenseByPerson(Id.generate(), amount, description, payerId, Instant.now());
+        return new ExpenseByShare(Id.generate(), amount, description, payerId, Instant.now());
     }
 
     /**
-     * Reconstitutes an ExpenseByPerson from stored fields (used by persistence mapper).
+     * Reconstitutes an ExpenseByShare from stored fields (used by persistence mapper).
      */
-    public static ExpenseByPerson fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
+    public static ExpenseByShare fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
             Instant createdAt) {
-        return new ExpenseByPerson(id, amount, description, payerId, createdAt);
+        return new ExpenseByShare(id, amount, description, payerId, createdAt);
     }
 
     /**
      * Package-private constructor for internal use.
      */
-    ExpenseByPerson(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
+    ExpenseByShare(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
         super(id, amount, description, payerId, createdAt);
     }
 
     @Override
     public SplitMode getSplitMode() {
-        return SplitMode.BY_PERSON;
+        return SplitMode.BY_SHARE;
     }
 
     @Override
@@ -67,9 +66,9 @@ public final class ExpenseByPerson extends Expense {
             return Collections.emptyList();
         }
 
-        double totalPersons = participants.stream().mapToDouble(p -> p.numberOfPersons().value()).sum();
+        double totalShares = participants.stream().mapToDouble(p -> p.share().value()).sum();
 
-        if (totalPersons == 0) {
+        if (totalShares == 0) {
             return Collections.emptyList();
         }
 
@@ -78,14 +77,14 @@ public final class ExpenseByPerson extends Expense {
 
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
-            double weight = p.numberOfPersons().value();
+            double weight = p.share().value();
             BigDecimal share;
 
             if (i == participants.size() - 1) {
                 // Last participant gets the remainder to ensure sum = amount
                 share = getAmount().subtract(totalAssigned);
             } else {
-                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalPersons), SCALE,
+                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalShares), SCALE,
                         ROUNDING_MODE);
                 totalAssigned = totalAssigned.add(share);
             }

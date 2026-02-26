@@ -5,10 +5,10 @@ import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Persistence DTO for ExpenseByPerson domain object. Shares are not persisted — they are recalculated from participant
- * numberOfPersons on load.
+ * Persistence DTO for ExpenseByShare domain object. Shares are not persisted — they are recalculated from participant
+ * share on load.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ExpenseByPersonPersistenceDTO(String id, BigDecimal amount, String description, String payerId,
+public record ExpenseBySharePersistenceDTO(String id, BigDecimal amount, String description, String payerId,
         String createdAt) implements ExpensePersistenceDTO {
 }

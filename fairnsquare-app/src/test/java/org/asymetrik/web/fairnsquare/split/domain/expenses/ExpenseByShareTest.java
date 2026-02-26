@@ -9,19 +9,19 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for ExpenseByPerson share calculation logic.
+ * Unit tests for ExpenseByShare share calculation logic.
  */
-class ExpenseByPersonTest {
+class ExpenseByShareTest {
 
     @Test
-    void calculateShares_withThreeParticipantsEqualPersons_splitsEqually() {
-        // Given: 3 participants each with 1 person (default)
+    void calculateShares_withThreeParticipantsEqualShare_splitsEqually() {
+        // Given: 3 participants each with 1 share (default)
         Participant alice = createParticipant("Alice", 4, 1.0);
         Participant bob = createParticipant("Bob", 2, 1.0);
         Participant charlie = createParticipant("Charlie", 3, 1.0);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("90.00"), "Groceries", alice.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("90.00"), "Groceries", alice.id());
 
         // When
         List<Expense.Share> shares = expense.calculateShares(participants);
@@ -34,35 +34,35 @@ class ExpenseByPersonTest {
     }
 
     @Test
-    void calculateShares_withDifferentNumberOfPersons_proportionalToPersons() {
-        // Alice: 2 persons, Bob: 1 person → Alice pays 2/3, Bob pays 1/3
+    void calculateShares_withDifferentShares_proportionalToShare() {
+        // Alice: 2 share, Bob: 1 share → Alice pays 2/3, Bob pays 1/3
         // Nights are completely ignored
         Participant alice = createParticipant("Alice", 1, 2.0);
         Participant bob = createParticipant("Bob", 10, 1.0);
         List<Participant> participants = List.of(alice, bob);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("90.00"), "Dinner", alice.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("90.00"), "Dinner", alice.id());
 
         // When
         List<Expense.Share> shares = expense.calculateShares(participants);
 
-        // Then: proportional to numberOfPersons only
+        // Then: proportional to share only
         assertThat(shares).hasSize(2);
         assertThat(shares.get(0).amount()).isEqualByComparingTo("60.00"); // Alice: 2/3 * 90
         assertThat(shares.get(1).amount()).isEqualByComparingTo("30.00"); // Bob: remainder
     }
 
     @Test
-    void calculateShares_nightsAreIgnored_onlyPersonsCount() {
-        // Alice: 1 night, 2 persons → 2 weight units
-        // Bob: 10 nights, 1 person → 1 weight unit
-        // BY_NIGHT would give Alice 2*10/(2*10+10*1)=2/3... but BY_PERSON ignores nights
-        // BY_PERSON gives Alice 2/3 regardless of nights
+    void calculateShares_nightsAreIgnored_onlyShareCounts() {
+        // Alice: 1 night, 2 share → 2 weight units
+        // Bob: 10 nights, 1 share → 1 weight unit
+        // BY_NIGHT would give Alice 2*10/(2*10+10*1)=2/3... but BY_SHARE ignores nights
+        // BY_SHARE gives Alice 2/3 regardless of nights
         Participant alice = createParticipant("Alice", 1, 2.0);
         Participant bob = createParticipant("Bob", 10, 1.0);
         List<Participant> participants = List.of(alice, bob);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("120.00"), "Hotel", alice.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("120.00"), "Hotel", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -72,14 +72,14 @@ class ExpenseByPersonTest {
     }
 
     @Test
-    void calculateShares_withHalfPersonChild_weightsCorrectly() {
-        // Family: 2.5 persons; Single: 1 person → total 3.5
+    void calculateShares_withHalfShare_weightsCorrectly() {
+        // Family: 2.5 share; Single: 1 share → total 3.5
         // €70 expense
         Participant family = createParticipant("Family", 3, 2.5);
         Participant single = createParticipant("Single", 3, 1.0);
         List<Participant> participants = List.of(family, single);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("70.00"), "Groceries", family.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("70.00"), "Groceries", family.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -93,13 +93,13 @@ class ExpenseByPersonTest {
 
     @Test
     void calculateShares_withIndivisibleAmount_lastParticipantGetsRemainder() {
-        // €100 / 3 persons = 33.33... — remainder goes to last participant
+        // €100 / 3 shares = 33.33... — remainder goes to last participant
         Participant alice = createParticipant("Alice", 1, 1.0);
         Participant bob = createParticipant("Bob", 1, 1.0);
         Participant charlie = createParticipant("Charlie", 1, 1.0);
         List<Participant> participants = List.of(alice, bob, charlie);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("100.00"), "Dinner", alice.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("100.00"), "Dinner", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -115,7 +115,7 @@ class ExpenseByPersonTest {
         Participant alice = createParticipant("Alice", 5, 2.0);
         List<Participant> participants = List.of(alice);
 
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("100.00"), "Hotel", alice.id());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("100.00"), "Hotel", alice.id());
 
         List<Expense.Share> shares = expense.calculateShares(participants);
 
@@ -125,7 +125,7 @@ class ExpenseByPersonTest {
 
     @Test
     void calculateShares_withEmptyParticipants_returnsEmptyList() {
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(List.of());
 
@@ -134,7 +134,7 @@ class ExpenseByPersonTest {
 
     @Test
     void calculateShares_withNullParticipants_returnsEmptyList() {
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
         List<Expense.Share> shares = expense.calculateShares(null);
 
@@ -142,10 +142,10 @@ class ExpenseByPersonTest {
     }
 
     @Test
-    void getSplitMode_returnsByPerson() {
-        ExpenseByPerson expense = ExpenseByPerson.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
+    void getSplitMode_returnsByShare() {
+        ExpenseByShare expense = ExpenseByShare.create(new BigDecimal("100.00"), "Test", Participant.Id.generate());
 
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_PERSON);
+        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_SHARE);
     }
 
     @Test
@@ -153,17 +153,17 @@ class ExpenseByPersonTest {
         Expense.Id id = Expense.Id.generate();
         Participant.Id payerId = Participant.Id.generate();
 
-        ExpenseByPerson expense = ExpenseByPerson.fromJson(id, new BigDecimal("150.00"), "Dinner", payerId,
+        ExpenseByShare expense = ExpenseByShare.fromJson(id, new BigDecimal("150.00"), "Dinner", payerId,
                 java.time.Instant.now());
 
         assertThat(expense.getId()).isEqualTo(id);
         assertThat(expense.getAmount()).isEqualByComparingTo("150.00");
         assertThat(expense.getDescription()).isEqualTo("Dinner");
         assertThat(expense.getPayerId()).isEqualTo(payerId);
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_PERSON);
+        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_SHARE);
     }
 
-    private Participant createParticipant(String name, double nights, double numberOfPersons) {
-        return Participant.create(name, nights, numberOfPersons);
+    private Participant createParticipant(String name, double nights, double share) {
+        return Participant.create(name, nights, share);
     }
 }

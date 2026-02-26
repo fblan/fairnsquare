@@ -7,15 +7,15 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * DTO for BY_PERSON expense type. Represents expenses split proportionally by number of persons.
+ * DTO for BY_SHARE expense type. Represents expenses split proportionally by participant share.
  */
-public record ExpenseByPersonDTO(@JsonProperty("id") String id, @JsonProperty("description") String description,
+public record ExpenseByShareDTO(@JsonProperty("id") String id, @JsonProperty("description") String description,
         @JsonProperty("amount") BigDecimal amount, @JsonProperty("payerId") String payerId,
         @JsonProperty("type") String type, @JsonProperty("splitMode") String splitMode,
         @JsonProperty("createdAt") String createdAt, @JsonProperty("shares") List<ShareDTO> shares)
         implements ExpenseDTO {
 
     @JsonCreator
-    public ExpenseByPersonDTO {
+    public ExpenseByShareDTO {
     }
 }

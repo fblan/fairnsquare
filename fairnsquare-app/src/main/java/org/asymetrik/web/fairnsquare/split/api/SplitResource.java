@@ -323,27 +323,27 @@ public class SplitResource {
     }
 
     /**
-     * Adds a BY_PERSON expense to a split. Shares are calculated proportionally to participant number of persons.
+     * Adds a BY_SHARE expense to a split. Shares are calculated proportionally to participant share.
      *
      * @param splitId
      *            the split identifier
      * @param request
-     *            the add expense request (splitMode not required, BY_PERSON is used)
+     *            the add expense request (splitMode not required, BY_SHARE is used)
      *
      * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Add BY_PERSON expense", description = "Creates an expense with shares calculated proportionally to participant number of persons")
+    @Operation(summary = "Add BY_SHARE expense", description = "Creates an expense with shares calculated proportionally to participant share")
     @APIResponse(responseCode = "201", description = "Expense created successfully")
     @APIResponse(responseCode = "404", description = "Split not found")
     @APIResponse(responseCode = "400", description = "Invalid request")
     @POST
-    @Path("/{splitId}/expenses/by-person")
-    public Response addExpenseByPerson(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
+    @Path("/{splitId}/expenses/by-share")
+    public Response addExpenseByShare(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
 
-        return splitService.addExpenseByPerson(splitId, request.amount(), request.description(), request.payerId())
+        return splitService.addExpenseByShare(splitId, request.amount(), request.description(), request.payerId())
                 .flatMap(expense -> splitService.getSplit(splitId)
                         .map(split -> Response.status(Response.Status.CREATED)
                                 .entity(expenseMapper.toDTO(expense, split)).build()))

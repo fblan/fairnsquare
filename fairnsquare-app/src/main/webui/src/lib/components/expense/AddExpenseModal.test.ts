@@ -911,39 +911,39 @@ describe('ExpenseEditModal', () => {
     });
   });
 
-  // --- BY_PERSON Split Mode ---
+  // --- BY_SHARE Split Mode ---
 
-  describe('BY_PERSON Split Mode', () => {
-    it('renders By Person radio button option', () => {
+  describe('BY_SHARE Split Mode', () => {
+    it('renders By Share radio button option', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      expect(screen.getByRole('radio', { name: /by person/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /by share/i })).toBeInTheDocument();
     });
 
-    it('allows selecting By Person split mode', async () => {
+    it('allows selecting By Share split mode', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      await fireEvent.click(byPersonRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      await fireEvent.click(byShareRadio);
 
-      expect(byPersonRadio).toBeChecked();
+      expect(byShareRadio).toBeChecked();
     });
 
-    it('calls addExpense with BY_PERSON splitMode when selected', async () => {
+    it('calls addExpense with BY_SHARE splitMode when selected', async () => {
       vi.mocked(addExpense).mockResolvedValue({
         id: 'e1',
         description: 'Test',
         amount: 60.00,
         payerId: 'p2',
-        splitMode: 'BY_PERSON',
+        splitMode: 'BY_SHARE',
         createdAt: '2026-02-20T12:00:00Z',
         shares: [],
       });
 
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      await fireEvent.click(byPersonRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      await fireEvent.click(byShareRadio);
 
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '60.00' } });
@@ -953,16 +953,16 @@ describe('ExpenseEditModal', () => {
 
       await waitFor(() => {
         expect(addExpense).toHaveBeenCalledWith('test-split-id', expect.objectContaining({
-          splitMode: 'BY_PERSON',
+          splitMode: 'BY_SHARE',
         }));
       });
     });
 
-    it('does not show FREE mode share inputs when By Person is selected', async () => {
+    it('does not show FREE mode share inputs when By Share is selected', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      await fireEvent.click(byPersonRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      await fireEvent.click(byShareRadio);
 
       expect(screen.queryByText(/share parts/i)).not.toBeInTheDocument();
     });

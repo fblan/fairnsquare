@@ -14,14 +14,14 @@
   let splitName = $state('');
   let participantName = $state('');
   let nights = $state(1);
-  let numberOfPersons = $state(1);
+  let share = $state(1);
   let isLoading = $state(false);
 
   // Track whether fields have been touched for validation display
   let splitNameTouched = $state(false);
   let participantNameTouched = $state(false);
   let nightsTouched = $state(false);
-  let numberOfPersonsTouched = $state(false);
+  let shareTouched = $state(false);
 
   // Derived validation errors (only shown after field is touched)
   let splitNameError = $derived.by(() => {
@@ -45,10 +45,10 @@
     return null;
   });
 
-  let numberOfPersonsError = $derived.by(() => {
-    if (!numberOfPersonsTouched) return null;
-    if (numberOfPersons < 0.5) return 'Persons must be at least 0.5';
-    if (numberOfPersons > 50) return 'Persons cannot exceed 50';
+  let shareError = $derived.by(() => {
+    if (!shareTouched) return null;
+    if (share < 0.5) return 'Share must be at least 0.5';
+    if (share > 50) return 'Share cannot exceed 50';
     return null;
   });
 
@@ -60,8 +60,8 @@
     participantName.length <= 50 &&
     nights >= 0.5 &&
     nights <= 365 &&
-    numberOfPersons >= 0.5 &&
-    numberOfPersons <= 50
+    share >= 0.5 &&
+    share <= 50
   );
 
   async function handleCreateSplit() {
@@ -69,7 +69,7 @@
     splitNameTouched = true;
     participantNameTouched = true;
     nightsTouched = true;
-    numberOfPersonsTouched = true;
+    shareTouched = true;
 
     if (!isValid) return;
 
@@ -83,7 +83,7 @@
       await addParticipant(split.id, {
         name: participantName.trim(),
         nights,
-        numberOfPersons,
+        share,
       });
 
       // Step 3: Go to participants page with form pre-opened to add next participant
@@ -187,24 +187,24 @@
               </div>
 
               <div class="space-y-2 flex-1">
-                <Label for="numberOfPersons">Persons</Label>
+                <Label for="share">Share</Label>
                 <Input
                   type="number"
-                  id="numberOfPersons"
-                  bind:value={numberOfPersons}
-                  onblur={() => { numberOfPersonsTouched = true; }}
-                  oninput={() => { numberOfPersonsTouched = true; }}
+                  id="share"
+                  bind:value={share}
+                  onblur={() => { shareTouched = true; }}
+                  oninput={() => { shareTouched = true; }}
                   step={0.5}
                   min={0.5}
                   max={50}
                   disabled={isLoading}
                   class="min-h-[44px]"
-                  aria-invalid={numberOfPersonsError ? 'true' : undefined}
-                  aria-describedby={numberOfPersonsError ? 'numberOfPersons-error' : undefined}
+                  aria-invalid={shareError ? 'true' : undefined}
+                  aria-describedby={shareError ? 'share-error' : undefined}
                 />
-                {#if numberOfPersonsError}
-                  <p id="numberOfPersons-error" class="text-sm text-destructive">
-                    {numberOfPersonsError}
+                {#if shareError}
+                  <p id="share-error" class="text-sm text-destructive">
+                    {shareError}
                   </p>
                 {/if}
               </div>

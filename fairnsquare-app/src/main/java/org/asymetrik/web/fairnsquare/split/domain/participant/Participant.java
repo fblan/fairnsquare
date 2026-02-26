@@ -4,17 +4,17 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 /**
  * Participant entity - represents a person participating in a split with their stay duration. Rich domain model with
- * value objects for fields. A participant can represent a family or group via the numberOfPersons field.
+ * value objects for fields. A participant can represent a family or group via the share field.
  */
-public record Participant(Id id, Name name, Nights nights, NumberOfPersons numberOfPersons) {
+public record Participant(Id id, Name name, Nights nights, Share share) {
 
     @Override
     public String toString() {
-        return "Participant{id=%s, nights=%s, persons=%s}".formatted(id, nights, numberOfPersons);
+        return "Participant{id=%s, nights=%s, share=%s}".formatted(id, nights, share);
     }
 
     /**
-     * Factory method to create a new Participant with generated ID and default 1 person.
+     * Factory method to create a new Participant with generated ID and default share of 1.
      *
      * @param name
      *            the participant's name
@@ -24,23 +24,23 @@ public record Participant(Id id, Name name, Nights nights, NumberOfPersons numbe
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new NumberOfPersons(1.0));
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(1.0));
     }
 
     /**
-     * Factory method to create a new Participant with generated ID and specified number of persons.
+     * Factory method to create a new Participant with generated ID and specified share.
      *
      * @param name
      *            the participant's name
      * @param nights
      *            the number of nights stayed
-     * @param numberOfPersons
-     *            the number of persons this participant represents (e.g. family)
+     * @param share
+     *            the share this participant represents (e.g. 2 for a family of 2, 0.5 for a child)
      *
      * @return a new Participant with a generated NanoID
      */
-    public static Participant create(String name, double nights, double numberOfPersons) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new NumberOfPersons(numberOfPersons));
+    public static Participant create(String name, double nights, double share) {
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(share));
     }
 
     /**
@@ -150,24 +150,24 @@ public record Participant(Id id, Name name, Nights nights, NumberOfPersons numbe
     }
 
     /**
-     * Value object for number of persons this participant represents. Allows representing families or groups. Children
-     * can be counted as 0.5.
+     * Value object for the share this participant represents. Allows representing families or groups. Children can be
+     * counted as 0.5.
      */
-    public record NumberOfPersons(double value) {
+    public record Share(double value) {
 
-        private static final double MIN_PERSONS = 0.5;
-        private static final double MAX_PERSONS = 50;
+        private static final double MIN_SHARE = 0.5;
+        private static final double MAX_SHARE = 50;
         private static final double STEP = 0.5;
 
-        public NumberOfPersons {
-            if (value < MIN_PERSONS) {
-                throw new IllegalArgumentException("Number of persons must be at least " + MIN_PERSONS);
+        public Share {
+            if (value < MIN_SHARE) {
+                throw new IllegalArgumentException("Share must be at least " + MIN_SHARE);
             }
-            if (value > MAX_PERSONS) {
-                throw new IllegalArgumentException("Number of persons cannot exceed " + (int) MAX_PERSONS);
+            if (value > MAX_SHARE) {
+                throw new IllegalArgumentException("Share cannot exceed " + (int) MAX_SHARE);
             }
             if (value % STEP != 0) {
-                throw new IllegalArgumentException("Number of persons must be a multiple of " + STEP);
+                throw new IllegalArgumentException("Share must be a multiple of " + STEP);
             }
         }
 

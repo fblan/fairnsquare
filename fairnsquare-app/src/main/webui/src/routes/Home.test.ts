@@ -32,7 +32,7 @@ describe('Home', () => {
 
   // --- Task 1: Form renders all fields (AC: 1) ---
 
-  it('renders all form fields: split name, participant name, nights, persons', () => {
+  it('renders all form fields: split name, participant name, nights, share', () => {
     render(Home);
 
     expect(screen.getByText('FairNSquare')).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe('Home', () => {
     expect(screen.getByText('First Participant')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Nights')).toBeInTheDocument();
-    expect(screen.getByLabelText('Persons')).toBeInTheDocument();
+    expect(screen.getByLabelText('Share')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create Split' })).toBeInTheDocument();
   });
 
@@ -52,11 +52,11 @@ describe('Home', () => {
     expect(nightsInput.value).toBe('1');
   });
 
-  it('defaults persons to 1', () => {
+  it('defaults share to 1', () => {
     render(Home);
 
-    const personsInput = screen.getByLabelText('Persons') as HTMLInputElement;
-    expect(personsInput.value).toBe('1');
+    const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
+    expect(shareInput.value).toBe('1');
   });
 
   // --- Task 2: Validation (AC: 2, 3, 4, 5) ---
@@ -129,22 +129,22 @@ describe('Home', () => {
     expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
   });
 
-  it('shows validation error for persons less than 0.5', async () => {
+  it('shows validation error for share less than 0.5', async () => {
     render(Home);
 
-    const personsInput = screen.getByLabelText('Persons');
-    await fireEvent.input(personsInput, { target: { value: 0 } });
+    const shareInput = screen.getByLabelText('Share');
+    await fireEvent.input(shareInput, { target: { value: 0 } });
 
-    expect(screen.getByText('Persons must be at least 0.5')).toBeInTheDocument();
+    expect(screen.getByText('Share must be at least 0.5')).toBeInTheDocument();
   });
 
-  it('shows validation error for persons greater than 50', async () => {
+  it('shows validation error for share greater than 50', async () => {
     render(Home);
 
-    const personsInput = screen.getByLabelText('Persons');
-    await fireEvent.input(personsInput, { target: { value: 51 } });
+    const shareInput = screen.getByLabelText('Share');
+    await fireEvent.input(shareInput, { target: { value: 51 } });
 
-    expect(screen.getByText('Persons cannot exceed 50')).toBeInTheDocument();
+    expect(screen.getByText('Share cannot exceed 50')).toBeInTheDocument();
   });
 
   // --- Task 3: Create flow & redirect (AC: 6) ---
@@ -161,7 +161,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 3,
-      numberOfPersons: 1,
+      share: 1,
     };
     vi.mocked(createSplit).mockResolvedValue(mockSplit);
     vi.mocked(addParticipant).mockResolvedValue(mockParticipant);
@@ -186,7 +186,7 @@ describe('Home', () => {
       expect(addParticipant).toHaveBeenCalledWith('abc123', {
         name: 'Alice',
         nights: 3,
-        numberOfPersons: 1,
+        share: 1,
       });
       expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
         params: { splitId: 'abc123' },
@@ -195,7 +195,7 @@ describe('Home', () => {
     });
   });
 
-  it('sends numberOfPersons in API call', async () => {
+  it('sends share in API call', async () => {
     const mockSplit = {
       id: 'abc123',
       name: 'Weekend Trip',
@@ -208,7 +208,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 2,
-      numberOfPersons: 3,
+      share: 3,
     });
 
     render(Home);
@@ -222,7 +222,7 @@ describe('Home', () => {
     await fireEvent.input(screen.getByLabelText('Nights'), {
       target: { value: 2 },
     });
-    await fireEvent.input(screen.getByLabelText('Persons'), {
+    await fireEvent.input(screen.getByLabelText('Share'), {
       target: { value: 3 },
     });
 
@@ -232,7 +232,7 @@ describe('Home', () => {
       expect(addParticipant).toHaveBeenCalledWith('abc123', {
         name: 'Alice',
         nights: 2,
-        numberOfPersons: 3,
+        share: 3,
       });
     });
   });
@@ -252,7 +252,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 1,
-      numberOfPersons: 1,
+      share: 1,
     });
 
     render(Home);

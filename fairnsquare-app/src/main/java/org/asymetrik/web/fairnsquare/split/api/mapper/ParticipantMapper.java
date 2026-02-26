@@ -28,6 +28,6 @@ public class ParticipantMapper {
         }
 
         return new ParticipantDTO(participant.id().value(), participant.name().value(), participant.nights().value(),
-                participant.numberOfPersons().value());
+                participant.share().value());
     }
 }

@@ -21,12 +21,12 @@ describe('EditParticipantModal', () => {
     id: 'participant-1',
     name: 'Alice',
     nights: 3,
-    numberOfPersons: 1,
+    share: 1,
   };
 
   const mockParticipants: Participant[] = [
     mockParticipant,
-    { id: 'participant-2', name: 'Bob', nights: 2, numberOfPersons: 1 },
+    { id: 'participant-2', name: 'Bob', nights: 2, share: 1 },
   ];
 
   const mockSplit: Split = {
@@ -251,7 +251,7 @@ describe('EditParticipantModal', () => {
       vi.mocked(splitsApi.updateParticipant).mockResolvedValue({
         ...mockParticipant,
         name: 'Alice Updated',
-        numberOfPersons: 1,
+        share: 1,
       });
 
       render(EditParticipantModal, { props: defaultProps });
@@ -267,7 +267,7 @@ describe('EditParticipantModal', () => {
         expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
           'split-1',
           'participant-1',
-          { name: 'Alice Updated', nights: 3, numberOfPersons: 1 }
+          { name: 'Alice Updated', nights: 3, share: 1 }
         );
       });
     });
@@ -627,34 +627,34 @@ describe('EditParticipantModal', () => {
   });
 
   // Number of Persons
-  describe('Number of Persons field', () => {
-    it('should display persons input field', () => {
+  describe('Share field', () => {
+    it('should display share input field', () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      expect(screen.getByLabelText(/persons/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/share/i)).toBeInTheDocument();
     });
 
-    it('should pre-fill persons field with participant numberOfPersons', () => {
+    it('should pre-fill share field with participant share', () => {
       const familyParticipant: Participant = {
         id: 'participant-1',
         name: 'Alice',
         nights: 3,
-        numberOfPersons: 2.5,
+        share: 2.5,
       };
 
       render(EditParticipantModal, {
         props: { ...defaultProps, participant: familyParticipant },
       });
 
-      const personsInput = screen.getByLabelText(/persons/i) as HTMLInputElement;
-      expect(personsInput.value).toBe('2.5');
+      const shareInput = screen.getByLabelText(/share/i) as HTMLInputElement;
+      expect(shareInput.value).toBe('2.5');
     });
 
-    it('should enable Save when numberOfPersons changes', async () => {
+    it('should enable Save when share changes', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const personsInput = screen.getByLabelText(/persons/i);
-      await fireEvent.input(personsInput, { target: { value: '2' } });
+      const shareInput = screen.getByLabelText(/share/i);
+      await fireEvent.input(shareInput, { target: { value: '2' } });
 
       await waitFor(() => {
         const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -662,17 +662,17 @@ describe('EditParticipantModal', () => {
       });
     });
 
-    it('should include numberOfPersons in update API call', async () => {
+    it('should include share in update API call', async () => {
       const user = userEvent.setup();
       vi.mocked(splitsApi.updateParticipant).mockResolvedValue({
         ...mockParticipant,
-        numberOfPersons: 2,
+        share: 2,
       });
 
       render(EditParticipantModal, { props: defaultProps });
 
-      const personsInput = screen.getByLabelText(/persons/i);
-      await fireEvent.input(personsInput, { target: { value: '2' } });
+      const shareInput = screen.getByLabelText(/share/i);
+      await fireEvent.input(shareInput, { target: { value: '2' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await user.click(saveButton);
@@ -681,29 +681,29 @@ describe('EditParticipantModal', () => {
         expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
           'split-1',
           'participant-1',
-          { name: 'Alice', nights: 3, numberOfPersons: 2 }
+          { name: 'Alice', nights: 3, share: 2 }
         );
       });
     });
 
-    it('should show error for persons less than 0.5', async () => {
+    it('should show error for share less than 0.5', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const personsInput = screen.getByLabelText(/persons/i);
-      await fireEvent.input(personsInput, { target: { value: '0' } });
-      await fireEvent.blur(personsInput);
+      const shareInput = screen.getByLabelText(/share/i);
+      await fireEvent.input(shareInput, { target: { value: '0' } });
+      await fireEvent.blur(shareInput);
 
       await waitFor(() => {
         expect(screen.getByText(/at least 0\.5/i)).toBeInTheDocument();
       });
     });
 
-    it('should show error for persons greater than 50', async () => {
+    it('should show error for share greater than 50', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const personsInput = screen.getByLabelText(/persons/i);
-      await fireEvent.input(personsInput, { target: { value: '51' } });
-      await fireEvent.blur(personsInput);
+      const shareInput = screen.getByLabelText(/share/i);
+      await fireEvent.input(shareInput, { target: { value: '51' } });
+      await fireEvent.blur(shareInput);
 
       await waitFor(() => {
         expect(screen.getByText(/cannot exceed 50/i)).toBeInTheDocument();
