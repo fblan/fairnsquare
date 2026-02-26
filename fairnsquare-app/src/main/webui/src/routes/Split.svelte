@@ -17,7 +17,6 @@
   let split = $state<Split | null>(null);
   let isLoading = $state(true);
   let error = $state<string | null>(null);
-  let notFound = $state(false);
 
   // Expense summary stats
   const expenseCount = $derived(split?.expenses.length ?? 0);
@@ -41,7 +40,6 @@
   async function loadSplit(id: string) {
     isLoading = true;
     error = null;
-    notFound = false;
     split = null;
 
     try {
@@ -49,7 +47,8 @@
     } catch (err) {
       const apiError = err as ApiError;
       if (apiError.status === 404) {
-        notFound = true;
+        addToast({ type: 'info', message: 'Split not found — create a new one.' });
+        navigate('/');
       } else {
         error = apiError.detail || 'Failed to load split. Please try again.';
       }
@@ -94,9 +93,6 @@
     }
   }
 
-  function handleGoHome() {
-    navigate('/');
-  }
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[420px] mx-auto">
@@ -109,22 +105,6 @@
       </svg>
       <p class="text-muted-foreground">Loading split...</p>
     </div>
-
-  {:else if notFound}
-    <!-- 404 Not Found State -->
-    <Card.Root class="w-full">
-      <Card.Header>
-        <Card.Title class="text-center text-destructive">Split not found</Card.Title>
-      </Card.Header>
-      <Card.Content class="text-center space-y-4">
-        <p class="text-muted-foreground">
-          The split you're looking for doesn't exist or may have been removed.
-        </p>
-        <Button onclick={handleGoHome} class="min-h-[44px]">
-          Create a new split
-        </Button>
-      </Card.Content>
-    </Card.Root>
 
   {:else if error}
     <!-- Error State -->

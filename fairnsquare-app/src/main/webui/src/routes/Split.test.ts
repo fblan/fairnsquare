@@ -45,29 +45,27 @@ describe('Split', () => {
     expect(screen.getByText('Loading split...')).toBeInTheDocument();
   });
 
-  it('shows 404 state when split not found', async () => {
+  it('automatically redirects to home when split not found (404)', async () => {
     vi.mocked(getSplit).mockRejectedValue({ status: 404, detail: 'Not found' });
 
     render(Split);
 
     await waitFor(() => {
-      expect(screen.getByText('Split not found')).toBeInTheDocument();
+      expect(navigate).toHaveBeenCalledWith('/');
     });
-
-    expect(screen.getByRole('button', { name: 'Create a new split' })).toBeInTheDocument();
   });
 
-  it('navigates home when clicking Create a new split on 404', async () => {
+  it('shows info toast when split not found (404)', async () => {
     vi.mocked(getSplit).mockRejectedValue({ status: 404, detail: 'Not found' });
 
     render(Split);
 
     await waitFor(() => {
-      expect(screen.getByText('Split not found')).toBeInTheDocument();
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'info',
+        message: 'Split not found — create a new one.',
+      });
     });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Create a new split' }));
-    expect(navigate).toHaveBeenCalledWith('/');
   });
 
   it('shows error state with retry button on network error', async () => {
