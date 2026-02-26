@@ -5,6 +5,7 @@
   import { Router } from 'sv-router';
   // Import router config to initialize routes
   import '$lib/router';
+  import Toaster from '$lib/components/ui/toast/Toaster.svelte';
 </script>
 
 <main class="min-h-screen bg-background">
@@ -12,3 +13,4 @@
     <Router />
   </div>
 </main>
+<Toaster />
