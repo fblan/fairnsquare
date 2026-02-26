@@ -8,8 +8,8 @@ describe('ParticipantSummaryCard', () => {
 
   it('displays participant count and names sorted alphabetically', () => {
     const participants: Participant[] = [
-      { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
-      { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 1 },
+      { id: 'p2', name: 'Bob', nights: 2, share: 1 },
+      { id: 'p1', name: 'Alice', nights: 4, share: 1 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants } });
@@ -20,7 +20,7 @@ describe('ParticipantSummaryCard', () => {
 
   it('displays singular "participant" when only one', () => {
     const participants: Participant[] = [
-      { id: 'p1', name: 'Alice', nights: 3, numberOfPersons: 1 },
+      { id: 'p1', name: 'Alice', nights: 3, share: 1 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants } });
@@ -40,30 +40,30 @@ describe('ParticipantSummaryCard', () => {
     expect(screen.queryByText(',')).not.toBeInTheDocument();
   });
 
-  it('shows persons suffix when numberOfPersons > 1', () => {
+  it('shows share suffix when share > 1', () => {
     const participants: Participant[] = [
-      { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 2 },
-      { id: 'p2', name: 'Bob', nights: 2, numberOfPersons: 1 },
+      { id: 'p1', name: 'Alice', nights: 4, share: 2 },
+      { id: 'p2', name: 'Bob', nights: 2, share: 1 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants } });
 
-    expect(screen.getByText('Alice (4n, 2p), Bob (2n)')).toBeInTheDocument();
+    expect(screen.getByText('Alice (4n, ×2), Bob (2n)')).toBeInTheDocument();
   });
 
-  it('shows half-person suffix for children', () => {
+  it('shows fractional share suffix', () => {
     const participants: Participant[] = [
-      { id: 'p1', name: 'Charlie', nights: 7, numberOfPersons: 2.5 },
+      { id: 'p1', name: 'Charlie', nights: 7, share: 2.5 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants } });
 
-    expect(screen.getByText('Charlie (7n, 2.5p)')).toBeInTheDocument();
+    expect(screen.getByText('Charlie (7n, ×2.5)')).toBeInTheDocument();
   });
 
   it('formats names with proper case', () => {
     const participants: Participant[] = [
-      { id: 'p1', name: 'alice', nights: 3, numberOfPersons: 1 },
+      { id: 'p1', name: 'alice', nights: 3, share: 1 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants } });
@@ -75,7 +75,7 @@ describe('ParticipantSummaryCard', () => {
 
   it('hides count when showTitle is false', () => {
     const participants: Participant[] = [
-      { id: 'p1', name: 'Alice', nights: 4, numberOfPersons: 1 },
+      { id: 'p1', name: 'Alice', nights: 4, share: 1 },
     ];
 
     render(ParticipantSummaryCard, { props: { participants, showTitle: false } });

@@ -114,7 +114,7 @@ public class SplitUseCases {
     public Optional<Participant> addParticipant(@LogTag("splitId") String splitId, AddParticipantRequest request) {
         return repository.load(splitId).map(split -> {
             Participant participant = Participant.create(request.name(), request.nights(),
-                    request.numberOfPersonsOrDefault());
+                    request.shareOrDefault());
             split.addParticipant(participant);
             repository.save(split);
             return participant;
@@ -139,7 +139,7 @@ public class SplitUseCases {
         return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
             Participant updated = split.updateParticipant(partId, request.name(), request.nights(),
-                    request.numberOfPersonsOrDefault());
+                    request.shareOrDefault());
             repository.save(split);
             return updated;
         });

@@ -24,7 +24,7 @@ class ParticipantMapperTest {
         assertThat(dto.id()).isEqualTo(participant.id().value());
         assertThat(dto.name()).isEqualTo("Alice");
         assertThat(dto.nights()).isEqualTo(3);
-        assertThat(dto.numberOfPersons()).isEqualTo(2.5);
+        assertThat(dto.share()).isEqualTo(2.5);
     }
 
     @Test

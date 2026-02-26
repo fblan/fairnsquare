@@ -161,7 +161,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 3,
-      numberOfPersons: 1,
+      share: 1,
     };
     vi.mocked(createSplit).mockResolvedValue(mockSplit);
     vi.mocked(addParticipant).mockResolvedValue(mockParticipant);
@@ -186,7 +186,7 @@ describe('Home', () => {
       expect(addParticipant).toHaveBeenCalledWith('abc123', {
         name: 'Alice',
         nights: 3,
-        numberOfPersons: 1,
+        share: 1,
       });
       expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
         params: { splitId: 'abc123' },
@@ -195,7 +195,7 @@ describe('Home', () => {
     });
   });
 
-  it('sends numberOfPersons in API call', async () => {
+  it('sends share in API call', async () => {
     const mockSplit = {
       id: 'abc123',
       name: 'Weekend Trip',
@@ -208,7 +208,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 2,
-      numberOfPersons: 3,
+      share: 3,
     });
 
     render(Home);
@@ -222,7 +222,7 @@ describe('Home', () => {
     await fireEvent.input(screen.getByLabelText('Nights'), {
       target: { value: 2 },
     });
-    await fireEvent.input(screen.getByLabelText('Persons'), {
+    await fireEvent.input(screen.getByLabelText('Share'), {
       target: { value: 3 },
     });
 
@@ -232,7 +232,7 @@ describe('Home', () => {
       expect(addParticipant).toHaveBeenCalledWith('abc123', {
         name: 'Alice',
         nights: 2,
-        numberOfPersons: 3,
+        share: 3,
       });
     });
   });
@@ -252,7 +252,7 @@ describe('Home', () => {
       id: 'p1',
       name: 'Alice',
       nights: 1,
-      numberOfPersons: 1,
+      share: 1,
     });
 
     render(Home);

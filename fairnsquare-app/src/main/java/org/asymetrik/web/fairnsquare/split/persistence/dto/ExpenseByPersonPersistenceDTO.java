@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Persistence DTO for ExpenseByPerson domain object. Shares are not persisted — they are recalculated from participant
- * numberOfPersons on load.
+ * share on load.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ExpenseByPersonPersistenceDTO(String id, BigDecimal amount, String description, String payerId,

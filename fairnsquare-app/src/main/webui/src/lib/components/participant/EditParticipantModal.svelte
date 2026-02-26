@@ -37,14 +37,14 @@
   // Form state
   let editName = $state('');
   let editNights = $state(1);
-  let editNumberOfPersons = $state(1);
+  let editShare = $state(1);
   let isLoading = $state(false);
 
   // Validation state
-  let validationErrors = $state<{ name?: string; nights?: string; numberOfPersons?: string }>({});
+  let validationErrors = $state<{ name?: string; nights?: string; share?: string }>({});
   let nameTouched = $state(false);
   let nightsTouched = $state(false);
-  let numberOfPersonsTouched = $state(false);
+  let shareTouched = $state(false);
 
   // Confirmation dialogs
   let showDiscardConfirm = $state(false);
@@ -56,7 +56,7 @@
     participant != null && (
       editName !== participant.name ||
       editNights !== participant.nights ||
-      editNumberOfPersons !== participant.numberOfPersons
+      editShare !== participant.share
     )
   );
 
@@ -79,11 +79,11 @@
     editNights >= 0.5 && editNights <= 365
   );
 
-  const isNumberOfPersonsValid = $derived(
-    editNumberOfPersons >= 0.5 && editNumberOfPersons <= 50
+  const isShareValid = $derived(
+    editShare >= 0.5 && editShare <= 50
   );
 
-  const isValid = $derived(isNameValid && isNightsValid && isNumberOfPersonsValid);
+  const isValid = $derived(isNameValid && isNightsValid && isShareValid);
 
   // Has expenses check for delete button
   const hasExpenses = $derived(
@@ -95,11 +95,11 @@
     if (open && participant) {
       editName = participant.name;
       editNights = participant.nights;
-      editNumberOfPersons = participant.numberOfPersons;
+      editShare = participant.share;
       validationErrors = {};
       nameTouched = false;
       nightsTouched = false;
-      numberOfPersonsTouched = false;
+      shareTouched = false;
       showDiscardConfirm = false;
       showDeleteConfirm = false;
       isLoading = false;
@@ -148,20 +148,20 @@
     validateNights();
   }
 
-  function validateNumberOfPersons() {
-    if (editNumberOfPersons < 0.5) {
-      validationErrors.numberOfPersons = 'Must be at least 0.5';
-    } else if (editNumberOfPersons > 50) {
-      validationErrors.numberOfPersons = 'Cannot exceed 50';
+  function validateShare() {
+    if (editShare < 0.5) {
+      validationErrors.share = 'Must be at least 0.5';
+    } else if (editShare > 50) {
+      validationErrors.share = 'Cannot exceed 50';
     } else {
-      delete validationErrors.numberOfPersons;
+      delete validationErrors.share;
       validationErrors = { ...validationErrors };
     }
   }
 
-  function handleNumberOfPersonsBlur() {
-    numberOfPersonsTouched = true;
-    validateNumberOfPersons();
+  function handleShareBlur() {
+    shareTouched = true;
+    validateShare();
   }
 
   async function handleSubmit() {
@@ -170,12 +170,12 @@
     // Touch all fields to show validation errors
     nameTouched = true;
     nightsTouched = true;
-    numberOfPersonsTouched = true;
+    shareTouched = true;
 
     // Final validation
     validateName();
     validateNights();
-    validateNumberOfPersons();
+    validateShare();
 
     if (!isValid || !isDirty) return;
     if (isLoading) return;
@@ -186,7 +186,7 @@
       await updateParticipant(splitId, participant.id, {
         name: editName.trim(),
         nights: editNights,
-        numberOfPersons: editNumberOfPersons,
+        share: editShare,
       });
 
       addToast({
@@ -373,21 +373,21 @@
           </div>
 
           <div class="space-y-2 flex-1">
-            <Label for="edit-participant-persons-modal">Persons</Label>
+            <Label for="edit-participant-share-modal">Share</Label>
             <Input
-              id="edit-participant-persons-modal"
+              id="edit-participant-share-modal"
               type="number"
               step="0.5"
               min="0.5"
               max="50"
-              bind:value={editNumberOfPersons}
-              onblur={handleNumberOfPersonsBlur}
+              bind:value={editShare}
+              onblur={handleShareBlur}
               class="min-h-[44px]"
-              aria-invalid={numberOfPersonsTouched && !!validationErrors.numberOfPersons}
+              aria-invalid={shareTouched && !!validationErrors.share}
               disabled={isLoading}
             />
-            {#if numberOfPersonsTouched && validationErrors.numberOfPersons}
-              <p class="text-sm text-destructive">{validationErrors.numberOfPersons}</p>
+            {#if shareTouched && validationErrors.share}
+              <p class="text-sm text-destructive">{validationErrors.share}</p>
             {/if}
           </div>
         </div>

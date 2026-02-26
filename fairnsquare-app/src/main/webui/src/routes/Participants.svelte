@@ -30,8 +30,8 @@
   let nameInputEl = $state<HTMLInputElement | null>(null);
   let formName = $state('');
   let formNights = $state(1);
-  let formNumberOfPersons = $state(1);
-  let validationErrors = $state<{name?: string; nights?: string; numberOfPersons?: string}>({});
+  let formShare = $state(1);
+  let validationErrors = $state<{name?: string; nights?: string; share?: string}>({});
   let isSubmitting = $state(false);
 
   // Edit Participant state
@@ -158,7 +158,7 @@
     showAddForm = true;
     formName = '';
     formNights = getSmartDefaultNights();
-    formNumberOfPersons = 1;
+    formShare = 1;
     validationErrors = {};
     await tick();
     nameInputEl?.focus();
@@ -168,7 +168,7 @@
     showAddForm = false;
     formName = '';
     formNights = 1;
-    formNumberOfPersons = 1;
+    formShare = 1;
     validationErrors = {};
   }
 
@@ -196,18 +196,18 @@
     validationErrors = { ...validationErrors, nights: nightsError };
   }
 
-  function validateNumberOfPersonsOnInput() {
+  function validateShareOnInput() {
     let error: string | undefined;
-    if (formNumberOfPersons < 0.5) {
+    if (formShare < 0.5) {
       error = 'Must be at least 0.5';
-    } else if (formNumberOfPersons > 50) {
+    } else if (formShare > 50) {
       error = 'Cannot exceed 50';
     }
-    validationErrors = { ...validationErrors, numberOfPersons: error };
+    validationErrors = { ...validationErrors, share: error };
   }
 
   function validateAddForm(): boolean {
-    const errors: {name?: string; nights?: string; numberOfPersons?: string} = {};
+    const errors: {name?: string; nights?: string; share?: string} = {};
 
     if (!formName.trim()) {
       errors.name = 'Name is required';
@@ -223,10 +223,10 @@
       errors.nights = 'Nights cannot exceed 365';
     }
 
-    if (formNumberOfPersons < 0.5) {
-      errors.numberOfPersons = 'Must be at least 0.5';
-    } else if (formNumberOfPersons > 50) {
-      errors.numberOfPersons = 'Cannot exceed 50';
+    if (formShare < 0.5) {
+      errors.share = 'Must be at least 0.5';
+    } else if (formShare > 50) {
+      errors.share = 'Cannot exceed 50';
     }
 
     validationErrors = errors;
@@ -243,14 +243,14 @@
       await addParticipant(splitId, {
         name: addedName,
         nights: formNights,
-        numberOfPersons: formNumberOfPersons,
+        share: formShare,
       });
 
       saveSmartDefaultNights(formNights);
       showAddForm = false;
       formName = '';
       formNights = 1;
-      formNumberOfPersons = 1;
+      formShare = 1;
       validationErrors = {};
       await loadSplit(splitId);
 
@@ -440,20 +440,20 @@
               </div>
 
               <div class="space-y-2 flex-1">
-                <Label for="participant-persons">Persons</Label>
+                <Label for="participant-share">Share</Label>
                 <Input
-                  id="participant-persons"
+                  id="participant-share"
                   type="number"
                   step="0.5"
                   min="0.5"
                   max="50"
-                  bind:value={formNumberOfPersons}
-                  oninput={validateNumberOfPersonsOnInput}
+                  bind:value={formShare}
+                  oninput={validateShareOnInput}
                   class="min-h-[44px]"
                   disabled={isSubmitting}
                 />
-                {#if validationErrors.numberOfPersons}
-                  <p class="text-sm text-destructive">{validationErrors.numberOfPersons}</p>
+                {#if validationErrors.share}
+                  <p class="text-sm text-destructive">{validationErrors.share}</p>
                 {/if}
               </div>
             </div>
@@ -535,9 +535,9 @@
               <span class="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
                 {participant.nights} {participant.nights <= 1 ? 'night' : 'nights'}
               </span>
-              {#if participant.numberOfPersons > 1}
+              {#if participant.share > 1}
                 <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                  {participant.numberOfPersons} {participant.numberOfPersons <= 1 ? 'person' : 'persons'}
+                  {participant.share} {participant.share <= 1 ? 'share' : 'shares'}
                 </span>
               {/if}
               <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">

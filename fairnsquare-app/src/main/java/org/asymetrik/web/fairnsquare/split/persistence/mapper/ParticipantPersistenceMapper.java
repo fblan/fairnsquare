@@ -13,13 +13,13 @@ public class ParticipantPersistenceMapper {
 
     public ParticipantPersistenceDTO toPersistenceDTO(Participant participant) {
         return new ParticipantPersistenceDTO(participant.id().value(), participant.name().value(),
-                participant.nights().value(), participant.numberOfPersons().value());
+                participant.nights().value(), participant.share().value());
     }
 
     public Participant toDomain(ParticipantPersistenceDTO dto) {
-        // Default to 1.0 for backward compatibility with existing data without numberOfPersons
-        double numberOfPersons = dto.numberOfPersons() > 0 ? dto.numberOfPersons() : 1.0;
+        // Default to 1.0 for backward compatibility with existing data without share
+        double share = dto.share() > 0 ? dto.share() : 1.0;
         return new Participant(Participant.Id.of(dto.id()), new Participant.Name(dto.name()),
-                new Participant.Nights(dto.nights()), new Participant.NumberOfPersons(numberOfPersons));
+                new Participant.Nights(dto.nights()), new Participant.Share(share));
     }
 }

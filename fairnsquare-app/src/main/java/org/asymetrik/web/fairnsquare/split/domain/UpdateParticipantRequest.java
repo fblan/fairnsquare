@@ -13,12 +13,12 @@ public record UpdateParticipantRequest(
 
         @DecimalMin(value = "0.5", message = "Nights must be at least 0.5") @DecimalMax(value = "365", message = "Nights cannot exceed 365") double nights,
 
-        @DecimalMin(value = "0.5", message = "Number of persons must be at least 0.5") @DecimalMax(value = "50", message = "Number of persons cannot exceed 50") Double numberOfPersons) {
+        @DecimalMin(value = "0.5", message = "Share must be at least 0.5") @DecimalMax(value = "50", message = "Share cannot exceed 50") Double share) {
 
     /**
-     * Returns the number of persons, defaulting to 1.0 if not specified.
+     * Returns the share, defaulting to 1.0 if not specified.
      */
-    public double numberOfPersonsOrDefault() {
-        return numberOfPersons != null ? numberOfPersons : 1.0;
+    public double shareOrDefault() {
+        return share != null ? share : 1.0;
     }
 }

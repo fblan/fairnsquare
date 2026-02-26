@@ -11,8 +11,7 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
- * Expense split proportionally based on number of persons. Share calculation: participant_numberOfPersons /
- * total_numberOfPersons × amount
+ * Expense split proportionally based on share. Share calculation: participant_share / total_share × amount
  */
 public final class ExpenseByPerson extends Expense {
 
@@ -67,9 +66,9 @@ public final class ExpenseByPerson extends Expense {
             return Collections.emptyList();
         }
 
-        double totalPersons = participants.stream().mapToDouble(p -> p.numberOfPersons().value()).sum();
+        double totalShares = participants.stream().mapToDouble(p -> p.share().value()).sum();
 
-        if (totalPersons == 0) {
+        if (totalShares == 0) {
             return Collections.emptyList();
         }
 
@@ -78,14 +77,14 @@ public final class ExpenseByPerson extends Expense {
 
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
-            double weight = p.numberOfPersons().value();
+            double weight = p.share().value();
             BigDecimal share;
 
             if (i == participants.size() - 1) {
                 // Last participant gets the remainder to ensure sum = amount
                 share = getAmount().subtract(totalAssigned);
             } else {
-                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalPersons), SCALE,
+                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalShares), SCALE,
                         ROUNDING_MODE);
                 totalAssigned = totalAssigned.add(share);
             }

@@ -21,7 +21,7 @@
 
   const summaryText = $derived(
     sortedParticipants
-      .map(p => `${formatName(p.name)} (${p.nights}n${p.numberOfPersons > 1 ? `, ${p.numberOfPersons}p` : ''})`)
+      .map(p => `${formatName(p.name)} (${p.nights}n${p.share > 1 ? `, ×${p.share}` : ''})`)
       .join(', ')
   );
 </script>

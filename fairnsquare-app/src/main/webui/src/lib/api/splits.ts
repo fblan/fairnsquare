@@ -11,20 +11,20 @@ export interface CreateSplitRequest {
 export interface AddParticipantRequest {
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
 export interface UpdateParticipantRequest {
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
 export interface Participant {
   id: string;
   name: string;
   nights: number;
-  numberOfPersons: number;
+  share: number;
 }
 
 export type SplitMode = 'BY_NIGHT' | 'BY_PERSON' | 'EQUAL' | 'FREE';

@@ -25,7 +25,7 @@ class ParticipantPersistenceMapperTest {
         assertThat(dto.id()).isEqualTo(participant.id().value());
         assertThat(dto.name()).isEqualTo("Alice");
         assertThat(dto.nights()).isEqualTo(3);
-        assertThat(dto.numberOfPersons()).isEqualTo(2.0);
+        assertThat(dto.share()).isEqualTo(2.0);
     }
 
     @Test
@@ -37,16 +37,16 @@ class ParticipantPersistenceMapperTest {
         assertThat(participant.id().value()).isEqualTo("ABCDEFGHIJKLMNOPQRSTu");
         assertThat(participant.name().value()).isEqualTo("Bob");
         assertThat(participant.nights().value()).isEqualTo(5);
-        assertThat(participant.numberOfPersons().value()).isEqualTo(1.5);
+        assertThat(participant.share().value()).isEqualTo(1.5);
     }
 
     @Test
-    void shouldDefaultNumberOfPersonsToOneWhenZeroInDTO() {
+    void shouldDefaultShareToOneWhenZeroInDTO() {
         ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Bob", 5, 0);
 
         Participant participant = mapper.toDomain(dto);
 
-        assertThat(participant.numberOfPersons().value()).isEqualTo(1.0);
+        assertThat(participant.share().value()).isEqualTo(1.0);
     }
 
     @Test
@@ -59,6 +59,6 @@ class ParticipantPersistenceMapperTest {
         assertThat(roundTrip.id()).isEqualTo(original.id());
         assertThat(roundTrip.name()).isEqualTo(original.name());
         assertThat(roundTrip.nights()).isEqualTo(original.nights());
-        assertThat(roundTrip.numberOfPersons()).isEqualTo(original.numberOfPersons());
+        assertThat(roundTrip.share()).isEqualTo(original.share());
     }
 }

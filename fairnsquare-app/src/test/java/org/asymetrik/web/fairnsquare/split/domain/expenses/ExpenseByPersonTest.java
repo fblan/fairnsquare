@@ -34,8 +34,8 @@ class ExpenseByPersonTest {
     }
 
     @Test
-    void calculateShares_withDifferentNumberOfPersons_proportionalToPersons() {
-        // Alice: 2 persons, Bob: 1 person → Alice pays 2/3, Bob pays 1/3
+    void calculateShares_withDifferentShares_proportionalToShare() {
+        // Alice: 2 share, Bob: 1 share → Alice pays 2/3, Bob pays 1/3
         // Nights are completely ignored
         Participant alice = createParticipant("Alice", 1, 2.0);
         Participant bob = createParticipant("Bob", 10, 1.0);
@@ -46,7 +46,7 @@ class ExpenseByPersonTest {
         // When
         List<Expense.Share> shares = expense.calculateShares(participants);
 
-        // Then: proportional to numberOfPersons only
+        // Then: proportional to share only
         assertThat(shares).hasSize(2);
         assertThat(shares.get(0).amount()).isEqualByComparingTo("60.00"); // Alice: 2/3 * 90
         assertThat(shares.get(1).amount()).isEqualByComparingTo("30.00"); // Bob: remainder
@@ -163,7 +163,7 @@ class ExpenseByPersonTest {
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_PERSON);
     }
 
-    private Participant createParticipant(String name, double nights, double numberOfPersons) {
-        return Participant.create(name, nights, numberOfPersons);
+    private Participant createParticipant(String name, double nights, double share) {
+        return Participant.create(name, nights, share);
     }
 }
