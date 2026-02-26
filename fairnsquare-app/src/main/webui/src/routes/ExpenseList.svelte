@@ -75,10 +75,15 @@
       split = await getSplit(id);
     } catch (err) {
       const apiError = err as ApiError;
-      addToast({
-        type: 'error',
-        message: apiError.detail || 'Failed to load expenses',
-      });
+      if (apiError.status === 404 || apiError.status === 400) {
+        addToast({ type: 'info', message: 'Split not found — create a new one.' });
+        navigate('/');
+      } else {
+        addToast({
+          type: 'error',
+          message: apiError.detail || 'Failed to load expenses',
+        });
+      }
     } finally {
       isLoading = false;
     }
