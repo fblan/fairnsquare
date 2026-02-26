@@ -12,7 +12,8 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 
 /**
  * Computes settlement for a split: calculates per-participant balances and proposes reimbursement transfers using a
- * naive greedy algorithm.
+ * greedy min-cash-flow algorithm that sorts debtors and creditors by amount descending to produce deterministic,
+ * intuitive results regardless of participant insertion order.
  */
 public class SettlementCalculator {
 
@@ -70,8 +71,9 @@ public class SettlementCalculator {
     }
 
     /**
-     * Naive greedy algorithm: matches debtors with creditors by transferring the minimum of each pair's remaining
-     * amount until all debts are settled.
+     * Greedy min-cash-flow algorithm: sorts debtors (largest debt first) and creditors (largest credit first), then
+     * matches them with a two-pointer approach, transferring the minimum of each pair's remaining amount until all
+     * debts are settled. Sorting makes results deterministic and independent of participant insertion order.
      */
     private static List<Reimbursement> calculateReimbursements(List<ParticipantBalance> balances) {
         // Separate into debtors (balance < 0) and creditors (balance > 0)
@@ -90,6 +92,10 @@ public class SettlementCalculator {
                 creditRemaining.add(pb.balance());
             }
         }
+
+        // Sort largest debt/credit first for deterministic, intuitive results
+        sortByAmountDescending(debtors, debtRemaining);
+        sortByAmountDescending(creditors, creditRemaining);
 
         List<Reimbursement> reimbursements = new ArrayList<>();
         int d = 0;
@@ -116,5 +122,24 @@ public class SettlementCalculator {
         }
 
         return reimbursements;
+    }
+
+    /**
+     * Sorts participants and their corresponding remaining-amount list together by amount descending.
+     */
+    private static void sortByAmountDescending(List<ParticipantBalance> participants, List<BigDecimal> amounts) {
+        int n = participants.size();
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (amounts.get(j).compareTo(amounts.get(i)) > 0) {
+                    ParticipantBalance tmpP = participants.get(i);
+                    participants.set(i, participants.get(j));
+                    participants.set(j, tmpP);
+                    BigDecimal tmpA = amounts.get(i);
+                    amounts.set(i, amounts.get(j));
+                    amounts.set(j, tmpA);
+                }
+            }
+        }
     }
 }
