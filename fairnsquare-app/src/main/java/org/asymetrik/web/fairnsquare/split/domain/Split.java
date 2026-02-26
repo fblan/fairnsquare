@@ -136,7 +136,7 @@ public class Split {
      *            the new name for the participant
      * @param newNights
      *            the new number of nights
-     * @param newNumberOfPersons
+     * @param newShare
      *            the new number of persons
      *
      * @return the updated participant
@@ -145,11 +145,11 @@ public class Split {
      *             if no participant with the given ID exists
      */
     public Participant updateParticipant(Participant.Id participantId, String newName, double newNights,
-            double newNumberOfPersons) {
+            double newShare) {
         for (int i = 0; i < participants.size(); i++) {
             if (participants.get(i).id().equals(participantId)) {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
-                        new Participant.Nights(newNights), new Participant.NumberOfPersons(newNumberOfPersons));
+                        new Participant.Nights(newNights), new Participant.Share(newShare));
                 participants.set(i, updated);
                 clearSettlement();
                 validate();
