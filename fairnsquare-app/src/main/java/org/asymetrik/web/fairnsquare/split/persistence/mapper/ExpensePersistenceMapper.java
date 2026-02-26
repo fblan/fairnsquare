@@ -6,12 +6,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByPerson;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
-import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByPersonPersistenceDTO;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseBySharePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseFreePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpensePersistenceDTO;
@@ -31,7 +31,7 @@ public class ExpensePersistenceMapper {
         return switch (expense) {
             case ExpenseByNight _ -> new ExpenseByNightPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
-            case ExpenseByPerson _ -> new ExpenseByPersonPersistenceDTO(id, expense.getAmount(),
+            case ExpenseByShare _ -> new ExpenseBySharePersistenceDTO(id, expense.getAmount(),
                     expense.getDescription(), payerId, createdAt);
             case ExpenseEqual _ -> new ExpenseEqualPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
@@ -62,8 +62,8 @@ public class ExpensePersistenceMapper {
         return switch (dto) {
             case ExpenseByNightPersistenceDTO _ ->
                     ExpenseByNight.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
-            case ExpenseByPersonPersistenceDTO _ ->
-                    ExpenseByPerson.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
+            case ExpenseBySharePersistenceDTO _ ->
+                    ExpenseByShare.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
             case ExpenseEqualPersistenceDTO _ ->
                     ExpenseEqual.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
             case ExpenseFreePersistenceDTO free -> {

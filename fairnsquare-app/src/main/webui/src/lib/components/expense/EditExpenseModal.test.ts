@@ -619,50 +619,50 @@ describe('ExpenseEditModal', () => {
     });
   });
 
-  // --- BY_PERSON Split Mode ---
+  // --- BY_SHARE Split Mode ---
 
-  describe('BY_PERSON Split Mode', () => {
-    it('renders By Person radio button option', () => {
+  describe('BY_SHARE Split Mode', () => {
+    it('renders By Share radio button option', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      expect(screen.getByRole('radio', { name: /by person/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /by share/i })).toBeInTheDocument();
     });
 
-    it('pre-selects BY_PERSON when expense uses BY_PERSON', () => {
-      const byPersonExpense = { ...mockExpense, splitMode: 'BY_PERSON' as const };
-      render(ExpenseEditModal, { props: { ...defaultProps, expense: byPersonExpense } });
+    it('pre-selects BY_SHARE when expense uses BY_SHARE', () => {
+      const byShareExpense = { ...mockExpense, splitMode: 'BY_SHARE' as const };
+      render(ExpenseEditModal, { props: { ...defaultProps, expense: byShareExpense } });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      expect(byPersonRadio).toBeChecked();
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      expect(byShareRadio).toBeChecked();
     });
 
-    it('enables Save Changes when split mode is changed to BY_PERSON', async () => {
+    it('enables Save Changes when split mode is changed to BY_SHARE', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      await fireEvent.click(byPersonRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      await fireEvent.click(byShareRadio);
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       expect(saveButton).not.toBeDisabled();
     });
 
-    it('calls updateExpense with BY_PERSON splitMode', async () => {
+    it('calls updateExpense with BY_SHARE splitMode', async () => {
       vi.mocked(updateExpense).mockResolvedValue({
         ...mockExpense,
-        splitMode: 'BY_PERSON',
+        splitMode: 'BY_SHARE',
       });
 
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byPersonRadio = screen.getByRole('radio', { name: /by person/i });
-      await fireEvent.click(byPersonRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      await fireEvent.click(byShareRadio);
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       await fireEvent.click(saveButton);
 
       await waitFor(() => {
         expect(updateExpense).toHaveBeenCalledWith('test-split-id', 'e1', expect.objectContaining({
-          splitMode: 'BY_PERSON',
+          splitMode: 'BY_SHARE',
         }));
       });
     });

@@ -4,14 +4,14 @@ import java.util.Collections;
 import java.util.List;
 
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByNightDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByPersonDTO;
+import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByShareDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseEqualDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseFreeDTO;
 import org.asymetrik.web.fairnsquare.expense.api.dto.ShareDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByPerson;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
@@ -51,9 +51,9 @@ public class ExpenseMapper {
             case ExpenseByNight byNight -> new ExpenseByNightDTO(byNight.getId().value(), byNight.getDescription(),
                     byNight.getAmount(), byNight.getPayerId() != null ? byNight.getPayerId().value() : null, "BY_NIGHT",
                     "BY_NIGHT", byNight.getCreatedAt().toString(), shares);
-            case ExpenseByPerson byPerson -> new ExpenseByPersonDTO(byPerson.getId().value(), byPerson.getDescription(),
-                    byPerson.getAmount(), byPerson.getPayerId() != null ? byPerson.getPayerId().value() : null,
-                    "BY_PERSON", "BY_PERSON", byPerson.getCreatedAt().toString(), shares);
+            case ExpenseByShare byShare -> new ExpenseByShareDTO(byShare.getId().value(), byShare.getDescription(),
+                    byShare.getAmount(), byShare.getPayerId() != null ? byShare.getPayerId().value() : null,
+                    "BY_SHARE", "BY_SHARE", byShare.getCreatedAt().toString(), shares);
             case ExpenseEqual equal -> new ExpenseEqualDTO(equal.getId().value(), equal.getDescription(),
                     equal.getAmount(), equal.getPayerId() != null ? equal.getPayerId().value() : null, "EQUAL", "EQUAL",
                     equal.getCreatedAt().toString(), shares);

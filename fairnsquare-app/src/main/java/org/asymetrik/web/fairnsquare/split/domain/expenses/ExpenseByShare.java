@@ -13,13 +13,13 @@ import org.asymetrik.web.fairnsquare.split.domain.Split;
 /**
  * Expense split proportionally based on share. Share calculation: participant_share / total_share × amount
  */
-public final class ExpenseByPerson extends Expense {
+public final class ExpenseByShare extends Expense {
 
     private static final int SCALE = 2;
     private static final RoundingMode ROUNDING_MODE = RoundingMode.HALF_UP;
 
     /**
-     * Factory method for creating new BY_PERSON expenses.
+     * Factory method for creating new BY_SHARE expenses.
      *
      * @param amount
      *            the expense amount (must be positive)
@@ -28,32 +28,32 @@ public final class ExpenseByPerson extends Expense {
      * @param payerId
      *            the ID of the participant who paid
      *
-     * @return a new ExpenseByPerson with generated ID and createdAt set to now
+     * @return a new ExpenseByShare with generated ID and createdAt set to now
      */
-    public static ExpenseByPerson create(BigDecimal amount, String description, Participant.Id payerId) {
+    public static ExpenseByShare create(BigDecimal amount, String description, Participant.Id payerId) {
         validateAmount(amount);
         validateDescription(description);
-        return new ExpenseByPerson(Id.generate(), amount, description, payerId, Instant.now());
+        return new ExpenseByShare(Id.generate(), amount, description, payerId, Instant.now());
     }
 
     /**
-     * Reconstitutes an ExpenseByPerson from stored fields (used by persistence mapper).
+     * Reconstitutes an ExpenseByShare from stored fields (used by persistence mapper).
      */
-    public static ExpenseByPerson fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
+    public static ExpenseByShare fromJson(Id id, BigDecimal amount, String description, Participant.Id payerId,
             Instant createdAt) {
-        return new ExpenseByPerson(id, amount, description, payerId, createdAt);
+        return new ExpenseByShare(id, amount, description, payerId, createdAt);
     }
 
     /**
      * Package-private constructor for internal use.
      */
-    ExpenseByPerson(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
+    ExpenseByShare(Id id, BigDecimal amount, String description, Participant.Id payerId, Instant createdAt) {
         super(id, amount, description, payerId, createdAt);
     }
 
     @Override
     public SplitMode getSplitMode() {
-        return SplitMode.BY_PERSON;
+        return SplitMode.BY_SHARE;
     }
 
     @Override
