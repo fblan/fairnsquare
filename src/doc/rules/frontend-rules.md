@@ -15,6 +15,10 @@
 - Forms that create or update entities must include client-side validation that mirrors backend constraints (e.g. uniqueness, format, range). Do not rely solely on API error responses and toast notifications for user feedback — use inline form errors.
 - Inline validation while typing must not show "required" errors on an empty field — that error is reserved for form submission. Other errors (format, range, uniqueness) must appear as soon as the invalid value is detected while typing.
 
+## Testing Reactive Store Updates
+
+- When a reactive store is mutated (e.g. `addToast()`, `clearToasts()`) after `render()` in a test, always wrap assertions in `waitFor()`. Svelte 5's DOM updates are batched and asynchronous from the test runner's perspective — synchronous assertions after store mutations will see stale DOM.
+
 ## Testing Number Inputs
 
 - For `<input type="number">` with Svelte's `bind:value`, always use `fireEvent.input(el, { target: { value: '...' } })` instead of `userEvent.clear()` + `userEvent.type()`. The `userEvent` approach does not reliably trigger Svelte's `bind:value` reactivity for number inputs in jsdom. Use `fireEvent.blur()` to trigger `onblur` validation handlers.
