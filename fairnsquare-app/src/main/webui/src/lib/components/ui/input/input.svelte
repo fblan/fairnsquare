@@ -16,8 +16,16 @@
 		files = $bindable(),
 		class: className,
 		"data-slot": dataSlot = "input",
+		onfocus: onFocusProp,
 		...restProps
 	}: Props = $props();
+
+	function handleFocus(event: FocusEvent) {
+		if (type === 'number' && ref) {
+			setTimeout(() => ref?.select(), 0);
+		}
+		(onFocusProp as ((e: FocusEvent) => void) | undefined)?.(event);
+	}
 </script>
 
 {#if type === "file"}
@@ -48,5 +56,6 @@
 		{type}
 		bind:value
 		{...restProps}
+		onfocus={handleFocus}
 	/>
 {/if}
