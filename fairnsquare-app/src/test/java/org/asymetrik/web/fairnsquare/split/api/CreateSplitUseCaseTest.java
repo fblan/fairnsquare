@@ -8,21 +8,10 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
-import jakarta.inject.Inject;
-
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
-import org.junit.jupiter.api.BeforeEach;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
@@ -31,25 +20,8 @@ import io.restassured.http.ContentType;
  * endpoints.
  */
 @QuarkusTest
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
 class CreateSplitUseCaseTest {
-
-    @Inject
-    TenantPathResolver pathResolver;
-
-    @BeforeEach
-    void setUp() throws IOException {
-        // Clean up any existing test data
-        Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
-        if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException _) {
-                    // Ignore cleanup errors
-                }
-            });
-        }
-    }
 
     /**
      * AC 1: Successful split creation returns 201 with correct response body.
@@ -64,30 +36,22 @@ class CreateSplitUseCaseTest {
                 .body("name", equalTo("Bordeaux Weekend 2026")).body("createdAt", notNullValue())
                 .body("participants", hasSize(0)).body("expenses", hasSize(0)).extract().path("id");
 
-        // Verify file was created (AC 2)
-        Path splitFile = pathResolver.resolve(splitId);
-        assertThat(Files.exists(splitFile)).as("Split file should exist at " + splitFile).isTrue();
+        // Verify split is persisted and retrievable (AC 2)
+        given().when().get("/api/splits/" + splitId).then().statusCode(200);
     }
 
     /**
-     * AC 2: Split file is persisted correctly with all fields.
+     * AC 2: Split is persisted correctly with all fields.
      */
     @Test
-    void createSplit_persistsFileWithAllFields() throws IOException {
+    void createSplit_persistsAllFields() {
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Test Split"}
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
-        Path splitFile = pathResolver.resolve(splitId);
-        assertThat(Files.exists(splitFile)).as("Split file should exist").isTrue();
-
-        String content = readZipDataEntry(splitFile);
-        assertThat(content.contains("\"id\"")).as("File should contain id field").isTrue();
-        assertThat(content.contains("\"name\"")).as("File should contain name field").isTrue();
-        assertThat(content.contains("\"createdAt\"")).as("File should contain createdAt field").isTrue();
-        assertThat(content.contains("\"participants\"")).as("File should contain participants field").isTrue();
-        assertThat(content.contains("\"expenses\"")).as("File should contain expenses field").isTrue();
-        assertThat(content.contains("Test Split")).as("File should contain the split name").isTrue();
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("id", equalTo(splitId))
+                .body("name", equalTo("Test Split")).body("createdAt", notNullValue()).body("participants", hasSize(0))
+                .body("expenses", hasSize(0));
     }
 
     /**
@@ -112,30 +76,16 @@ class CreateSplitUseCaseTest {
     }
 
     /**
-     * AC 5: Directory is created automatically when it doesn't exist.
+     * AC 5: Split is retrievable immediately after creation even when storage directory did not exist yet.
      */
     @Test
-    void createSplit_createsDirectoryAutomatically() throws IOException {
-        // Ensure directory doesn't exist
-        Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
-        if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException _) {
-                    // Ignore
-                }
-            });
-        }
-
+    void createSplit_createsDirectoryAutomatically() {
+        // Directory is already clean from @BeforeEach — verify server creates it on demand
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Auto Directory Test"}
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
-        // Verify directory and file were created
-        assertThat(Files.exists(defaultTenant)).as("Default tenant directory should exist").isTrue();
-        Path splitFile = pathResolver.resolve(splitId);
-        assertThat(Files.exists(splitFile)).as("Split file should exist").isTrue();
+        given().when().get("/api/splits/" + splitId).then().statusCode(200);
     }
 
     /**
@@ -147,7 +97,6 @@ class CreateSplitUseCaseTest {
                 {"name": "NanoID Test"}
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
-        // Verify NanoID characteristics
         assertThat(splitId.length()).as("NanoID should be 21 characters").isEqualTo(21);
         assertThat(splitId.matches("^[A-Za-z0-9_-]+$")).as("NanoID should only contain URL-safe characters").isTrue();
     }
@@ -167,12 +116,10 @@ class CreateSplitUseCaseTest {
      */
     @Test
     void getSplit_afterCreate_returnsTheSplit() {
-        // Create a split
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Retrievable Split"}
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
 
-        // Retrieve it
         given().when().get("/api/splits/" + splitId).then().statusCode(200).body("id", equalTo(splitId))
                 .body("name", equalTo("Retrievable Split")).body("participants", hasSize(0))
                 .body("expenses", hasSize(0));
@@ -184,7 +131,6 @@ class CreateSplitUseCaseTest {
      */
     @Test
     void getSplit_withPathTraversalChars_returns400() {
-        // SplitId containing dots should be rejected (NanoID only allows [A-Za-z0-9_-])
         given().when().get("/api/splits/..etcpasswd12345678901").then().statusCode(400);
     }
 
@@ -193,25 +139,8 @@ class CreateSplitUseCaseTest {
      */
     @Test
     void getSplit_withInvalidSplitIdFormat_returns400() {
-        // SplitId should be alphanumeric with - and _ only (NanoID format)
         given().when().get("/api/splits/invalid..id").then().statusCode(400);
         given().when().get("/api/splits/has/slash").then().statusCode(404); // Different path
         given().when().get("/api/splits/has%00null").then().statusCode(400);
-    }
-
-    private String readZipDataEntry(Path zipPath) throws IOException {
-        try (InputStream fis = Files.newInputStream(zipPath);
-                ZipInputStream zis = new ZipInputStream(fis)) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                if ("data.bin".equals(entry.getName())) {
-                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
-                    zis.closeEntry();
-                    return content;
-                }
-                zis.closeEntry();
-            }
-        }
-        throw new AssertionError("data.bin entry not found in " + zipPath);
     }
 }

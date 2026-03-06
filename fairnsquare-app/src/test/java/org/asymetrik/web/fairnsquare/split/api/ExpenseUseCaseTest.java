@@ -8,19 +8,13 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.hasSize;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import jakarta.inject.Inject;
-
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
-import org.junit.jupiter.api.BeforeEach;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
@@ -29,25 +23,8 @@ import io.restassured.http.ContentType;
  * EQUAL).
  */
 @QuarkusTest
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
 class ExpenseUseCaseTest {
-
-    @Inject
-    TenantPathResolver pathResolver;
-
-    @BeforeEach
-    void setUp() throws IOException {
-        // Clean up any existing test data
-        Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
-        if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException _) {
-                    // Ignore cleanup errors
-                }
-            });
-        }
-    }
 
     // ==================== Story 4.1: Add Expense Tests ====================
 

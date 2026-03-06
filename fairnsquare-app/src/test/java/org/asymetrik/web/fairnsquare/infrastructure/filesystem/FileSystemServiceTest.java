@@ -14,31 +14,35 @@ import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusTest;
 
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 
 /**
- * Tests for {@link FileSystemService}: size limit enforcement, old file cleanup, storage stats. Uses test profile
- * config: max-total-size-bytes=1024, max-file-age-days=30.
+ * Tests for {@link FileSystemService}: size limit enforcement, old file cleanup, storage stats. Uses a 1024-byte
+ * storage limit (pinned via {@code maxStorageBytes} init parameter) so that byte thresholds in these tests remain
+ * accurate regardless of the global test-profile default.
  */
 @QuarkusTest
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = "maxStorageBytes", value = "1024"))
 class FileSystemServiceTest {
 
     @Inject
     FileSystemService fileSystemService;
 
-    @Inject
-    TenantPathResolver pathResolver;
+    @ConfigProperty(name = "fairnsquare.data.path")
+    String dataPath;
 
     @BeforeEach
     void setUp() throws IOException {
-        Path rootDir = pathResolver.resolveRootDirectory();
+        Path rootDir = Path.of(dataPath);
         if (Files.exists(rootDir)) {
             Files.walk(rootDir).sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
@@ -144,7 +148,7 @@ class FileSystemServiceTest {
         fileSystemService.saveFile(new Filename("old-split.zip"), new byte[100]);
         fileSystemService.saveFile(new Filename("recent-split.zip"), new byte[100]);
 
-        Path defaultDir = pathResolver.resolveDefaultTenantDirectory();
+        Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path oldFile = defaultDir.resolve("old-split.zip");
         Path recentFile = defaultDir.resolve("recent-split.zip");
 
@@ -162,7 +166,7 @@ class FileSystemServiceTest {
         fileSystemService.saveFile(new Filename("split1.zip"), new byte[100]);
         fileSystemService.saveFile(new Filename("split2.zip"), new byte[100]);
 
-        Path defaultDir = pathResolver.resolveDefaultTenantDirectory();
+        Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path file1 = defaultDir.resolve("split1.zip");
         Path file2 = defaultDir.resolve("split2.zip");
 
@@ -177,7 +181,7 @@ class FileSystemServiceTest {
         fileSystemService.saveFile(new Filename("old1.zip"), new byte[100]);
         fileSystemService.saveFile(new Filename("old2.zip"), new byte[100]);
 
-        Path defaultDir = pathResolver.resolveDefaultTenantDirectory();
+        Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path old1 = defaultDir.resolve("old1.zip");
         Path old2 = defaultDir.resolve("old2.zip");
 

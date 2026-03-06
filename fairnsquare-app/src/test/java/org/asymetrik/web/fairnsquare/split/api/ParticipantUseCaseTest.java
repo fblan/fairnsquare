@@ -1,28 +1,16 @@
 package org.asymetrik.web.fairnsquare.split.api;
 
 import static io.restassured.RestAssured.given;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-
-import jakarta.inject.Inject;
-
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
-import org.junit.jupiter.api.BeforeEach;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
@@ -30,25 +18,8 @@ import io.restassured.http.ContentType;
  * Integration tests for Participant management use cases. Tests add, update, and delete participant endpoints.
  */
 @QuarkusTest
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
 class ParticipantUseCaseTest {
-
-    @Inject
-    TenantPathResolver pathResolver;
-
-    @BeforeEach
-    void setUp() throws IOException {
-        // Clean up any existing test data
-        Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
-        if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException _) {
-                    // Ignore cleanup errors
-                }
-            });
-        }
-    }
 
     // ========== Story 3.1: Add Participant Tests ==========
 
@@ -94,7 +65,7 @@ class ParticipantUseCaseTest {
      * Story 3.1 AC 9: Participant is persisted in the split's JSON file.
      */
     @Test
-    void addParticipant_persistsInJsonFile() throws IOException {
+    void addParticipant_persistsInJsonFile() {
         // First create a split
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Persistence Test Split"}
@@ -105,11 +76,9 @@ class ParticipantUseCaseTest {
                 {"name": "Bob", "nights": 3}
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
 
-        // Verify file contains participant
-        Path splitFile = pathResolver.resolve(splitId);
-        String content = readZipDataEntry(splitFile);
-        assertThat(content.contains("\"Bob\"")).as("File should contain participant name").isTrue();
-        assertThat(content.contains("\"nights\"")).as("File should contain nights field").isTrue();
+        // Verify participant is persisted via the split read use case
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("participants", hasSize(1))
+                .body("participants[0].name", equalTo("Bob")).body("participants[0].nights", equalTo(3.0f));
     }
 
     /**
@@ -254,7 +223,7 @@ class ParticipantUseCaseTest {
      * Story 3.2 AC 7: Updated participant is persisted in JSON file.
      */
     @Test
-    void updateParticipant_persistsChangesInJsonFile() throws IOException {
+    void updateParticipant_persistsChangesInJsonFile() {
         // Create a split and add a participant
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Update Persistence Test"}
@@ -270,11 +239,9 @@ class ParticipantUseCaseTest {
                 {"name": "UpdatedName", "nights": 7}
                 """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(200);
 
-        // Verify file contains updated values
-        Path splitFile = pathResolver.resolve(splitId);
-        String content = readZipDataEntry(splitFile);
-        assertThat(content.contains("\"UpdatedName\"")).as("File should contain updated participant name").isTrue();
-        assertThat(content.contains("7")).as("File should contain updated nights value").isTrue();
+        // Verify updated values are persisted via the split read use case
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("participants", hasSize(1))
+                .body("participants[0].name", equalTo("UpdatedName")).body("participants[0].nights", equalTo(7.0f));
     }
 
     /**
@@ -423,7 +390,7 @@ class ParticipantUseCaseTest {
      * Story 3.3 AC 6: Participant is removed from JSON file after deletion.
      */
     @Test
-    void deleteParticipant_removesFromJsonFile() throws IOException {
+    void deleteParticipant_removesFromJsonFile() {
         // Create a split and add a participant
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Delete Persistence Test"}
@@ -434,19 +401,14 @@ class ParticipantUseCaseTest {
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
                 .path("id");
 
-        // Verify participant exists
-        Path splitFile = pathResolver.resolve(splitId);
-        String contentBefore = readZipDataEntry(splitFile);
-        assertThat(contentBefore.contains("\"ToBeDeleted\"")).as("File should contain participant before deletion")
-                .isTrue();
+        // Verify participant exists via the split read use case
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("participants", hasSize(1));
 
         // Delete the participant
         given().when().delete("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(204);
 
-        // Verify participant is removed from file
-        String contentAfter = readZipDataEntry(splitFile);
-        assertThat(contentAfter.contains("\"ToBeDeleted\"")).as("File should not contain participant after deletion")
-                .isFalse();
+        // Verify participant is removed via the split read use case
+        given().when().get("/api/splits/" + splitId).then().statusCode(200).body("participants", hasSize(0));
     }
 
     /**
@@ -547,22 +509,6 @@ class ParticipantUseCaseTest {
 
         // Try to delete with invalid participant ID format
         given().when().delete("/api/splits/" + splitId + "/participants/invalid..id").then().statusCode(400);
-    }
-
-    private String readZipDataEntry(Path zipPath) throws IOException {
-        try (InputStream fis = Files.newInputStream(zipPath);
-                ZipInputStream zis = new ZipInputStream(fis)) {
-            ZipEntry entry;
-            while ((entry = zis.getNextEntry()) != null) {
-                if ("data.bin".equals(entry.getName())) {
-                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
-                    zis.closeEntry();
-                    return content;
-                }
-                zis.closeEntry();
-            }
-        }
-        throw new AssertionError("data.bin entry not found in " + zipPath);
     }
 
 }

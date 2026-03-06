@@ -7,49 +7,38 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.FileSystemService;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.Filename;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
  * Integration tests verifying the full persistence round-trip: domain -> DTO -> ZIP archive -> DTO -> domain.
  */
 @QuarkusTest
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
 class PersistenceRoundTripTest {
 
     @Inject
     SplitRepository splitRepository;
 
     @Inject
-    TenantPathResolver pathResolver;
-
-    @BeforeEach
-    void setUp() throws IOException {
-        Path defaultTenant = pathResolver.resolveDefaultTenantDirectory();
-        if (Files.exists(defaultTenant)) {
-            Files.walk(defaultTenant).sorted(Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException _) {
-                }
-            });
-        }
-    }
+    FileSystemService fileSystemService;
 
     @Test
     void shouldPersistAndLoadEmptySplit() {
@@ -142,7 +131,7 @@ class PersistenceRoundTripTest {
 
         splitRepository.save(split);
 
-        Path filePath = pathResolver.resolve(split.getId().value());
+        Path filePath = fileSystemService.resolvePath(new Filename(split.getId().value() + ".zip"));
         String metadata = readZipEntry(filePath, ZipSerializer.METADATA_ENTRY);
         String data = readZipEntry(filePath, ZipSerializer.DATA_ENTRY);
 
@@ -176,7 +165,7 @@ class PersistenceRoundTripTest {
         splitRepository.save(original);
 
         // Verify data.bin does not contain shares
-        Path filePath = pathResolver.resolve(original.getId().value());
+        Path filePath = fileSystemService.resolvePath(new Filename(original.getId().value() + ".zip"));
         String data = readZipEntry(filePath, ZipSerializer.DATA_ENTRY);
         assertThat(data).doesNotContain("\"shares\"");
         assertThat(data).doesNotContain("participantId");
@@ -197,7 +186,7 @@ class PersistenceRoundTripTest {
 
         splitRepository.save(split);
 
-        Path filePath = pathResolver.resolve(split.getId().value());
+        Path filePath = fileSystemService.resolvePath(new Filename(split.getId().value() + ".zip"));
         assertThat(filePath.toString()).endsWith(".zip");
         assertThat(Files.exists(filePath)).isTrue();
     }

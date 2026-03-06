@@ -39,6 +39,12 @@
 - `ModularArchitectureTest` (plain JUnit, no `@QuarkusTest`) must scan `org.asymetrik.web.fairnsquare` and fail the build on any export violation or nested module violation.
 - When moving a class to an `internal` sub-package, Java package-private access is broken. Any fields or constants that test code or sibling classes need must be explicitly made `public`.
 
+## Test-Only Code Must Not Live in Production Sources
+
+- Methods, utilities, or helpers that exist solely to support tests must not be added to `src/main/java`. They belong in `src/test/java`.
+- Before each commit, verify that no production class has been polluted with test-only methods (e.g. `cleanAll`, `reset`, `seed`, fixture helpers). A method is test-only if it is called exclusively from test code.
+- If a test needs access to internal state, prefer injecting config properties (e.g. `@ConfigProperty`) or using the public API rather than adding a backdoor to the production service.
+
 ## API Layer Placement
 
 - DTOs and mappers for a domain resource must be co-located under the owning domain's `api/` package (e.g. `split/api/expense/dto/`, `split/api/expense/mapper/`). They must not live in a top-level domain package unrelated to the resource that exposes them.

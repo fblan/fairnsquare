@@ -36,7 +36,7 @@ public class ProblemDetailMapper {
     public RestResponse<ProblemDetail> mapBaseError(BaseError e) {
         ProblemDetail problem = new ProblemDetail(e.getType(), e.getTitle(), e.getStatus(), e.getDetail());
 
-        return RestResponse.status(RestResponse.Status.fromStatusCode(e.getStatus()), problem);
+        return RestResponse.ResponseBuilder.<ProblemDetail> create(e.getStatus()).entity(problem).build();
     }
 
     /**
