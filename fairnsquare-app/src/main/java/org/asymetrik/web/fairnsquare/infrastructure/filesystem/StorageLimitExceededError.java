@@ -1,10 +1,10 @@
-package org.asymetrik.web.fairnsquare.split.persistence;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.error.BaseError;
 
 /**
- * Thrown when saving a split would cause the total storage to exceed the configured limit. Maps to HTTP 507
- * Insufficient Storage.
+ * Thrown when saving a file would cause the total storage to exceed the configured limit. Maps to HTTP 507 Insufficient
+ * Storage.
  */
 public class StorageLimitExceededError extends BaseError {
 
