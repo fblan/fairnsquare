@@ -14,7 +14,7 @@ import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;

@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import org.asymetrik.web.fairnsquare.infrastructure.zipfile.internal.ZipMetadata;
+
 /**
  * Converts between raw data bytes and a ZIP archive containing a {@code metadata.json} entry and a {@code data.bin}
  * entry. Pure byte transformation — no file system access.

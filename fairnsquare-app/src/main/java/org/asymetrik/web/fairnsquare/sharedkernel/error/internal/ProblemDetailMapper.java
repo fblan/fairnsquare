@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.sharedkernel.error;
+package org.asymetrik.web.fairnsquare.sharedkernel.error.internal;
 
 import java.util.stream.Collectors;
 
@@ -6,6 +6,8 @@ import jakarta.validation.ConstraintViolationException;
 
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
+
+import org.asymetrik.web.fairnsquare.sharedkernel.error.BaseError;
 
 /**
  * Global exception mapper that converts exceptions to RFC 9457 Problem Details format.

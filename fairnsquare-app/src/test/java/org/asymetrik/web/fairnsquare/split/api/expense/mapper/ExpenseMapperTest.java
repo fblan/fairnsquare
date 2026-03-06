@@ -1,12 +1,12 @@
-package org.asymetrik.web.fairnsquare.expense.api.mapper;
+package org.asymetrik.web.fairnsquare.split.api.expense.mapper;
 
 import static org.assertj.core.api.Assertions.*;
 
 import java.math.BigDecimal;
 
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByNightDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseEqualDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseEqualDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;

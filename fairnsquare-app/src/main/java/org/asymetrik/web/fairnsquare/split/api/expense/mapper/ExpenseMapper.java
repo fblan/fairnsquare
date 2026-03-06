@@ -1,14 +1,14 @@
-package org.asymetrik.web.fairnsquare.expense.api.mapper;
+package org.asymetrik.web.fairnsquare.split.api.expense.mapper;
 
 import java.util.Collections;
 import java.util.List;
 
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByNightDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseByShareDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseEqualDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseFreeDTO;
-import org.asymetrik.web.fairnsquare.expense.api.dto.ShareDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByShareDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseEqualDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseFreeDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ShareDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;

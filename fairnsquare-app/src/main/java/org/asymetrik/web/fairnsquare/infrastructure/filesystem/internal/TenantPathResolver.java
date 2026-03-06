@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -7,17 +7,19 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.Filename;
+
 /**
  * Resolves file paths for tenant-scoped data storage. Pattern: {dataPath}/{tenantId}/{filename}
  */
 @ApplicationScoped
 public class TenantPathResolver {
 
-    static final String DEFAULT_TENANT = "default";
+    public static final String DEFAULT_TENANT = "default";
     private static final String ZIP_EXTENSION = ".zip";
 
     @ConfigProperty(name = "fairnsquare.data.path", defaultValue = "data")
-    String dataPath;
+    public String dataPath;
 
     /**
      * Resolves the file path for the default tenant.

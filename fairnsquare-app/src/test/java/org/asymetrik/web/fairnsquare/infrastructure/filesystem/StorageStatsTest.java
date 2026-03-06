@@ -2,6 +2,7 @@ package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
 import org.junit.jupiter.api.Test;
 
 class StorageStatsTest {

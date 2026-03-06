@@ -19,6 +19,10 @@ import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.junit.QuarkusTest;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
+
 /**
  * Tests for {@link FileSystemService}: size limit enforcement, old file cleanup, storage stats. Uses test profile
  * config: max-total-size-bytes=1024, max-file-age-days=30.

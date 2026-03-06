@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.infrastructure.zipfile;
+package org.asymetrik.web.fairnsquare.infrastructure.zipfile.internal;
 
 /**
  * Metadata stored in the {@code metadata.json} entry of a ZIP archive. Describes the format version and deserializer

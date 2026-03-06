@@ -13,6 +13,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.PathId;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;

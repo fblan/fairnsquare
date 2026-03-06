@@ -19,7 +19,7 @@ import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
