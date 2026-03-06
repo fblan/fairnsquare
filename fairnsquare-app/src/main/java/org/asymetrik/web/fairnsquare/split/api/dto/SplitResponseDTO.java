@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.asymetrik.web.fairnsquare.expense.api.dto.ExpenseDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
 
 /**
  * DTO for Split REST API responses. Decouples domain model from API contract.

@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.error.BaseError;
 

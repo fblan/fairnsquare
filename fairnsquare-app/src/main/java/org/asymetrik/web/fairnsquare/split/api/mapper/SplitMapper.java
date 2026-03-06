@@ -1,6 +1,6 @@
 package org.asymetrik.web.fairnsquare.split.api.mapper;
 
-import org.asymetrik.web.fairnsquare.expense.api.mapper.ExpenseMapper;
+import org.asymetrik.web.fairnsquare.split.api.expense.mapper.ExpenseMapper;
 import org.asymetrik.web.fairnsquare.split.api.dto.SettlementResponseDTO;
 import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
 import org.asymetrik.web.fairnsquare.split.domain.Split;

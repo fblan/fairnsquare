@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.expense.api.dto;
+package org.asymetrik.web.fairnsquare.split.api.expense.dto;
 
 import java.math.BigDecimal;
 

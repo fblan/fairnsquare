@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -13,6 +14,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.PathId;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -192,6 +197,18 @@ public class FileSystemService {
     public boolean existsFile(PathId pathId, Filename filename) {
         Path filePath = pathResolver.resolve(pathId, filename);
         return Files.exists(filePath);
+    }
+
+    /**
+     * Resolves the file path for the given filename under the default tenant directory.
+     *
+     * @param filename
+     *            the file name
+     *
+     * @return the resolved file path
+     */
+    public Path resolvePath(Filename filename) {
+        return pathResolver.resolve(filename);
     }
 
     /**

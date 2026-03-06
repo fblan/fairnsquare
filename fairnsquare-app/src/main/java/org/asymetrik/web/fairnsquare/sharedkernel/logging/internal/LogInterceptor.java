@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.sharedkernel.logging;
+package org.asymetrik.web.fairnsquare.sharedkernel.logging.internal;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -14,6 +14,9 @@ import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
 
 import org.jboss.logging.Logger;
+
+import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
+import org.asymetrik.web.fairnsquare.sharedkernel.logging.LogTag;
 
 /**
  * CDI interceptor that logs method invocations annotated with {@link Log}.

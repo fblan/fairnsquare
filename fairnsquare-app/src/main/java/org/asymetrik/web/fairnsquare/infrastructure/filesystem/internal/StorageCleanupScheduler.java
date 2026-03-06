@@ -1,10 +1,12 @@
-package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import io.quarkus.scheduler.Scheduled;
 import org.jboss.logging.Logger;
+
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.FileSystemService;
 
 /**
  * Scheduled job that runs nightly at midnight to remove files older than the configured retention period.

@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
