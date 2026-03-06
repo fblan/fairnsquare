@@ -1,14 +1,14 @@
-package org.asymetrik.web.fairnsquare.split.persistence;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
 /**
- * Snapshot of storage usage after a split is persisted.
+ * Snapshot of storage usage.
  *
  * @param usedBytes
- *            total bytes currently occupied by all ZIP files
+ *            total bytes currently occupied by all files
  * @param maxBytes
  *            configured storage limit in bytes
  * @param fileCount
- *            number of ZIP files currently stored
+ *            number of files currently stored
  */
 public record StorageStats(long usedBytes, long maxBytes, int fileCount) {
 

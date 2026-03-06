@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -15,13 +14,13 @@ import java.util.zip.ZipInputStream;
 
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
-import org.asymetrik.web.fairnsquare.split.persistence.mapper.SplitPersistenceMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,10 +33,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class PersistenceRoundTripTest {
 
     @Inject
-    ZipFileRepository repository;
-
-    @Inject
-    SplitPersistenceMapper mapper;
+    SplitRepository splitRepository;
 
     @Inject
     TenantPathResolver pathResolver;
@@ -58,10 +54,9 @@ class PersistenceRoundTripTest {
     @Test
     void shouldPersistAndLoadEmptySplit() {
         Split original = Split.create("Empty Split");
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getId()).isEqualTo(original.getId());
         assertThat(loaded.getName()).isEqualTo(original.getName());
@@ -76,10 +71,9 @@ class PersistenceRoundTripTest {
         Participant bob = Participant.create("Bob", 5);
         original.addParticipant(alice);
         original.addParticipant(bob);
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getParticipants()).hasSize(2);
         assertThat(loaded.getParticipants().get(0).name().value()).isEqualTo("Alice");
@@ -96,10 +90,9 @@ class PersistenceRoundTripTest {
 
         ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("160.00"), "Hotel", alice.id());
         original.addExpense(expense);
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getExpenses()).hasSize(1);
         assertThat(loaded.getExpenses().getFirst()).isInstanceOf(ExpenseByNight.class);
@@ -114,10 +107,9 @@ class PersistenceRoundTripTest {
 
         ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("50.00"), "Dinner", alice.id());
         original.addExpense(expense);
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getExpenses()).hasSize(1);
         assertThat(loaded.getExpenses().getFirst()).isInstanceOf(ExpenseEqual.class);
@@ -133,10 +125,9 @@ class PersistenceRoundTripTest {
         ExpenseEqual equal = ExpenseEqual.create(new BigDecimal("40.00"), "Taxi", alice.id());
         original.addExpense(byNight);
         original.addExpense(equal);
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getExpenses()).hasSize(2);
         assertThat(loaded.getExpenses().get(0)).isInstanceOf(ExpenseByNight.class);
@@ -148,13 +139,12 @@ class PersistenceRoundTripTest {
         Split split = Split.create("Format Check");
         Participant alice = Participant.create("Alice", 2);
         split.addParticipant(alice);
-        String splitId = split.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(split));
+        splitRepository.save(split);
 
-        Path filePath = pathResolver.resolve(splitId);
-        String metadata = readZipEntry(filePath, ZipFileRepository.METADATA_ENTRY);
-        String data = readZipEntry(filePath, ZipFileRepository.DATA_ENTRY);
+        Path filePath = pathResolver.resolve(split.getId().value());
+        String metadata = readZipEntry(filePath, ZipSerializer.METADATA_ENTRY);
+        String data = readZipEntry(filePath, ZipSerializer.DATA_ENTRY);
 
         // Verify metadata
         assertThat(metadata).contains("\"version\"");
@@ -182,18 +172,17 @@ class PersistenceRoundTripTest {
 
         ExpenseByNight expense = ExpenseByNight.create(new BigDecimal("160.00"), "Hotel", alice.id());
         original.addExpense(expense);
-        String splitId = original.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(original));
+        splitRepository.save(original);
 
         // Verify data.bin does not contain shares
-        Path filePath = pathResolver.resolve(splitId);
-        String data = readZipEntry(filePath, ZipFileRepository.DATA_ENTRY);
+        Path filePath = pathResolver.resolve(original.getId().value());
+        String data = readZipEntry(filePath, ZipSerializer.DATA_ENTRY);
         assertThat(data).doesNotContain("\"shares\"");
         assertThat(data).doesNotContain("participantId");
 
         // Verify shares are recalculated on load
-        Split loaded = repository.load(splitId, SplitPersistenceDTO.class).map(mapper::toDomain).orElseThrow();
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
         List<Expense.Share> shares = loaded.getExpenses().getFirst().getShares(loaded);
         assertThat(shares).hasSize(2);
         // Alice: 3/8 * 160 = 60.00, Bob: 5/8 * 160 = 100.00
@@ -205,11 +194,10 @@ class PersistenceRoundTripTest {
     @Test
     void shouldPersistAsZipFile() {
         Split split = Split.create("Zip Check");
-        String splitId = split.getId().value();
 
-        repository.save(splitId, mapper.toPersistenceDTO(split));
+        splitRepository.save(split);
 
-        Path filePath = pathResolver.resolve(splitId);
+        Path filePath = pathResolver.resolve(split.getId().value());
         assertThat(filePath.toString()).endsWith(".zip");
         assertThat(Files.exists(filePath)).isTrue();
     }
@@ -220,7 +208,7 @@ class PersistenceRoundTripTest {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.getName().equals(entryName)) {
-                    String content = new String(zis.readAllBytes(), StandardCharsets.UTF_8);
+                    String content = new String(zis.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
                     zis.closeEntry();
                     return content;
                 }

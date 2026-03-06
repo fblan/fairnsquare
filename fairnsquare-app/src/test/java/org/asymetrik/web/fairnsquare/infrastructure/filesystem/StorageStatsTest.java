@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.persistence;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

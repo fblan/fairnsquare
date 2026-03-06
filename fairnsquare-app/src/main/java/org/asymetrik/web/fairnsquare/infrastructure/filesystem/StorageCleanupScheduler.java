@@ -1,4 +1,4 @@
-package org.asymetrik.web.fairnsquare.split.persistence;
+package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -7,25 +7,25 @@ import io.quarkus.scheduler.Scheduled;
 import org.jboss.logging.Logger;
 
 /**
- * Scheduled job that runs nightly at midnight to remove split files older than the configured retention period.
+ * Scheduled job that runs nightly at midnight to remove files older than the configured retention period.
  *
- * @see StorageConstraintsService#cleanOldFiles()
+ * @see FileSystemService#cleanOldFiles()
  */
 @ApplicationScoped
 public class StorageCleanupScheduler {
 
     private static final Logger LOG = Logger.getLogger(StorageCleanupScheduler.class);
 
-    private final StorageConstraintsService storageConstraints;
+    private final FileSystemService fileSystemService;
 
     @Inject
-    public StorageCleanupScheduler(StorageConstraintsService storageConstraints) {
-        this.storageConstraints = storageConstraints;
+    public StorageCleanupScheduler(FileSystemService fileSystemService) {
+        this.fileSystemService = fileSystemService;
     }
 
     @Scheduled(cron = "0 0 0 * * ?")
     public void runNightlyCleanup() {
         LOG.info("Nightly storage cleanup started.");
-        storageConstraints.cleanOldFiles();
+        fileSystemService.cleanOldFiles();
     }
 }

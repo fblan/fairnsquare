@@ -9,7 +9,7 @@ import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
-import org.asymetrik.web.fairnsquare.split.persistence.TenantPathResolver;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TenantPathResolver;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
