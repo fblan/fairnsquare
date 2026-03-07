@@ -15,7 +15,7 @@
 FROM registry.access.redhat.com/ubi9/nodejs-24:latest AS node-binaries
 
 # Stage 1: Build the Quarkus application
-FROM registry.redhat.io/ubi9/openjdk-25:1.24-2.1771324969 AS builder
+FROM registry.access.redhat.com/ubi9/openjdk-25:1.24-2.1771324969 AS builder
 USER root
 # Copy Node.js and npm from the node-binaries stage
 COPY --from=node-binaries  /usr/bin/node /usr/bin/node
@@ -45,7 +45,7 @@ COPY  fairnsquare-app/src ./fairnsquare-app/src
 RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime image with UBI9 and JRE 25
-FROM registry.redhat.io/ubi9/openjdk-25-runtime:latest
+FROM registry.access.redhat.com/ubi9/openjdk-25-runtime:latest
 
 # Install JRE 25
 # Note: If java-25-openjdk-headless is not available, this will use the latest available version
