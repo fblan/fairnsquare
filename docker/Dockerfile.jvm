@@ -1,0 +1,84 @@
+####
+# Multi-stage JVM Dockerfile for FairNSquare (Quarkus)
+#
+# Build the image from the project root:
+#   docker build -f docker/Dockerfile.jvm -t asymetrik/fairnsquare .
+#
+# Run the container:
+#   docker run -p 8080:8080 asymetrik/fairnsquare
+#
+# With persistent data volume:
+#   docker run -p 8080:8080 -v fairnsquare-data:/data asymetrik/fairnsquare
+###
+
+# Stage 0: Get Node.js 24 and npm binaries from UBI9 Node image
+FROM registry.access.redhat.com/ubi9/nodejs-24:latest AS node-binaries
+
+# Stage 1: Build the Quarkus application
+FROM registry.redhat.io/ubi9/openjdk-25:1.24-2.1771324969 AS builder
+USER root
+# Copy Node.js and npm from the node-binaries stage
+COPY --from=node-binaries  /usr/bin/node /usr/bin/node
+COPY --from=node-binaries /usr/lib/node_modules /usr/lib/node_modules
+# Copy Node.js shared libraries
+COPY --from=node-binaries  /usr/lib64/libnode.so.* /usr/lib64/
+# Set up npm/npx as symlinks to the actual scripts in node_modules
+
+RUN ln -s /usr/lib/node_modules/npm/bin/npm-cli.js /usr/bin/npm && \
+    ln -s /usr/lib/node_modules/npm/bin/npx-cli.js /usr/bin/npx
+
+WORKDIR /build
+
+# Set NODE_PATH so npm can find its modules
+ENV NODE_PATH=/usr/lib/node_modules
+
+# Copy pom.xml files first for better dependency caching
+COPY  pom.xml ./
+COPY  fairnsquare-app/pom.xml ./fairnsquare-app/
+
+# Download dependencies (cached layer if pom.xml unchanged)
+RUN mvn dependency:go-offline -B 
+
+# Copy source code
+COPY  fairnsquare-app/src ./fairnsquare-app/src
+# Build the Quarkus application (fast-jar packaging)
+RUN mvn clean package -DskipTests -B
+
+# Stage 2: Runtime image with UBI9 and JRE 25
+FROM registry.redhat.io/ubi9/openjdk-25-runtime:latest
+
+# Install JRE 25
+# Note: If java-25-openjdk-headless is not available, this will use the latest available version
+# RUN microdnf install -y shadow-utils && \
+#     microdnf install -y java-25-openjdk-headless && \
+#     microdnf clean all && \
+#     rpm -q java-25-openjdk-headless
+
+WORKDIR /deployments
+USER root
+RUN chown 1001 /deployments \
+    && chmod "g+rwX" /deployments \
+    && chown 1001:root /deployments \
+    && mkdir -p /data \
+    && chown 1001:root /data \
+    && chmod "g+rwX" /data
+
+# Copy built artifacts from builder stage
+# Four distinct layers for efficient image caching:
+# library dependencies change rarely, application code changes often
+COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/*.jar /deployments/
+COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/app/ /deployments/app/
+COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8080
+
+USER 1001
+
+# Persist split data outside the container filesystem
+VOLUME ["/data"]
+
+ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV FAIRNSQUARE_DATA_PATH="/data"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /deployments/quarkus-run.jar"]
