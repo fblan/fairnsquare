@@ -42,6 +42,8 @@ jobs:
       run: |
         echo ${{ github.sha }}
         curl -L https://fly.io/install.sh | sh
-        ./flyctl deploy -a fairnsquare
+        export FLYCTL_INSTALL="/home/runner/.fly"
+        export PATH="$FLYCTL_INSTALL/bin:$PATH"
+        flyctl deploy -a fairnsquare
       
         
