@@ -287,6 +287,7 @@ describe('ExpenseEditModal', () => {
         expect(addToast).toHaveBeenCalledWith({
           type: 'success',
           message: 'Expense updated',
+          description: 'Groceries · €75.00 · Paid by Bob',
         });
       });
     });
@@ -433,6 +434,7 @@ describe('ExpenseEditModal', () => {
         expect(addToast).toHaveBeenCalledWith({
           type: 'success',
           message: 'Expense deleted',
+          description: 'Groceries · €50.00',
         });
       });
     });

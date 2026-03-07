@@ -203,7 +203,11 @@
 
     try {
       await deleteExpense(splitId, expenseToDelete.id);
-      addToast({ type: 'success', message: 'Expense deleted' });
+      addToast({
+        type: 'success',
+        message: 'Expense deleted',
+        description: `${expenseToDelete.description} · €${expenseToDelete.amount.toFixed(2)} · Paid by ${getPayerName(expenseToDelete.payerId)}`,
+      });
       showDeleteConfirm = false;
       expenseToDelete = null;
       await loadSplit(splitId);

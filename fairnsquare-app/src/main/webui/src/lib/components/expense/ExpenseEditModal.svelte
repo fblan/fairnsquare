@@ -293,7 +293,11 @@
           payerId,
           shares,
         });
-        addToast({ type: 'success', message: isEditMode ? 'Expense updated' : 'Expense added' });
+        addToast({
+          type: 'success',
+          message: isEditMode ? 'Expense updated' : 'Expense added',
+          description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+        });
       } else if (isEditMode && expense) {
         await updateExpense(splitId, expense.id, {
           amount: amountValue,
@@ -301,7 +305,11 @@
           payerId,
           splitMode,
         });
-        addToast({ type: 'success', message: 'Expense updated' });
+        addToast({
+          type: 'success',
+          message: 'Expense updated',
+          description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+        });
       } else {
         await addExpense(splitId, {
           amount: amountValue,
@@ -309,7 +317,11 @@
           payerId,
           splitMode,
         });
-        addToast({ type: 'success', message: 'Expense added' });
+        addToast({
+          type: 'success',
+          message: 'Expense added',
+          description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+        });
       }
 
       await onSuccess();
@@ -352,7 +364,11 @@
 
     try {
       await deleteExpense(splitId, expense.id);
-      addToast({ type: 'success', message: 'Expense deleted' });
+      addToast({
+        type: 'success',
+        message: 'Expense deleted',
+        description: `${expense.description} · €${expense.amount.toFixed(2)}`,
+      });
       showDeleteConfirm = false;
       await onSuccess();
       onClose();

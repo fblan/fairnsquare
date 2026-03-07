@@ -240,6 +240,8 @@
 
     try {
       const addedName = formName.trim();
+      const addedNights = formNights;
+      const addedShare = formShare;
       await addParticipant(splitId, {
         name: addedName,
         nights: formNights,
@@ -257,6 +259,7 @@
       addToast({
         type: 'success',
         message: `${addedName} successfully added`,
+        description: `${addedNights} nights · share ${addedShare}`,
         duration: 4000,
       });
     } catch (err: any) {
@@ -318,6 +321,7 @@
       addToast({
         type: 'success',
         message: 'Participant removed successfully',
+        description: deletingParticipantName,
       });
 
       deletingParticipantId = null;

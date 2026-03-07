@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import EditParticipantModal from './EditParticipantModal.svelte';
 import type { Participant, Split } from '$lib/api/splits';
 import * as splitsApi from '$lib/api/splits';
+import { addToast } from '$lib/stores/toastStore.svelte';
 
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
@@ -623,6 +624,58 @@ describe('EditParticipantModal', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       // And onClose should not have been called yet
       expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  // Toast messages
+  describe('Toast messages', () => {
+    it('shows success toast with participant details after update', async () => {
+      const user = userEvent.setup();
+      vi.mocked(splitsApi.updateParticipant).mockResolvedValue({
+        ...mockParticipant,
+        nights: 5,
+      });
+
+      render(EditParticipantModal, { props: defaultProps });
+
+      const nightsInput = screen.getByLabelText(/nights/i);
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+
+      const saveButton = screen.getByRole('button', { name: /save changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'Participant updated',
+          description: 'Alice · 5 nights · share 1',
+        });
+      });
+    });
+
+    it('shows success toast with participant name after delete', async () => {
+      const user = userEvent.setup();
+      vi.mocked(splitsApi.deleteParticipant).mockResolvedValue();
+
+      render(EditParticipantModal, { props: defaultProps });
+
+      const deleteButton = screen.getByText(/delete participant/i);
+      await user.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/delete alice/i)).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByRole('button', { name: /remove/i });
+      await user.click(confirmButton);
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'Participant removed',
+          description: 'Alice',
+        });
+      });
     });
   });
 

@@ -28,7 +28,12 @@
       role="alert"
     >
       <span class="shrink-0 font-bold text-sm mt-0.5">{typeIcons[toast.type] ?? typeIcons.info}</span>
-      <p class="flex-1 text-sm">{toast.message}</p>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium">{toast.message}</p>
+        {#if toast.description}
+          <p class="text-xs opacity-80 mt-0.5 truncate">{toast.description}</p>
+        {/if}
+      </div>
       <button
         onclick={() => removeToast(toast.id)}
         class="shrink-0 opacity-70 hover:opacity-100 transition-opacity text-sm font-bold leading-none"

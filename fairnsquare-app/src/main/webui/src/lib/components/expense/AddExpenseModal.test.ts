@@ -331,6 +331,9 @@ describe('ExpenseEditModal', () => {
       const amountInput = screen.getByLabelText(/amount/i);
       await fireEvent.input(amountInput, { target: { value: '25.50' } });
 
+      const descInput = screen.getByLabelText(/description/i);
+      await fireEvent.input(descInput, { target: { value: 'Lunch' } });
+
       const submitButton = screen.getByRole('button', { name: /add expense/i });
       await fireEvent.click(submitButton);
 
@@ -338,6 +341,7 @@ describe('ExpenseEditModal', () => {
         expect(addToast).toHaveBeenCalledWith({
           type: 'success',
           message: 'Expense added',
+          description: 'Lunch · €25.50 · Paid by Bob',
         });
       });
     });
