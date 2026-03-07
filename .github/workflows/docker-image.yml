@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file docker/Dockerfile.jvm --tag quay.io/skhoury:${{ github.head_ref }}.${{ github.sha }}
+      run: docker build . --file docker/Dockerfile.jvm --tag quay.io/skhoury:${{ github.sha }}
