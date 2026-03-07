@@ -58,10 +58,7 @@ WORKDIR /deployments
 USER root
 RUN chown 1001 /deployments \
     && chmod "g+rwX" /deployments \
-    && chown 1001:root /deployments \
-    && mkdir -p /data \
-    && chown 1001:root /data \
-    && chmod "g+rwX" /data
+    && chown 1001:root /deployments 
 
 # Copy built artifacts from builder stage
 # Four distinct layers for efficient image caching:

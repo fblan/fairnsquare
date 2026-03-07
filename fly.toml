@@ -12,7 +12,7 @@ primary_region = 'cdg'
 
 [[mounts]]
   source = 'fairnsquare_disk'
-  destination = '/data:z'
+  destination = '/data'
   mode = 'rw'
 
 [http_service]
