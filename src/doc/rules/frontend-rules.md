@@ -44,3 +44,8 @@
 
 - When a shared component needs to display differently depending on context (e.g. a summary card that shows a title on one page but not another), use a boolean prop with a sensible default rather than duplicating the component or adding conditional logic in each parent.
 - Name the prop to describe what it controls (`showTitle`, `compact`, etc.) and default it to the richer/fuller display so existing usages are unaffected.
+
+## Capturing Transient State Before Reset
+
+- When post-action feedback (e.g. a toast) needs to reference form state that is reset immediately after the API call, always capture those values into local `const` variables *before* the reset. Do not read from form state after it has been cleared — the values will reflect the reset defaults rather than the submitted data.
+- Example: if `formNights` is reset to `1` before `addToast()` is called, capture it first: `const addedNights = formNights;`.

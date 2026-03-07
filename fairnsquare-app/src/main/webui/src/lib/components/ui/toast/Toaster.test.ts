@@ -101,4 +101,27 @@ describe('Toaster', () => {
 
     expect(container.querySelector('[aria-live="polite"]')).toBeInTheDocument();
   });
+
+  it('renders description line when description is provided', async () => {
+    render(Toaster);
+    addToast({ type: 'success', message: 'Expense added', description: 'Lunch · €12.50 · Paid by Alice' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Expense added')).toBeInTheDocument();
+      expect(screen.getByText('Lunch · €12.50 · Paid by Alice')).toBeInTheDocument();
+    });
+  });
+
+  it('does not render description line when description is absent', async () => {
+    render(Toaster);
+    addToast({ type: 'success', message: 'Done!' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Done!')).toBeInTheDocument();
+    });
+
+    // Only one text node inside the alert — no description paragraph
+    const alert = screen.getByRole('alert');
+    expect(alert.querySelectorAll('p')).toHaveLength(1);
+  });
 });

@@ -685,6 +685,7 @@ describe('Participants', () => {
       expect(addToast).toHaveBeenCalledWith({
         type: 'success',
         message: 'Alice successfully added',
+        description: '2 nights · share 1',
         duration: 4000,
       });
     });
@@ -862,6 +863,7 @@ describe('Participants', () => {
         expect(addToast).toHaveBeenCalledWith({
           type: 'success',
           message: 'Participant removed successfully',
+          description: 'Alice',
         });
       });
     });

@@ -192,6 +192,7 @@
       addToast({
         type: 'success',
         message: 'Participant updated',
+        description: `${editName.trim()} · ${editNights} nights · share ${editShare}`,
       });
 
       await onSuccess();
@@ -239,6 +240,7 @@
       addToast({
         type: 'success',
         message: 'Participant removed',
+        description: participant.name,
       });
 
       await onSuccess();

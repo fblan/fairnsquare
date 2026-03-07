@@ -380,6 +380,7 @@ describe('ExpenseList', () => {
         expect(addToast).toHaveBeenCalledWith({
           type: 'success',
           message: 'Expense deleted',
+          description: 'Groceries · €90.00 · Paid by Alice',
         });
       });
     });
