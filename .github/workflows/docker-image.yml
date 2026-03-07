@@ -32,3 +32,16 @@ jobs:
         file: docker/Dockerfile.jvm
         push: true
         tags: quay.io/skhoury/fairnsquare:${{ github.sha }}
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'sherine-k'  || github.actor == 'fblan' }}
+    steps:
+    - name: Deploy to Fly.io
+      env:
+        FLY_ACCESS_TOKEN: ${{ secrets.FLY_TOKEN }}
+      run: |
+        echo ${{ github.sha }}
+        curl -L https://fly.io/install.sh | sh
+        ./flyctl deploy -a fairnsquare
+      
+        
