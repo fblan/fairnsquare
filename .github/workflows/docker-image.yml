@@ -34,6 +34,7 @@ jobs:
         tags: quay.io/skhoury/fairnsquare:${{ github.sha }}
   deploy:
     runs-on: ubuntu-latest
+    needs: [build]
     if: ${{ github.actor == 'sherine-k'  || github.actor == 'fblan' }}
     steps:
     - name: Deploy to Fly.io
