@@ -23,7 +23,7 @@ import io.restassured.http.ContentType;
  * EQUAL).
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(TempStorageTestResource.class)
 class ExpenseUseCaseTest {
 
     // ==================== Story 4.1: Add Expense Tests ====================

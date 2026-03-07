@@ -18,7 +18,7 @@ import io.restassured.http.ContentType;
  * Integration tests for Participant management use cases. Tests add, update, and delete participant endpoints.
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(TempStorageTestResource.class)
 class ParticipantUseCaseTest {
 
     // ========== Story 3.1: Add Participant Tests ==========

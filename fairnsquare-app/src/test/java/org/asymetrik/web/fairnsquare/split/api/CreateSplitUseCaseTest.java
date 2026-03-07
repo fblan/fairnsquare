@@ -20,7 +20,7 @@ import io.restassured.http.ContentType;
  * endpoints.
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(TempStorageTestResource.class)
 class CreateSplitUseCaseTest {
 
     /**
