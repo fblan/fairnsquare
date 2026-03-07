@@ -1,0 +1,109 @@
+# flyctl launch added from .gitignore
+# Java / Maven
+**/target
+**/.claude
+!**/.mvn/wrapper/maven-wrapper.jar
+**/_bmad
+
+# Quarkus
+**/.quarkus
+
+# IDE - IntelliJ IDEA
+**/.idea
+**/*.iws
+**/*.iml
+**/*.ipr
+
+# IDE - Eclipse
+**/.apt_generated
+**/.classpath
+**/.factorypath
+**/.project
+**/.settings
+**/.springBeans
+**/.sts4-cache
+
+# IDE - VS Code
+**/.vscode
+
+# Node / Frontend (Svelte)
+**/node_modules
+**/dist
+**/build
+**/.svelte-kit
+**/.env
+**/.env.*
+!**/.env.example
+
+# Quinoa build output
+**/src/main/webui/dist
+**/src/main/webui/build
+**/src/main/webui/.svelte-kit
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Logs
+**/*.log
+**/logs
+
+# Test output
+**/test-output
+**/coverage
+
+# Package files
+**/*.jar
+**/*.war
+**/*.nar
+**/*.ear
+**/*.zip
+**/*.tar.gz
+**/*.rar
+
+# JaCoCo
+**/jacoco.exec
+
+# Local environment
+**/.env.local
+**/.env.*.local
+**/*.local.properties
+
+# Application data (JSON file storage)
+**/fairnsquare-app/data
+**/fairnsquare-app/test-data
+
+# Secrets (never commit)
+**/credentials.json
+**/secrets.yaml
+**/*.pem
+**/*.key
+nextstepforfred.md
+
+
+# flyctl launch added from fairnsquare-app/src/main/webui/.gitignore
+# Logs
+fairnsquare-app/src/main/webui/**/logs
+fairnsquare-app/src/main/webui/**/*.log
+fairnsquare-app/src/main/webui/**/npm-debug.log*
+fairnsquare-app/src/main/webui/**/yarn-debug.log*
+fairnsquare-app/src/main/webui/**/yarn-error.log*
+fairnsquare-app/src/main/webui/**/pnpm-debug.log*
+fairnsquare-app/src/main/webui/**/lerna-debug.log*
+
+fairnsquare-app/src/main/webui/**/node_modules
+fairnsquare-app/src/main/webui/**/dist
+fairnsquare-app/src/main/webui/**/dist-ssr
+fairnsquare-app/src/main/webui/**/*.local
+
+# Editor directories and files
+fairnsquare-app/src/main/webui/**/.vscode/*
+!fairnsquare-app/src/main/webui/**/.vscode/extensions.json
+fairnsquare-app/src/main/webui/**/.idea
+fairnsquare-app/src/main/webui/**/.DS_Store
+fairnsquare-app/src/main/webui/**/*.suo
+fairnsquare-app/src/main/webui/**/*.ntvs*
+fairnsquare-app/src/main/webui/**/*.njsproj
+fairnsquare-app/src/main/webui/**/*.sln
+fairnsquare-app/src/main/webui/**/*.sw?
+fly.toml
