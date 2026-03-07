@@ -17,7 +17,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * correctly applied.
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(TempStorageTestResource.class)
 class InfrastructureUseCaseTest {
 
     @Inject

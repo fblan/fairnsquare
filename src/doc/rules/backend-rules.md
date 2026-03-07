@@ -45,6 +45,11 @@
 - Before each commit, verify that no production class has been polluted with test-only methods (e.g. `cleanAll`, `reset`, `seed`, fixture helpers). A method is test-only if it is called exclusively from test code.
 - If a test needs access to internal state, prefer injecting config properties (e.g. `@ConfigProperty`) or using the public API rather than adding a backdoor to the production service.
 
+## Quarkus Test Context Sharing
+
+- `@QuarkusTestResource` must not use `restrictToAnnotatedClass = true` unless the class sets custom `initArgs` that would conflict with other test classes (e.g. a non-default `maxStorageBytes`). Using `restrictToAnnotatedClass = true` without a conflicting `initArgs` forces an unnecessary extra Quarkus application context per class, significantly increasing build time.
+- Test isolation must be achieved through unique resource identifiers (NanoID) rather than per-class filesystem isolation. Tests must never enumerate all stored resources.
+
 ## API Layer Placement
 
 - DTOs and mappers for a domain resource must be co-located under the owning domain's `api/` package (e.g. `split/api/expense/dto/`, `split/api/expense/mapper/`). They must not live in a top-level domain package unrelated to the resource that exposes them.

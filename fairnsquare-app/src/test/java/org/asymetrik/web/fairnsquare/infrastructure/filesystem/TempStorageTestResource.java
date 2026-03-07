@@ -14,8 +14,13 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  * afterwards. Configures {@code fairnsquare.data.path} to the temp directory, giving each test class complete storage
  * isolation and enabling parallel test class execution.
  * <p>
- * Usage: annotate the test class with
- * {@code @QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)}.
+ * Usage: annotate the test class with {@code @QuarkusTestResource(TempStorageTestResource.class)}. Multiple test
+ * classes using this resource without {@code restrictToAnnotatedClass} share a single Quarkus context and a single temp
+ * directory, which is safe as long as each test creates resources with unique IDs and does not enumerate all stored
+ * files.
+ * <p>
+ * Use {@code restrictToAnnotatedClass = true} only when the class requires a custom {@code initArgs} (e.g.
+ * {@code maxStorageBytes}) that would conflict with other classes.
  * <p>
  * Optional init parameter {@code maxStorageBytes}: when set, overrides {@code fairnsquare.storage.max-total-size-bytes}
  * for the annotated class. Useful for classes that test storage-limit behaviour with specific byte thresholds.

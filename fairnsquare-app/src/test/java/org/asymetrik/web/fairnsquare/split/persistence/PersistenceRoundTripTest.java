@@ -31,7 +31,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * Integration tests verifying the full persistence round-trip: domain -> DTO -> ZIP archive -> DTO -> domain.
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(TempStorageTestResource.class)
 class PersistenceRoundTripTest {
 
     @Inject
