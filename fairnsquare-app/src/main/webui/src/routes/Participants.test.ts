@@ -100,23 +100,23 @@ describe('Participants', () => {
 
   // --- Page Header ---
 
-  it('displays Participants title with count', async () => {
+  it('displays split name in header', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Participants (0)' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Weekend Trip' })).toBeInTheDocument();
     });
   });
 
-  it('displays participant count in title', async () => {
+  it('displays split name in header with participants loaded', async () => {
     vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Participants (2)' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Weekend Trip' })).toBeInTheDocument();
     });
   });
 
@@ -182,7 +182,7 @@ describe('Participants', () => {
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Participants (0)' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Weekend Trip' })).toBeInTheDocument();
     });
 
     expect(screen.queryByText('Alice')).not.toBeInTheDocument();

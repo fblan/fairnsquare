@@ -9,7 +9,8 @@
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { ArrowLeft, Plus, Pencil, Trash2, Receipt, ListFilter, X } from 'lucide-svelte';
+  import { Plus, Pencil, Trash2, Receipt, ListFilter, X } from 'lucide-svelte';
+  import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
   const splitId = $derived(route.params.splitId || '');
 
@@ -184,9 +185,6 @@
     updateFilterUrl('', '');
   }
 
-  function handleBack() {
-    navigate(`/splits/${splitId}`);
-  }
 
   function handleDeleteClick(expense: Expense) {
     if (!expense || !expense.id) {
@@ -258,7 +256,7 @@
   }
 </script>
 
-<div class="flex flex-col items-center space-y-4 w-full max-w-[420px] mx-auto">
+<div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   {#if isLoading}
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
       <svg
@@ -279,19 +277,7 @@
     </div>
   {:else if split}
     <!-- Header -->
-    <header class="w-full flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onclick={handleBack}
-          class="min-h-[44px] min-w-[44px]"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft class="h-5 w-5" />
-        </Button>
-        <h1 class="text-xl font-bold text-primary">Expenses</h1>
-      </div>
+    <SplitPageHeader splitName={split.name} {splitId} showBackButton>
       <Button
         variant="ghost"
         size="sm"
@@ -301,7 +287,7 @@
       >
         <Plus class="h-5 w-5" />
       </Button>
-    </header>
+    </SplitPageHeader>
 
     <!-- Filter Bar -->
     {#if split.participants.length > 0}

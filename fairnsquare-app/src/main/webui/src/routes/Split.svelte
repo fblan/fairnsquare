@@ -9,6 +9,7 @@
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
+  import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
   // Extract splitId from route params
   const splitId = $derived(route.params.splitId || '');
@@ -64,38 +65,10 @@
     }).format(amount);
   }
 
-  async function handleShare() {
-    if (typeof window === 'undefined') return;
-
-    const url = window.location.href;
-
-    if (!navigator.clipboard) {
-      // Fallback: clipboard API not available (older browsers)
-      addToast({
-        type: 'info',
-        message: `Share link: ${url}`,
-      });
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      addToast({
-        type: 'success',
-        message: 'Link copied!',
-      });
-    } catch {
-      // Fallback: clipboard access denied
-      addToast({
-        type: 'info',
-        message: `Share link: ${url}`,
-      });
-    }
-  }
 
 </script>
 
-<div class="flex flex-col items-center space-y-4 w-full max-w-[420px] mx-auto">
+<div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   {#if isLoading}
     <!-- Loading State -->
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
@@ -122,21 +95,7 @@
 
   {:else if split}
     <!-- Dashboard Header -->
-    <header class="w-full flex items-center justify-between">
-      <h1 class="text-xl font-bold text-primary">{split.name}</h1>
-      <Button
-        onclick={handleShare}
-        variant="outline"
-        size="sm"
-        class="min-h-[44px]"
-        aria-label="Share"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-        </svg>
-        Share
-      </Button>
-    </header>
+    <SplitPageHeader splitName={split.name} {splitId} />
 
     <!-- Expense Summary Card (clickable → navigates to expense list) -->
     <section class="w-full">

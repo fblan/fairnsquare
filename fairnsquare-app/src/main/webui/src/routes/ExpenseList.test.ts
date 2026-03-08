@@ -170,12 +170,12 @@ describe('ExpenseList', () => {
   // --- Task 1: Route and Navigation ---
 
   describe('Navigation', () => {
-    it('renders the Expenses title (AC 2)', async () => {
+    it('renders the split name in the header (AC 2)', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithExpenses);
       render(ExpenseList);
 
       await waitFor(() => {
-        expect(screen.getByText('Expenses')).toBeInTheDocument();
+        expect(screen.getByText('Weekend Trip')).toBeInTheDocument();
       });
     });
 

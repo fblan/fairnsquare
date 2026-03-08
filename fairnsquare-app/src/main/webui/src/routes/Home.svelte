@@ -108,7 +108,7 @@
   </header>
 
   <!-- Create Split Form -->
-  <div class="w-full max-w-[420px]">
+  <div class="w-full max-w-[520px]">
     <Card.Root>
       <Card.Header>
         <Card.Title>Create a New Split</Card.Title>
@@ -232,7 +232,7 @@
   </div>
 
   <!-- Info Section -->
-  <section class="text-center text-muted-foreground text-sm max-w-[420px]">
+  <section class="text-center text-muted-foreground text-sm max-w-[520px]">
     <p>No account needed. Create a split and share the link!</p>
   </section>
 </div>

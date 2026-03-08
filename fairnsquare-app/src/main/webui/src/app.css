@@ -185,7 +185,7 @@
 /* Mobile-first: app container */
 #app {
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   margin: 0 auto;
   padding: 1rem;
   min-height: 100vh;
