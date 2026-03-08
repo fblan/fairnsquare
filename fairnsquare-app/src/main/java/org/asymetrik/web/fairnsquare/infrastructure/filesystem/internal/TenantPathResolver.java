@@ -81,5 +81,4 @@ public class TenantPathResolver {
         return resolveDirectory(new PathId(DEFAULT_TENANT));
     }
 
-
 }
