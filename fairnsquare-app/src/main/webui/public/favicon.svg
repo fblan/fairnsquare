@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Teal rounded square background -->
+  <rect width="32" height="32" rx="7" fill="#0D9488"/>
+  <!-- Division symbol: top dot -->
+  <circle cx="16" cy="8.5" r="2.5" fill="white"/>
+  <!-- Division symbol: horizontal bar -->
+  <rect x="7" y="14" width="18" height="4" rx="2" fill="white"/>
+  <!-- Division symbol: bottom dot -->
+  <circle cx="16" cy="23.5" r="2.5" fill="white"/>
+</svg>
