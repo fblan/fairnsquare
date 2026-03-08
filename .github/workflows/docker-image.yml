@@ -36,11 +36,13 @@ jobs:
     needs: [build]
     if: ${{ github.actor == 'sherine-k'  || github.actor == 'fblan' }}
     steps:
+    - uses: actions/checkout@v4
     - name: Deploy to Fly.io
       env:
         FLY_ACCESS_TOKEN: ${{ secrets.FLY_IO_TOKEN }}
       run: |
         echo ${{ github.sha }}
+        sed -i "s/:latest/:${{ github.sha }}/g" fly.toml
         curl -L https://fly.io/install.sh | sh
         export FLYCTL_INSTALL="/home/runner/.fly"
         export PATH="$FLYCTL_INSTALL/bin:$PATH"
