@@ -19,6 +19,7 @@ vi.mock('$lib/router', () => {
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
   getSettlement: vi.fn(),
+  getSplit: vi.fn(),
 }));
 
 // Mock the toast store
@@ -26,7 +27,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSettlement } from '$lib/api/splits';
+import { getSettlement, getSplit } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -82,6 +83,14 @@ describe('Settlement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id' };
+    vi.mocked(getSplit).mockResolvedValue({
+      id: 'test-split-id',
+      name: 'Test Split',
+      createdAt: '2026-01-01T00:00:00Z',
+      participants: [],
+      expenses: [],
+      settlement: null,
+    });
   });
 
   // --- Loading State ---
@@ -95,13 +104,13 @@ describe('Settlement', () => {
 
   // --- Header ---
 
-  it('displays header with back button and title', async () => {
+  it('displays header with back button and split name', async () => {
     vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
 
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Settlement')).toBeInTheDocument();
+      expect(screen.getByText('Test Split')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
@@ -113,7 +122,7 @@ describe('Settlement', () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Settlement')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
     });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }));

@@ -57,7 +57,7 @@
       variant="outline"
       size="sm"
       class="min-h-[44px]"
-      aria-label="Share"
+      aria-label="Share link"
     >
       <Share2 class="h-4 w-4 mr-1" />
       Share

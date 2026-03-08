@@ -195,7 +195,7 @@ describe('Split', () => {
       render(Split);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
       });
     });
 
@@ -207,10 +207,10 @@ describe('Split', () => {
       render(Split);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
 
       await waitFor(() => {
         expect(mockWriteText).toHaveBeenCalled();
@@ -229,10 +229,10 @@ describe('Split', () => {
       render(Split);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
 
       await waitFor(() => {
         expect(addToast).toHaveBeenCalledWith(

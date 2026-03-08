@@ -37,7 +37,7 @@ describe('SplitPageHeader', () => {
   it('renders a Share button', () => {
     render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
 
-    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
   });
 
   it('copies URL to clipboard and shows success toast when Share is clicked', async () => {
@@ -46,7 +46,7 @@ describe('SplitPageHeader', () => {
 
     render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
 
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe('SplitPageHeader', () => {
 
     render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
 
     await waitFor(() => {
       expect(addToast).toHaveBeenCalledWith(
