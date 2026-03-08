@@ -80,6 +80,6 @@ VOLUME ["/data"]
 
 ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager -Xmx512m"
 ENV FAIRNSQUARE_DATA_PATH="/data"
-ENV FAIRNSQUARE_CORS_ORIGINS="https://fairnsquare.fly.dev"
+ENV FAIRNSQUARE_CORS_ORIGINS="https://fairnsquare.web.asymetrik.org"
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /deployments/quarkus-run.jar"]
