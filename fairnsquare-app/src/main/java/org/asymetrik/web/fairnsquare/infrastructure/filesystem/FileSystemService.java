@@ -218,7 +218,7 @@ public class FileSystemService {
      */
     @Log
     public StorageStats computeStorageStats() {
-        Path rootDir = pathResolver.resolveRootDirectory();
+        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
         if (!Files.exists(rootDir)) {
             return new StorageStats(0, maxTotalSizeBytes, 0);
         }
@@ -246,7 +246,7 @@ public class FileSystemService {
      * Logs a summary of deleted files.
      */
     public void cleanOldFiles() {
-        Path rootDir = pathResolver.resolveRootDirectory();
+        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
         if (!Files.exists(rootDir)) {
             LOG.info("Storage cleanup: root directory does not exist, nothing to clean.");
             return;
@@ -262,7 +262,7 @@ public class FileSystemService {
                         try {
                             Files.delete(path);
                             deleted.incrementAndGet();
-                            LOG.debugf("Storage cleanup: deleted old file %s", path);
+                            LOG.infof("Storage cleanup: deleted old file %s", path);
                         } catch (IOException e) {
                             errors.incrementAndGet();
                             LOG.warnf("Storage cleanup: failed to delete %s: %s", path, e.getMessage());
@@ -277,7 +277,7 @@ public class FileSystemService {
     }
 
     private void checkSizeLimitBeforeSave(Path filePath, long newFileSizeBytes) {
-        Path rootDir = pathResolver.resolveRootDirectory();
+        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
         if (!Files.exists(rootDir)) {
             return;
         }
