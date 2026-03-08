@@ -30,6 +30,7 @@ jobs:
         file: docker/Dockerfile.jvm
         push: true
         tags: quay.io/skhoury/fairnsquare:${{ github.sha }}
+        build-args: GIT_COMMIT=${{ github.sha }}
   deploy:
     runs-on: ubuntu-latest
     needs: [build]
