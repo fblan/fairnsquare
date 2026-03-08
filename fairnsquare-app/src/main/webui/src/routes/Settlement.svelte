@@ -1,13 +1,13 @@
 <script lang="ts">
   // Settlement Page - Balances & Reimbursement Proposals
 
-  import { getSettlement, type Settlement } from '$lib/api/splits';
+  import { getSplit, getSettlement, type Settlement } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { ArrowLeft } from 'lucide-svelte';
+  import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
   const splitId = $derived(route.params.splitId || '');
 
@@ -21,6 +21,7 @@
 
   // State
   let settlement = $state<Settlement | null>(null);
+  let splitName = $state('');
   let isLoading = $state(true);
   let showReimbursements = $state(checkInitialResolved());
 
@@ -36,7 +37,9 @@
     settlement = null;
 
     try {
-      settlement = await getSettlement(id);
+      const [settlementData, split] = await Promise.all([getSettlement(id), getSplit(id)]);
+      settlement = settlementData;
+      splitName = split.name;
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
@@ -67,16 +70,13 @@
     return 'Settled';
   }
 
-  function handleBack() {
-    navigate(`/splits/${splitId}`);
-  }
 
   function handleResolve() {
     showReimbursements = true;
   }
 </script>
 
-<div class="flex flex-col items-center space-y-4 w-full max-w-[420px] mx-auto">
+<div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   {#if isLoading}
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
       <svg
@@ -97,20 +97,7 @@
     </div>
   {:else if settlement}
     <!-- Header -->
-    <header class="w-full flex items-center">
-      <div class="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onclick={handleBack}
-          class="min-h-[44px] min-w-[44px]"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft class="h-5 w-5" />
-        </Button>
-        <h1 class="text-xl font-bold text-primary">Settlement</h1>
-      </div>
-    </header>
+    <SplitPageHeader splitName={splitName} {splitId} showBackButton />
 
     <!-- Balance Cards -->
     {#if settlement.balances.length === 0}
