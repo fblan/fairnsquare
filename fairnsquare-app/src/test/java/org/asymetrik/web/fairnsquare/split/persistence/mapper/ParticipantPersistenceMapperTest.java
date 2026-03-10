@@ -30,7 +30,7 @@ class ParticipantPersistenceMapperTest {
 
     @Test
     void shouldMapPersistenceDTOToDomain() {
-        ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Bob", 5, 1.5);
+        ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Bob", 5, 1.5, null);
 
         Participant participant = mapper.toDomain(dto);
 
@@ -42,7 +42,7 @@ class ParticipantPersistenceMapperTest {
 
     @Test
     void shouldDefaultShareToOneWhenZeroInDTO() {
-        ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Bob", 5, 0);
+        ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Bob", 5, 0, null);
 
         Participant participant = mapper.toDomain(dto);
 

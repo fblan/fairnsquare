@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settlement Page - Balances & Reimbursement Proposals
 
-  import { getSplit, getSettlement, type Settlement } from '$lib/api/splits';
+  import { getSplit, getSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -21,6 +21,7 @@
 
   // State
   let settlement = $state<Settlement | null>(null);
+  let split = $state<Split | null>(null);
   let splitName = $state('');
   let isLoading = $state(true);
   let showReimbursements = $state(checkInitialResolved());
@@ -37,9 +38,10 @@
     settlement = null;
 
     try {
-      const [settlementData, split] = await Promise.all([getSettlement(id), getSplit(id)]);
+      const [settlementData, splitData] = await Promise.all([getSettlement(id), getSplit(id)]);
       settlement = settlementData;
-      splitName = split.name;
+      split = splitData;
+      splitName = splitData.name;
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
@@ -73,6 +75,23 @@
 
   function handleResolve() {
     showReimbursements = true;
+  }
+
+  async function handlePreferredCreditorChange(participantId: string, creditorId: string) {
+    if (!split) return;
+    const participant = split.participants.find(p => p.id === participantId);
+    if (!participant) return;
+    try {
+      await updateParticipant(splitId, participantId, {
+        name: participant.name,
+        nights: participant.nights,
+        share: participant.share,
+        preferredCreditorId: creditorId || null,
+      });
+      participant.preferredCreditorId = creditorId || null;
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.detail || 'Failed to save preference' });
+    }
   }
 </script>
 
@@ -121,6 +140,29 @@
                   </span>
                 </div>
               </div>
+
+              <!-- Preferred creditor select for debtors -->
+              {#if balance.balance < -0.005}
+                {@const participant = split?.participants.find(p => p.id === balance.participantId)}
+                <div class="mt-2 pt-2 border-t border-border flex items-center gap-2">
+                  <label class="text-xs text-muted-foreground whitespace-nowrap" for="preferred-{balance.participantId}">
+                    Reimburse first:
+                  </label>
+                  <select
+                    id="preferred-{balance.participantId}"
+                    aria-label="Preferred creditor for {balance.participantName}"
+                    value={participant?.preferredCreditorId ?? ''}
+                    onchange={(e) => handlePreferredCreditorChange(balance.participantId, e.currentTarget.value)}
+                    disabled={showReimbursements}
+                    class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">No preference</option>
+                    {#each settlement.balances.filter(b => b.balance > 0.005) as creditor}
+                      <option value={creditor.participantId}>{creditor.participantName}</option>
+                    {/each}
+                  </select>
+                </div>
+              {/if}
 
               <!-- Reimbursement details for this participant -->
               {#if showReimbursements}

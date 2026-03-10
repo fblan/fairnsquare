@@ -30,7 +30,7 @@ public class SettlementCalculator {
      */
     public static Settlement calculate(Split split) {
         List<ParticipantBalance> balances = calculateBalances(split);
-        List<Reimbursement> reimbursements = calculateReimbursements(balances);
+        List<Reimbursement> reimbursements = calculateReimbursements(balances, split.getParticipants());
         return new Settlement(balances, reimbursements);
     }
 
@@ -71,11 +71,22 @@ public class SettlementCalculator {
     }
 
     /**
-     * Greedy min-cash-flow algorithm: sorts debtors (largest debt first) and creditors (largest credit first), then
-     * matches them with a two-pointer approach, transferring the minimum of each pair's remaining amount until all
-     * debts are settled. Sorting makes results deterministic and independent of participant insertion order.
+     * Greedy min-cash-flow algorithm with preferred-pairing support.
+     * <p>
+     * First honours each debtor's {@code preferredCreditorId}: if the preferred creditor is actually owed money in this
+     * settlement, the debtor's reimbursement to them is processed before the general optimisation. The greedy
+     * two-pointer then resolves all remaining balances in the usual largest-first order.
+     * <p>
+     * Processing preferred pairs before sorting ensures the user's choice is always respected, even when it is not the
+     * "optimal" pairing from a minimise-transfers perspective.
+     *
+     * @param balances
+     *            per-participant balances (paid minus cost)
+     * @param participants
+     *            participants list used to read {@code preferredCreditorId} values
      */
-    private static List<Reimbursement> calculateReimbursements(List<ParticipantBalance> balances) {
+    private static List<Reimbursement> calculateReimbursements(List<ParticipantBalance> balances,
+            List<Participant> participants) {
         // Separate into debtors (balance < 0) and creditors (balance > 0)
         List<ParticipantBalance> debtors = new ArrayList<>();
         List<BigDecimal> debtRemaining = new ArrayList<>();
@@ -97,7 +108,41 @@ public class SettlementCalculator {
         sortByAmountDescending(debtors, debtRemaining);
         sortByAmountDescending(creditors, creditRemaining);
 
+        // Build lookup maps for preferred-pairing processing
+        Map<Participant.Id, Participant.Id> preferredCreditorMap = new HashMap<>();
+        for (Participant p : participants) {
+            if (p.preferredCreditorId() != null) {
+                preferredCreditorMap.put(p.id(), p.preferredCreditorId());
+            }
+        }
+        Map<Participant.Id, Integer> creditorIndex = new HashMap<>();
+        for (int i = 0; i < creditors.size(); i++) {
+            creditorIndex.put(creditors.get(i).participantId(), i);
+        }
+
         List<Reimbursement> reimbursements = new ArrayList<>();
+
+        // Phase 1: honour preferred pairings before the greedy pass
+        for (int d = 0; d < debtors.size(); d++) {
+            Participant.Id debtorId = debtors.get(d).participantId();
+            Participant.Id preferredId = preferredCreditorMap.get(debtorId);
+            if (preferredId == null) {
+                continue;
+            }
+            Integer ci = creditorIndex.get(preferredId);
+            if (ci == null) {
+                // Preferred creditor is not owed money in this settlement — skip silently
+                continue;
+            }
+            BigDecimal transfer = debtRemaining.get(d).min(creditRemaining.get(ci));
+            if (transfer.compareTo(BigDecimal.ZERO) > 0) {
+                reimbursements.add(new Reimbursement(debtorId, preferredId, transfer));
+                debtRemaining.set(d, debtRemaining.get(d).subtract(transfer));
+                creditRemaining.set(ci, creditRemaining.get(ci).subtract(transfer));
+            }
+        }
+
+        // Phase 2: greedy two-pointer for remaining balances
         int d = 0;
         int c = 0;
 

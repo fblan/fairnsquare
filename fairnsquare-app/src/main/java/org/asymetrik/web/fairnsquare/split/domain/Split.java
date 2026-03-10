@@ -138,6 +138,8 @@ public class Split {
      *            the new number of nights
      * @param newShare
      *            the new number of persons
+     * @param newPreferredCreditorId
+     *            the preferred creditor ID (may be null to clear the preference)
      *
      * @return the updated participant
      *
@@ -145,11 +147,11 @@ public class Split {
      *             if no participant with the given ID exists
      */
     public Participant updateParticipant(Participant.Id participantId, String newName, double newNights,
-            double newShare) {
+            double newShare, Participant.Id newPreferredCreditorId) {
         for (int i = 0; i < participants.size(); i++) {
             if (participants.get(i).id().equals(participantId)) {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
-                        new Participant.Nights(newNights), new Participant.Share(newShare));
+                        new Participant.Nights(newNights), new Participant.Share(newShare), newPreferredCreditorId);
                 participants.set(i, updated);
                 clearSettlement();
                 validate();
@@ -205,6 +207,13 @@ public class Split {
         boolean removed = participants.removeIf(p -> p.id().equals(participantId));
         if (!removed) {
             throw new ParticipantNotFoundError(participantId.value(), id.value());
+        }
+        // Clear preferred creditor references pointing to the removed participant
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            if (participantId.equals(p.preferredCreditorId())) {
+                participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), null));
+            }
         }
         clearSettlement();
         validate();

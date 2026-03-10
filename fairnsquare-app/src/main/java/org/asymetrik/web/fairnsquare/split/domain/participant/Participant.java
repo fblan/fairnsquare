@@ -5,8 +5,11 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 /**
  * Participant entity - represents a person participating in a split with their stay duration. Rich domain model with
  * value objects for fields. A participant can represent a family or group via the share field.
+ * <p>
+ * The optional {@code preferredCreditorId} stores the ID of the participant this person prefers to reimburse first.
+ * When set, the settlement algorithm will honour this preference before running its greedy optimisation.
  */
-public record Participant(Id id, Name name, Nights nights, Share share) {
+public record Participant(Id id, Name name, Nights nights, Share share, Id preferredCreditorId) {
 
     @Override
     public String toString() {
@@ -24,7 +27,7 @@ public record Participant(Id id, Name name, Nights nights, Share share) {
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(1.0));
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(1.0), null);
     }
 
     /**
@@ -40,7 +43,7 @@ public record Participant(Id id, Name name, Nights nights, Share share) {
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights, double share) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(share));
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(share), null);
     }
 
     /**
