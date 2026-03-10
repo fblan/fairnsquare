@@ -12,14 +12,20 @@ import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenc
 public class ParticipantPersistenceMapper {
 
     public ParticipantPersistenceDTO toPersistenceDTO(Participant participant) {
+        String preferredCreditorId = participant.preferredCreditorId() != null
+                ? participant.preferredCreditorId().value()
+                : null;
         return new ParticipantPersistenceDTO(participant.id().value(), participant.name().value(),
-                participant.nights().value(), participant.share().value());
+                participant.nights().value(), participant.share().value(), preferredCreditorId);
     }
 
     public Participant toDomain(ParticipantPersistenceDTO dto) {
         // Default to 1.0 for backward compatibility with existing data without share
         double share = dto.share() > 0 ? dto.share() : 1.0;
+        Participant.Id preferredCreditorId = Participant.Id.isValid(dto.preferredCreditorId())
+                ? Participant.Id.of(dto.preferredCreditorId())
+                : null;
         return new Participant(Participant.Id.of(dto.id()), new Participant.Name(dto.name()),
-                new Participant.Nights(dto.nights()), new Participant.Share(share));
+                new Participant.Nights(dto.nights()), new Participant.Share(share), preferredCreditorId);
     }
 }

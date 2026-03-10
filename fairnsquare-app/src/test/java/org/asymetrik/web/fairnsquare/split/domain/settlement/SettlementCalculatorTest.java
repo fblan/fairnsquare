@@ -342,6 +342,145 @@ class SettlementCalculatorTest {
         assertThat(first.fromId()).isEqualTo(a.id()); // largest debtor (Alice -10) pays first
     }
 
+    // --- Preferred Creditor Pairing ---
+
+    @Test
+    void calculate_preferredCreditor_honouredBeforeGreedy() {
+        // Alice paid €100 split equally (Alice +50, Bob -50).
+        // Bob prefers to reimburse Alice → must produce Bob→Alice(50).
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+
+        // Set Bob's preferred creditor to Alice
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
+
+        Settlement settlement = SettlementCalculator.calculate(split);
+
+        assertThat(settlement.reimbursements()).hasSize(1);
+        Reimbursement r = settlement.reimbursements().get(0);
+        assertThat(r.fromId()).isEqualTo(bob.id());
+        assertThat(r.toId()).isEqualTo(alice.id());
+        assertThat(r.amount()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void calculate_preferredCreditor_partialThenGreedyForRemainder() {
+        // Three participants: Alice paid €150 equally (Alice +100, Bob -50, Charlie -50).
+        // Bob prefers Alice. Charlie has no preference.
+        // Expected: Bob→Alice(50) [preferred], Charlie→Alice(50) [greedy].
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        Participant charlie = Participant.create("Charlie", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addParticipant(charlie);
+        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
+
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
+
+        Settlement settlement = SettlementCalculator.calculate(split);
+
+        assertThat(settlement.reimbursements()).hasSize(2);
+        // First reimbursement: Bob → Alice (preferred)
+        Reimbursement preferred = settlement.reimbursements().get(0);
+        assertThat(preferred.fromId()).isEqualTo(bob.id());
+        assertThat(preferred.toId()).isEqualTo(alice.id());
+        assertThat(preferred.amount()).isEqualByComparingTo("50.00");
+        // Second reimbursement: Charlie → Alice (greedy)
+        Reimbursement greedy = settlement.reimbursements().get(1);
+        assertThat(greedy.fromId()).isEqualTo(charlie.id());
+        assertThat(greedy.toId()).isEqualTo(alice.id());
+        assertThat(greedy.amount()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void calculate_preferredCreditor_notOwedMoney_silentlyIgnored() {
+        // Alice pays €100 equally (Alice +50, Bob -50).
+        // Bob's preferred creditor is Charlie, but Charlie is not a creditor.
+        // Result should be the normal greedy: Bob → Alice(50).
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        Participant charlie = Participant.create("Charlie", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addParticipant(charlie);
+        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Groceries", alice.id()));
+        // Charlie paid nothing and cost was shared equally — Charlie is also a debtor
+        // So Bob prefers Charlie (another debtor, not a creditor)
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), charlie.id());
+
+        Settlement settlement = SettlementCalculator.calculate(split);
+
+        // Preference ignored; greedy resolves normally
+        assertThat(settlement.reimbursements()).hasSize(2);
+        // Both Bob and Charlie pay Alice (greedy, no preference applied)
+        assertThat(settlement.reimbursements()).allMatch(r -> r.toId().equals(alice.id()));
+    }
+
+    @Test
+    void calculate_noPreferredCreditor_behavesLikeOriginalGreedy() {
+        // No preferences set — output must match the original greedy algorithm.
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+
+        Settlement settlement = SettlementCalculator.calculate(split);
+
+        assertThat(settlement.reimbursements()).hasSize(1);
+        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(bob.id());
+        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(alice.id());
+        assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
+    }
+
+    // --- removeParticipant cleanup of preferredCreditorId ---
+
+    @Test
+    void removeParticipant_clearsPreferredCreditorReferences() {
+        // Bob's preferred creditor is Alice. Removing Alice must clear Bob's preference.
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
+        assertThat(split.getParticipant(bob.id()).preferredCreditorId()).isEqualTo(alice.id());
+
+        split.removeParticipant(alice.id());
+
+        assertThat(split.getParticipants()).hasSize(1);
+        assertThat(split.getParticipant(bob.id()).preferredCreditorId()).isNull();
+    }
+
+    @Test
+    void removeParticipant_doesNotClearUnrelatedPreferences() {
+        // Charlie's preferred creditor is Alice. Removing Bob must leave Charlie's preference intact.
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        Participant charlie = Participant.create("Charlie", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addParticipant(charlie);
+
+        split.updateParticipant(charlie.id(), charlie.name().value(), charlie.nights().value(), charlie.share().value(),
+                alice.id());
+
+        split.removeParticipant(bob.id());
+
+        assertThat(split.getParticipants()).hasSize(2);
+        assertThat(split.getParticipant(charlie.id()).preferredCreditorId()).isEqualTo(alice.id());
+    }
+
     private Split createSplit() {
         return Split.create("Test Split");
     }

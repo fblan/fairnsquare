@@ -20,6 +20,7 @@ vi.mock('$lib/router', () => {
 vi.mock('$lib/api/splits', () => ({
   getSettlement: vi.fn(),
   getSplit: vi.fn(),
+  updateParticipant: vi.fn(),
 }));
 
 // Mock the toast store
@@ -27,7 +28,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSettlement, getSplit } from '$lib/api/splits';
+import { getSettlement, getSplit, updateParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -87,9 +88,19 @@ describe('Settlement', () => {
       id: 'test-split-id',
       name: 'Test Split',
       createdAt: '2026-01-01T00:00:00Z',
-      participants: [],
+      participants: [
+        { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+        { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+      ],
       expenses: [],
       settlement: null,
+    });
+    vi.mocked(updateParticipant).mockResolvedValue({
+      id: 'p2',
+      name: 'Bob',
+      nights: 2,
+      share: 1,
+      preferredCreditorId: null,
     });
   });
 
@@ -155,7 +166,8 @@ describe('Settlement', () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      // Alice appears in both her card and Bob's preferred creditor dropdown
+      expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
       expect(screen.getByText('Bob')).toBeInTheDocument();
     });
   });
@@ -166,7 +178,7 @@ describe('Settlement', () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
     // Alice: Paid €100.00, Cost €50.00
@@ -242,7 +254,7 @@ describe('Settlement', () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/Pay.*to/)).not.toBeInTheDocument();
@@ -318,5 +330,183 @@ describe('Settlement', () => {
 
     // Flag should be consumed (removed from sessionStorage)
     expect(sessionStorage.getItem('settlement-resolved')).toBeNull();
+  });
+
+  // --- Preferred Creditor ---
+
+  describe('Preferred Creditor', () => {
+    it('shows preferred creditor select for debtors', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        // Bob owes money → should have a select
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+    });
+
+    it('does not show preferred creditor select for creditors', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByText('Bob')).toBeInTheDocument();
+      });
+
+      // Alice is owed money → no select for her
+      expect(screen.queryByRole('combobox', { name: 'Preferred creditor for Alice' })).not.toBeInTheDocument();
+    });
+
+    it('pre-selects the current preferred creditor', async () => {
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Test Split',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
+        ],
+        expenses: [],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+        expect(select.value).toBe('p1');
+      });
+    });
+
+    it('calls updateParticipant when preferred creditor changes', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.change(select, { target: { value: 'p1' } });
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', {
+          name: 'Bob',
+          nights: 2,
+          share: 1,
+          preferredCreditorId: 'p1',
+        });
+      });
+    });
+
+    it('sends null preferredCreditorId when "No preference" is selected', async () => {
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Test Split',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
+        ],
+        expenses: [],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.change(select, { target: { value: '' } });
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', {
+          name: 'Bob',
+          nights: 2,
+          share: 1,
+          preferredCreditorId: null,
+        });
+      });
+    });
+
+    it('only lists creditors (participants with positive balance) as options', async () => {
+      // Three participants: Alice (creditor), Bob (debtor), Charlie (debtor)
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Test Split',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+        ],
+        expenses: [],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue({
+        balances: [
+          { participantId: 'p1', participantName: 'Alice', totalPaid: 100, totalCost: 33, balance: 67 },
+          { participantId: 'p2', participantName: 'Bob', totalPaid: 0, totalCost: 33, balance: -33 },
+          { participantId: 'p3', participantName: 'Charlie', totalPaid: 0, totalCost: 34, balance: -34 },
+        ],
+        reimbursements: [],
+      });
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const bobSelect = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      const bobOptions = Array.from(bobSelect.options).map(o => o.text);
+      // Only Alice (creditor) should appear as an option, not Charlie (fellow debtor)
+      expect(bobOptions).toContain('Alice');
+      expect(bobOptions).not.toContain('Charlie');
+    });
+
+    it('disables the select after clicking Resolve', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      expect(select.disabled).toBe(false);
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(select.disabled).toBe(true);
+      });
+    });
+
+    it('shows error toast when updateParticipant fails', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+      vi.mocked(updateParticipant).mockRejectedValue({ detail: 'Save failed' });
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.change(select, { target: { value: 'p1' } });
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' });
+      });
+    });
   });
 });

@@ -13,7 +13,10 @@ public record UpdateParticipantRequest(
 
         @DecimalMin(value = "0.5", message = "Nights must be at least 0.5") @DecimalMax(value = "365", message = "Nights cannot exceed 365") double nights,
 
-        @DecimalMin(value = "0.5", message = "Share must be at least 0.5") @DecimalMax(value = "50", message = "Share cannot exceed 50") Double share) {
+        @DecimalMin(value = "0.5", message = "Share must be at least 0.5") @DecimalMax(value = "50", message = "Share cannot exceed 50") Double share,
+
+        /** ID of the participant this person prefers to reimburse first. Null clears the preference. */
+        String preferredCreditorId) {
 
     /**
      * Returns the share, defaulting to 1.0 if not specified.
