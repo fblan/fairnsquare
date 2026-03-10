@@ -15,7 +15,7 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import ShareEditModal from './ShareEditModal.svelte';
-  import { Moon, Equal, Edit3, Users, X } from 'lucide-svelte';
+  import { Moon, Equal, Edit3, Users, X, Info } from 'lucide-svelte';
 
   // Props
   let {
@@ -54,6 +54,34 @@
   let validationErrors = $state<{ amount?: string; description?: string }>({});
   let amountTouched = $state(false);
   let descriptionTouched = $state(false);
+
+  // Split mode info modal state
+  let activeInfo = $state<SplitMode | null>(null);
+
+  const splitModeInfo: Record<SplitMode, { title: string; description: string }> = {
+    BY_NIGHT: {
+      title: 'By Night',
+      description: `The cost is shared proportionally based on each participant's total "night-shares" — calculated as nights × share weight.\n\nThe share weight represents the number of persons. For example, a couple has a share of 2, while a solo traveller has a share of 1.\n\nExample: Alice (1 person) stays 3 nights = 3 night-shares. Bob & Carol (couple, 2 persons) stay 2 nights = 4 night-shares. Total = 7 night-shares.\n\nAlice pays 3/7 of the expense, Bob & Carol pay 4/7.`,
+    },
+    EQUAL: {
+      title: 'Equal',
+      description: `The cost is divided equally among all participants, regardless of their nights, share weight, or any other factor.\n\nExample: 3 participants share a €90 expense → each pays €30.`,
+    },
+    BY_SHARE: {
+      title: 'By Share',
+      description: `The cost is split proportionally to each participant's share weight, which represents their number of persons.\n\nExample: Alice (1 share) and a couple Bob & Carol (2 shares) share a €90 expense. Total = 3 shares. Alice pays €30 (1/3), Bob & Carol pay €60 (2/3).`,
+    },
+    FREE: {
+      title: 'Manual',
+      description: `You define the exact parts for each participant. You choose who is included and assign them a relative weight — the total cost is then distributed proportionally.\n\nExample: you assign Alice 1 part, Bob 2 parts, and Carol 3 parts. Total = 6 parts. Alice pays 1/6, Bob pays 2/6, Carol pays 3/6 of the expense.`,
+    },
+  };
+
+  function openInfo(mode: SplitMode, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    activeInfo = mode;
+  }
 
   // Confirmation state
   let showDiscardConfirm = $state(false);
@@ -441,7 +469,7 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       role="presentation"
-      class="bg-background rounded-lg shadow-lg w-full max-w-[420px] animate-in fade-in zoom-in-95"
+      class="bg-background rounded-lg shadow-lg w-full max-w-[420px] max-h-[calc(100vh-2rem)] flex flex-col animate-in fade-in zoom-in-95"
       onclick={(e) => e.stopPropagation()}
     >
       <!-- Header -->
@@ -462,7 +490,7 @@
       </div>
 
       <!-- Form -->
-      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="p-4 space-y-4">
+      <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="p-4 space-y-4 overflow-y-auto flex-1">
         <!-- Amount Field -->
         <div class="space-y-2">
           <Label for="expense-amount-modal">Amount (€)</Label>
@@ -536,6 +564,9 @@
                 <Moon class="h-4 w-4" aria-hidden="true" />
                 <span>By Night</span>
               </Label>
+              <button type="button" onclick={(e) => openInfo('BY_NIGHT', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Night">
+                <Info class="h-4 w-4" />
+              </button>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
               <RadioGroup.Item value="EQUAL" id="modal-mode-equal" />
@@ -543,6 +574,9 @@
                 <Equal class="h-4 w-4" aria-hidden="true" />
                 <span>Equal</span>
               </Label>
+              <button type="button" onclick={(e) => openInfo('EQUAL', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Equal">
+                <Info class="h-4 w-4" />
+              </button>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
               <RadioGroup.Item value="BY_SHARE" id="modal-mode-by-share" />
@@ -550,6 +584,9 @@
                 <Users class="h-4 w-4" aria-hidden="true" />
                 <span>By Share</span>
               </Label>
+              <button type="button" onclick={(e) => openInfo('BY_SHARE', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Share">
+                <Info class="h-4 w-4" />
+              </button>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
               <RadioGroup.Item value="FREE" id="modal-mode-free" />
@@ -557,6 +594,9 @@
                 <Edit3 class="h-4 w-4" aria-hidden="true" />
                 <span>Manual</span>
               </Label>
+              <button type="button" onclick={(e) => openInfo('FREE', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Manual">
+                <Info class="h-4 w-4" />
+              </button>
             </div>
           </RadioGroup.Root>
         </div>
@@ -642,6 +682,51 @@
       </form>
     </div>
   </div>
+
+  <!-- Split Mode Info Modal -->
+  {#if activeInfo}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="fixed inset-0 z-[70] bg-black/50 flex items-end justify-center sm:items-center sm:p-4"
+      onclick={() => { activeInfo = null; }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="split-info-modal-title"
+      tabindex="-1"
+    >
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div
+        role="presentation"
+        class="bg-background w-full sm:max-w-[420px] rounded-t-xl sm:rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <div class="flex items-center justify-between p-4 border-b">
+          <h2 id="split-info-modal-title" class="text-base font-semibold">
+            {splitModeInfo[activeInfo].title}
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onclick={() => { activeInfo = null; }}
+            class="min-h-[44px] min-w-[44px]"
+            aria-label="Close"
+          >
+            <X class="h-4 w-4" />
+          </Button>
+        </div>
+        <div class="p-4 space-y-3">
+          {#each splitModeInfo[activeInfo].description.split('\n\n') as paragraph}
+            <p class="text-sm text-muted-foreground leading-relaxed">{paragraph}</p>
+          {/each}
+        </div>
+        <div class="p-4 border-t">
+          <Button onclick={() => { activeInfo = null; }} class="w-full min-h-[44px]">
+            Got it
+          </Button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <!-- Discard Confirmation Dialog -->
@@ -675,3 +760,4 @@
   onConfirm={handleShareEditConfirm}
   onCancel={() => { showShareEditModal = false; }}
 />
+

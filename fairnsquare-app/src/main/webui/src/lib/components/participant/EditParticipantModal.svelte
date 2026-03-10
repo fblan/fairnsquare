@@ -13,7 +13,21 @@
   import Label from '$lib/components/ui/label/label.svelte';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
-  import { X } from 'lucide-svelte';
+  import { X, Info } from 'lucide-svelte';
+
+  // Field info modal state
+  let activeFieldInfo = $state<'nights' | 'share' | null>(null);
+
+  const fieldInfo = {
+    nights: {
+      title: 'Nights',
+      description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nHalf-nights (0.5) are supported for arrivals or departures during the day.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
+    },
+    share: {
+      title: 'Share',
+      description: `The number of persons this participant represents.\n\nA solo traveller has a share of 1. A couple sharing costs would have a share of 2, a family of 3 would use 3, etc.\n\nUsed in "By Night" mode (nights × share) and "By Share" mode (share only) to calculate each participant's proportional contribution.\n\nExample: a couple (share 2) staying 3 nights counts as 6 night-shares, compared to 3 night-shares for a solo person staying the same time.`,
+    },
+  };
 
   // Props interface (Svelte 5 pattern)
   let {
@@ -356,7 +370,12 @@
         <!-- Nights & Persons Fields -->
         <div class="flex gap-3">
           <div class="space-y-2 flex-1">
-            <Label for="edit-participant-nights-modal">Nights</Label>
+            <div class="flex items-center gap-1">
+              <Label for="edit-participant-nights-modal">Nights</Label>
+              <button type="button" onclick={() => { activeFieldInfo = 'nights'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Nights">
+                <Info class="h-3.5 w-3.5" />
+              </button>
+            </div>
             <Input
               id="edit-participant-nights-modal"
               type="number"
@@ -375,7 +394,12 @@
           </div>
 
           <div class="space-y-2 flex-1">
-            <Label for="edit-participant-share-modal">Share</Label>
+            <div class="flex items-center gap-1">
+              <Label for="edit-participant-share-modal">Share</Label>
+              <button type="button" onclick={() => { activeFieldInfo = 'share'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Share">
+                <Info class="h-3.5 w-3.5" />
+              </button>
+            </div>
             <Input
               id="edit-participant-share-modal"
               type="number"
@@ -439,6 +463,43 @@
       </form>
     </div>
   </div>
+
+  <!-- Field Info Modal -->
+  {#if activeFieldInfo}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      class="fixed inset-0 z-[70] bg-black/50 flex items-end justify-center sm:items-center sm:p-4"
+      onclick={() => { activeFieldInfo = null; }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="field-info-modal-title"
+      tabindex="-1"
+    >
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <div
+        role="presentation"
+        class="bg-background w-full sm:max-w-[420px] rounded-t-xl sm:rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <div class="flex items-center justify-between p-4 border-b">
+          <h2 id="field-info-modal-title" class="text-base font-semibold">
+            {fieldInfo[activeFieldInfo].title}
+          </h2>
+          <Button variant="ghost" size="sm" onclick={() => { activeFieldInfo = null; }} class="min-h-[44px] min-w-[44px]" aria-label="Close">
+            <X class="h-4 w-4" />
+          </Button>
+        </div>
+        <div class="p-4 space-y-3">
+          {#each fieldInfo[activeFieldInfo].description.split('\n\n') as paragraph}
+            <p class="text-sm text-muted-foreground leading-relaxed">{paragraph}</p>
+          {/each}
+        </div>
+        <div class="p-4 border-t">
+          <Button onclick={() => { activeFieldInfo = null; }} class="w-full min-h-[44px]">Got it</Button>
+        </div>
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <!-- Discard Confirmation Dialog -->

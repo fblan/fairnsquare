@@ -50,6 +50,7 @@ logs/
 # Test output
 test-output/
 coverage/
+.playwright-mcp/
 
 # Package files
 *.jar

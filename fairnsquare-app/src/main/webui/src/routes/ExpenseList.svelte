@@ -121,8 +121,10 @@
         return '\u{1F319}';
       case 'EQUAL':
         return '\u229C';
+      case 'BY_SHARE':
+        return '\u{1F465}';
       case 'FREE':
-        return '\u{1F4CA}';
+        return '\u270F\uFE0F';
     }
   }
 
@@ -132,8 +134,10 @@
         return 'By Night';
       case 'EQUAL':
         return 'Equal';
-      case 'FREE':
+      case 'BY_SHARE':
         return 'By Share';
+      case 'FREE':
+        return 'Manual';
     }
   }
 
@@ -277,17 +281,7 @@
     </div>
   {:else if split}
     <!-- Header -->
-    <SplitPageHeader splitName={split.name} {splitId} showBackButton>
-      <Button
-        variant="ghost"
-        size="sm"
-        onclick={handleAddExpense}
-        class="min-h-[44px] min-w-[44px]"
-        aria-label="Add expense"
-      >
-        <Plus class="h-5 w-5" />
-      </Button>
-    </SplitPageHeader>
+    <SplitPageHeader splitName={split.name} {splitId} showBackButton />
 
     <!-- Filter Bar -->
     {#if split.participants.length > 0}
@@ -347,6 +341,16 @@
         </div>
       </div>
     </section>
+
+    <!-- Add Expense Button -->
+    <Button
+      onclick={handleAddExpense}
+      variant="outline"
+      class="w-full min-h-[44px]"
+    >
+      <Plus class="h-4 w-4 mr-1" />
+      Add Expense
+    </Button>
 
     {#if sortedExpenses.length === 0}
       <!-- Empty State - no expenses at all -->
