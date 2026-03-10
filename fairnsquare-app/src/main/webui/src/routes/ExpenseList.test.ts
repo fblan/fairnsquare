@@ -196,7 +196,7 @@ describe('ExpenseList', () => {
       render(ExpenseList);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Add expense' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /add expense/i })).toBeInTheDocument();
       });
     });
   });
@@ -456,10 +456,10 @@ describe('ExpenseList', () => {
       render(ExpenseList);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Add expense' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /add expense/i })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Add expense' }));
+      await fireEvent.click(screen.getByRole('button', { name: /add expense/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Add Expense' })).toBeInTheDocument();

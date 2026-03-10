@@ -72,7 +72,7 @@ describe('EditParticipantModal', () => {
     it('should pre-fill nights field with participant nights', () => {
       render(EditParticipantModal, { props: defaultProps });
       
-      const nightsInput = screen.getByLabelText(/nights/i) as HTMLInputElement;
+      const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
       expect(nightsInput.value).toBe('3');
     });
 
@@ -101,7 +101,7 @@ describe('EditParticipantModal', () => {
     it('should display nights input field', () => {
       render(EditParticipantModal, { props: defaultProps });
       
-      expect(screen.getByLabelText(/nights/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('Nights')).toBeInTheDocument();
     });
 
     it('should display danger zone with delete button', () => {
@@ -189,7 +189,7 @@ describe('EditParticipantModal', () => {
     it('should show error for nights less than 0.5', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '0' } });
       await fireEvent.blur(nightsInput);
 
@@ -201,7 +201,7 @@ describe('EditParticipantModal', () => {
     it('should show error for nights greater than 365', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '366' } });
       await fireEvent.blur(nightsInput);
 
@@ -235,7 +235,7 @@ describe('EditParticipantModal', () => {
     it('should enable Save Changes button when nights changes', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '5' } });
 
       await waitFor(() => {
@@ -280,7 +280,7 @@ describe('EditParticipantModal', () => {
 
       render(EditParticipantModal, { props: { ...defaultProps, onSuccess } });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '5' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -298,7 +298,7 @@ describe('EditParticipantModal', () => {
 
       render(EditParticipantModal, { props: { ...defaultProps, onClose } });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '5' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -322,7 +322,7 @@ describe('EditParticipantModal', () => {
 
       render(EditParticipantModal, { props: { ...defaultProps, onClose } });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '5' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -638,7 +638,7 @@ describe('EditParticipantModal', () => {
 
       render(EditParticipantModal, { props: defaultProps });
 
-      const nightsInput = screen.getByLabelText(/nights/i);
+      const nightsInput = screen.getByLabelText('Nights');
       await fireEvent.input(nightsInput, { target: { value: '5' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -684,7 +684,7 @@ describe('EditParticipantModal', () => {
     it('should display share input field', () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      expect(screen.getByLabelText(/share/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('Share')).toBeInTheDocument();
     });
 
     it('should pre-fill share field with participant share', () => {
@@ -699,14 +699,14 @@ describe('EditParticipantModal', () => {
         props: { ...defaultProps, participant: familyParticipant },
       });
 
-      const shareInput = screen.getByLabelText(/share/i) as HTMLInputElement;
+      const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
       expect(shareInput.value).toBe('2.5');
     });
 
     it('should enable Save when share changes', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const shareInput = screen.getByLabelText(/share/i);
+      const shareInput = screen.getByLabelText('Share');
       await fireEvent.input(shareInput, { target: { value: '2' } });
 
       await waitFor(() => {
@@ -724,7 +724,7 @@ describe('EditParticipantModal', () => {
 
       render(EditParticipantModal, { props: defaultProps });
 
-      const shareInput = screen.getByLabelText(/share/i);
+      const shareInput = screen.getByLabelText('Share');
       await fireEvent.input(shareInput, { target: { value: '2' } });
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -742,7 +742,7 @@ describe('EditParticipantModal', () => {
     it('should show error for share less than 0.5', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const shareInput = screen.getByLabelText(/share/i);
+      const shareInput = screen.getByLabelText('Share');
       await fireEvent.input(shareInput, { target: { value: '0' } });
       await fireEvent.blur(shareInput);
 
@@ -754,7 +754,7 @@ describe('EditParticipantModal', () => {
     it('should show error for share greater than 50', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
-      const shareInput = screen.getByLabelText(/share/i);
+      const shareInput = screen.getByLabelText('Share');
       await fireEvent.input(shareInput, { target: { value: '51' } });
       await fireEvent.blur(shareInput);
 
