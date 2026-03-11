@@ -8,6 +8,7 @@
   import * as Card from '$lib/components/ui/card';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
+  import { saveLastSplit } from '$lib/stores/lastSplitStore';
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
@@ -45,6 +46,7 @@
 
     try {
       split = await getSplit(id);
+      saveLastSplit({ id: split.id, name: split.name });
     } catch (err) {
       const apiError = err as ApiError;
       if (apiError.status === 404 || apiError.status === 400) {

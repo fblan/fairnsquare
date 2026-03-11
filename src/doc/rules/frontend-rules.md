@@ -45,6 +45,12 @@
 - When a shared component needs to display differently depending on context (e.g. a summary card that shows a title on one page but not another), use a boolean prop with a sensible default rather than duplicating the component or adding conditional logic in each parent.
 - Name the prop to describe what it controls (`showTitle`, `compact`, etc.) and default it to the richer/fuller display so existing usages are unaffected.
 
+## localStorage Utilities
+
+- localStorage access must be encapsulated in a dedicated utility module (e.g. `src/lib/stores/myStore.ts`) rather than called inline in components. The module must export named `save*`, `load*`, and `clear*` functions. The localStorage key must be a private constant inside that module.
+- The module must be mocked in component tests (`vi.mock('$lib/stores/myStore')`). Tests for the utility itself must use `localStorage.clear()` in `beforeEach`.
+- When loading a persisted value on component mount triggers an async operation (e.g. API verification), use `$effect` and handle the async result with `.then()/.catch()` rather than making `$effect` async.
+
 ## Capturing Transient State Before Reset
 
 - When post-action feedback (e.g. a toast) needs to reference form state that is reset immediately after the API call, always capture those values into local `const` variables *before* the reset. Do not read from form state after it has been cleared — the values will reflect the reset defaults rather than the submitted data.
