@@ -14,6 +14,7 @@ vi.mock('$lib/router', () => ({
 vi.mock('$lib/api/splits', () => ({
   createSplit: vi.fn(),
   addParticipant: vi.fn(),
+  getSplit: vi.fn(),
 }));
 
 // Mock the toast store
@@ -21,13 +22,22 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { createSplit, addParticipant } from '$lib/api/splits';
+// Mock the lastSplitStore
+vi.mock('$lib/stores/lastSplitStore', () => ({
+  loadLastSplit: vi.fn(),
+  clearLastSplit: vi.fn(),
+  saveLastSplit: vi.fn(),
+}));
+
+import { createSplit, addParticipant, getSplit } from '$lib/api/splits';
 import { navigate } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
+import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
 
 describe('Home', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadLastSplit).mockReturnValue(null);
   });
 
   // --- Task 1: Form renders all fields (AC: 1) ---
@@ -369,6 +379,98 @@ describe('Home', () => {
         type: 'error',
         message: 'Failed to create split',
       });
+    });
+  });
+
+  // --- Resume last split ---
+
+  it('does not show resume card when no split is stored', async () => {
+    vi.mocked(loadLastSplit).mockReturnValue(null);
+
+    render(Home);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows resume card with split name when stored split exists and is verified', async () => {
+    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
+    vi.mocked(getSplit).mockResolvedValue({
+      id: 'abc123',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-01T00:00:00Z',
+      participants: [],
+      expenses: [],
+      settlement: null,
+    });
+
+    render(Home);
+
+    await waitFor(() => {
+      expect(screen.getByText('Resume your split')).toBeInTheDocument();
+      expect(screen.getByText('Weekend Trip')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
+      expect(screen.getByText('Dismiss')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show resume card when stored split is not found on server', async () => {
+    vi.mocked(loadLastSplit).mockReturnValue({ id: 'gone', name: 'Old Split' });
+    vi.mocked(getSplit).mockRejectedValue({ status: 404, detail: 'Not found' });
+
+    render(Home);
+
+    await waitFor(() => {
+      expect(clearLastSplit).toHaveBeenCalled();
+      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
+    });
+  });
+
+  it('navigates to split when Resume is clicked', async () => {
+    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
+    vi.mocked(getSplit).mockResolvedValue({
+      id: 'abc123',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-01T00:00:00Z',
+      participants: [],
+      expenses: [],
+      settlement: null,
+    });
+
+    render(Home);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+    expect(navigate).toHaveBeenCalledWith('/splits/:splitId', { params: { splitId: 'abc123' } });
+  });
+
+  it('hides resume card and clears storage when Dismiss is clicked', async () => {
+    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
+    vi.mocked(getSplit).mockResolvedValue({
+      id: 'abc123',
+      name: 'Weekend Trip',
+      createdAt: '2026-01-01T00:00:00Z',
+      participants: [],
+      expenses: [],
+      settlement: null,
+    });
+
+    render(Home);
+
+    await waitFor(() => {
+      expect(screen.getByText('Dismiss')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByText('Dismiss'));
+
+    await waitFor(() => {
+      expect(clearLastSplit).toHaveBeenCalled();
+      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
     });
   });
 });

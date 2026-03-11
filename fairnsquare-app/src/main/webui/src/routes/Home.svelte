@@ -5,10 +5,34 @@
   import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
-  import { createSplit, addParticipant } from '$lib/api/splits';
+  import { createSplit, addParticipant, getSplit } from '$lib/api/splits';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import type { ApiError } from '$lib/api/client';
   import { navigate } from '$lib/router';
+  import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
+
+  // Resume state
+  interface ResumeCandidate { id: string; name: string }
+  let resumeSplit = $state<ResumeCandidate | null>(null);
+
+  $effect(() => {
+    const stored = loadLastSplit();
+    if (!stored) return;
+    getSplit(stored.id)
+      .then((split) => { resumeSplit = { id: split.id, name: split.name }; })
+      .catch(() => { clearLastSplit(); });
+  });
+
+  function handleResume() {
+    if (resumeSplit) {
+      navigate('/splits/:splitId', { params: { splitId: resumeSplit.id } });
+    }
+  }
+
+  function handleDismiss() {
+    clearLastSplit();
+    resumeSplit = null;
+  }
 
   // Form state
   let splitName = $state('');
@@ -106,6 +130,31 @@
     <h1 class="text-2xl font-bold text-primary">FairNSquare</h1>
     <p class="text-muted-foreground mt-2">Split expenses fairly with friends</p>
   </header>
+
+  <!-- Resume Last Split -->
+  {#if resumeSplit}
+    <div class="w-full max-w-[520px]">
+      <Card.Root class="border-teal-300 bg-teal-50">
+        <Card.Header class="pb-2">
+          <Card.Title class="text-base">Resume your split</Card.Title>
+        </Card.Header>
+        <Card.Content class="space-y-3">
+          <p class="text-sm text-muted-foreground">You were working on <span class="font-medium text-foreground">{resumeSplit.name}</span>.</p>
+          <div class="flex items-center gap-3">
+            <Button onclick={handleResume} class="min-h-[44px]">
+              Resume
+            </Button>
+            <button
+              onclick={handleDismiss}
+              class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Dismiss
+            </button>
+          </div>
+        </Card.Content>
+      </Card.Root>
+    </div>
+  {/if}
 
   <!-- Create Split Form -->
   <div class="w-full max-w-[520px]">
