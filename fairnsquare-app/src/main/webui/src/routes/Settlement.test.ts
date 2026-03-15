@@ -472,7 +472,7 @@ describe('Settlement', () => {
       expect(bobOptions).not.toContain('Charlie');
     });
 
-    it('disables the select after clicking Resolve', async () => {
+    it('keeps the select enabled after clicking Resolve', async () => {
       vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
 
       render(Settlement);
@@ -482,13 +482,41 @@ describe('Settlement', () => {
       });
 
       const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
+      });
+
       expect(select.disabled).toBe(false);
+    });
+
+    it('reloads the settlement and hides reimbursements when preferred creditor changes after Resolve', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
 
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
       await waitFor(() => {
-        expect(select.disabled).toBe(true);
+        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
       });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.change(select, { target: { value: 'p1' } });
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalled();
+        expect(getSettlement).toHaveBeenCalledTimes(2);
+      });
+
+      // Reimbursements are hidden until user clicks Resolve again
+      expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
     });
 
     it('shows error toast when updateParticipant fails', async () => {
