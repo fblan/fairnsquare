@@ -481,6 +481,60 @@ class SettlementCalculatorTest {
         assertThat(split.getParticipant(charlie.id()).preferredCreditorId()).isEqualTo(alice.id());
     }
 
+    @Test
+    void calculate_preferredCreditor_overridesGreedyPairing() {
+        // Scenario where Phase 1 must produce a DIFFERENT result than pure greedy:
+        // Alice owes €100 (preferred=Dave), Bob owes €50 (no preference).
+        // Charlie is owed €100 (largest creditor), Dave is owed €50 (smaller creditor).
+        //
+        // Pure greedy (no preference) would pair:
+        // Alice→Charlie(100), Bob→Dave(50)
+        //
+        // With preference (Phase 1 first):
+        // Phase 1: Alice→Dave(50) [preferred – not what greedy would pick]
+        // Phase 2: Alice→Charlie(50), Bob→Charlie(50)
+        //
+        // Expenses to achieve these balances (4 equal-share participants, total €400 = €100 each):
+        // Bob pays €50, Charlie pays €200, Dave pays €150 → Alice=-100, Bob=-50, Charlie=+100, Dave=+50
+        Split split = createSplit();
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
+        Participant charlie = Participant.create("Charlie", 1);
+        Participant dave = Participant.create("Dave", 1);
+        split.addParticipant(alice);
+        split.addParticipant(bob);
+        split.addParticipant(charlie);
+        split.addParticipant(dave);
+
+        split.addExpense(ExpenseEqual.create(new BigDecimal("50.00"), "Bob expense", bob.id()));
+        split.addExpense(ExpenseEqual.create(new BigDecimal("200.00"), "Charlie expense", charlie.id()));
+        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Dave expense", dave.id()));
+
+        // Alice prefers Dave — NOT the largest creditor, so greedy alone would skip Dave for Alice
+        split.updateParticipant(alice.id(), alice.name().value(), alice.nights().value(), alice.share().value(),
+                dave.id());
+
+        Settlement settlement = SettlementCalculator.calculate(split);
+
+        // Phase 1 must fire first: Alice pays Dave (preferred) before the greedy pass
+        assertThat(settlement.reimbursements()).hasSize(3);
+        Reimbursement first = settlement.reimbursements().get(0);
+        assertThat(first.fromId()).isEqualTo(alice.id());
+        assertThat(first.toId()).isEqualTo(dave.id());
+        assertThat(first.amount()).isEqualByComparingTo("50.00");
+
+        // Greedy phase resolves remaining: Alice→Charlie(50), Bob→Charlie(50)
+        Reimbursement second = settlement.reimbursements().get(1);
+        assertThat(second.fromId()).isEqualTo(alice.id());
+        assertThat(second.toId()).isEqualTo(charlie.id());
+        assertThat(second.amount()).isEqualByComparingTo("50.00");
+
+        Reimbursement third = settlement.reimbursements().get(2);
+        assertThat(third.fromId()).isEqualTo(bob.id());
+        assertThat(third.toId()).isEqualTo(charlie.id());
+        assertThat(third.amount()).isEqualByComparingTo("50.00");
+    }
+
     private Split createSplit() {
         return Split.create("Test Split");
     }
