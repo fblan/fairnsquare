@@ -88,7 +88,8 @@
         share: participant.share,
         preferredCreditorId: creditorId || null,
       });
-      participant.preferredCreditorId = creditorId || null;
+      showReimbursements = false;
+      await loadSettlement(splitId);
     } catch (err: any) {
       addToast({ type: 'error', message: err.detail || 'Failed to save preference' });
     }
@@ -153,8 +154,7 @@
                     aria-label="Preferred creditor for {balance.participantName}"
                     value={participant?.preferredCreditorId ?? ''}
                     onchange={(e) => handlePreferredCreditorChange(balance.participantId, e.currentTarget.value)}
-                    disabled={showReimbursements}
-                    class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">No preference</option>
                     {#each settlement.balances.filter(b => b.balance > 0.005) as creditor}
