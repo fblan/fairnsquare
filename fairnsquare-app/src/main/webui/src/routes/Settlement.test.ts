@@ -403,6 +403,37 @@ describe('Settlement', () => {
       });
     });
 
+    it('reloads settlement after preferred creditor changes to reflect updated reimbursements', async () => {
+      const updatedSettlement: SettlementType = {
+        balances: mockSettlement.balances,
+        reimbursements: [
+          { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 50 },
+        ],
+      };
+      vi.mocked(getSettlement)
+        .mockResolvedValueOnce(mockSettlement)
+        .mockResolvedValueOnce(updatedSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
+      });
+
+      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
+      await fireEvent.change(select, { target: { value: 'p1' } });
+
+      await waitFor(() => {
+        expect(getSettlement).toHaveBeenCalledTimes(2);
+      });
+
+      // Verify the updated reimbursements are reflected after clicking Resolve
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+      await waitFor(() => {
+        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
+      });
+    });
+
     it('sends null preferredCreditorId when "No preference" is selected', async () => {
       vi.mocked(getSplit).mockResolvedValue({
         id: 'test-split-id',

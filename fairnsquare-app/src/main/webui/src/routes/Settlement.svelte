@@ -88,7 +88,9 @@
         share: participant.share,
         preferredCreditorId: creditorId || null,
       });
+      const refreshed = await getSettlement(splitId);
       participant.preferredCreditorId = creditorId || null;
+      settlement = refreshed;
     } catch (err: any) {
       addToast({ type: 'error', message: err.detail || 'Failed to save preference' });
     }
