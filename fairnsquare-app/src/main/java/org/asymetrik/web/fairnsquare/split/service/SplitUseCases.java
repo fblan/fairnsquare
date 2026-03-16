@@ -73,6 +73,20 @@ public class SplitUseCases {
     }
 
     /**
+     * Returns the persisted settlement for a split without recalculating it.
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return an Optional containing the persisted settlement result, or empty if the split does not exist or has no
+     *         persisted settlement
+     */
+    public Optional<SettlementResult> getPersistedSettlement(@LogTag("splitId") String splitId) {
+        return repository.load(splitId).flatMap(split -> Optional.ofNullable(split.getSettlement())
+                .map(s -> new SettlementResult(s, split.getParticipants())));
+    }
+
+    /**
      * Calculates the settlement for a split, persists it in the split, and returns it.
      *
      * @param splitId
