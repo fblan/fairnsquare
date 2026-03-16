@@ -73,6 +73,77 @@
   }
 
 
+  function formatSettlementText(url: string): string {
+    if (!split || !settlement) return '';
+
+    const totalExpenses = split.expenses.reduce((sum, e) => sum + e.amount, 0);
+    const expenseCount = split.expenses.length;
+    const participantCount = split.participants.length;
+
+    const sorted = [...settlement.reimbursements].sort((a, b) =>
+      a.fromName.localeCompare(b.fromName)
+    );
+
+    const lines: string[] = [
+      `=== ${split.name} ===`,
+      `${expenseCount} expense${expenseCount !== 1 ? 's' : ''} — Total: ${formatCurrency(totalExpenses)}`,
+      `${participantCount} participant${participantCount !== 1 ? 's' : ''}`,
+    ];
+
+    if (sorted.length > 0) {
+      lines.push('');
+      lines.push('Settlements:');
+      for (const r of sorted) {
+        lines.push(`${r.fromName} → ${r.toName}: ${formatCurrency(r.amount)}`);
+      }
+
+      // Group by receiver to build summary
+      const byReceiver = new Map<string, { name: string; amounts: number[] }>();
+      for (const r of sorted) {
+        if (!byReceiver.has(r.toId)) {
+          byReceiver.set(r.toId, { name: r.toName, amounts: [] });
+        }
+        byReceiver.get(r.toId)!.amounts.push(r.amount);
+      }
+
+      lines.push('');
+      lines.push('Summary:');
+      for (const { name, amounts } of byReceiver.values()) {
+        if (amounts.length === 1) {
+          lines.push(`${name} receives ${formatCurrency(amounts[0])}`);
+        } else {
+          const total = amounts.reduce((s, a) => s + a, 0);
+          lines.push(`${name} receives ${amounts.map(formatCurrency).join(' + ')} = ${formatCurrency(total)}`);
+        }
+      }
+    } else {
+      lines.push('');
+      lines.push('All settled — no transfers needed!');
+    }
+
+    lines.push('');
+    lines.push(url);
+
+    return lines.join('\n');
+  }
+
+  async function handleExportSettlement() {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const text = formatSettlementText(url);
+
+    if (!navigator.clipboard) {
+      addToast({ type: 'info', message: text });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast({ type: 'success', message: 'Settlement copied to clipboard!' });
+    } catch {
+      addToast({ type: 'info', message: text });
+    }
+  }
+
   function handleResolve() {
     showReimbursements = true;
   }
@@ -188,13 +259,21 @@
         {/each}
       </div>
 
-      <!-- Resolve Button -->
+      <!-- Resolve / Export Button -->
       {#if !showReimbursements}
         <Button
           onclick={handleResolve}
           class="w-full min-h-[44px]"
         >
           Resolve
+        </Button>
+      {:else}
+        <Button
+          onclick={handleExportSettlement}
+          variant="outline"
+          class="w-full min-h-[44px]"
+        >
+          Export Settlement
         </Button>
       {/if}
     {/if}
