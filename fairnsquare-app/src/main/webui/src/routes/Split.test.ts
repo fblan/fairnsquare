@@ -503,7 +503,6 @@ describe('Split', () => {
 
       await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
 
-      expect(sessionStorage.getItem('settlement-resolved')).toBe('true');
       expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/settlement');
     });
 

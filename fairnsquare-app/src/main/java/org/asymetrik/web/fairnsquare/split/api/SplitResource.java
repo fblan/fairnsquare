@@ -33,6 +33,7 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.InvalidParticipant
 import org.asymetrik.web.fairnsquare.split.domain.InvalidSplitIdError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
+import org.asymetrik.web.fairnsquare.split.domain.SettlementNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
@@ -100,20 +101,44 @@ public class SplitResource {
     }
 
     /**
-     * Calculates the settlement for a split: participant balances and reimbursement proposals.
+     * Returns the persisted settlement for a split without recalculating it.
      *
      * @param splitId
      *            the split identifier
      *
-     * @return 200 OK with the settlement, or 404 Not Found, or 400 Bad Request for invalid ID
+     * @return 200 OK with the settlement, or 404 Not Found if the split does not exist or has no computed settlement
      */
-    @Operation(summary = "Get settlement", description = "Calculates participant balances and reimbursement proposals for a split")
-    @APIResponse(responseCode = "200", description = "Settlement calculated successfully")
-    @APIResponse(responseCode = "404", description = "Split not found")
+    @Operation(summary = "Get persisted settlement", description = "Returns the previously computed settlement for a split. Returns 404 if no settlement has been computed yet.")
+    @APIResponse(responseCode = "200", description = "Persisted settlement returned")
+    @APIResponse(responseCode = "404", description = "Split not found or no settlement computed yet")
     @APIResponse(responseCode = "400", description = "Invalid split ID format")
     @GET
     @Path("/{splitId}/settlement")
     public Response getSettlement(@PathParam("splitId") String splitId) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.getPersistedSettlement(splitId)
+                .map(result -> Response.ok(settlementMapper.toDTO(result.settlement(), result.participants())).build())
+                .orElseThrow(() -> new SettlementNotFoundError(splitId));
+    }
+
+    /**
+     * Calculates the settlement for a split, persists it, and returns it.
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return 200 OK with the calculated settlement, or 404 Not Found, or 400 Bad Request for invalid ID
+     */
+    @Operation(summary = "Calculate settlement", description = "Calculates participant balances and reimbursement proposals, persists the result, and returns it.")
+    @APIResponse(responseCode = "200", description = "Settlement calculated and persisted")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid split ID format")
+    @POST
+    @Path("/{splitId}/settlement")
+    public Response calculateSettlement(@PathParam("splitId") String splitId) {
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }

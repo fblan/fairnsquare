@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settlement Page - Balances & Reimbursement Proposals
 
-  import { getSplit, getSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
+  import { getSplit, resolveSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -11,22 +11,15 @@
 
   const splitId = $derived(route.params.splitId || '');
 
-  // Check if we should show resolved view directly (coming from a persisted settlement)
-  function checkInitialResolved(): boolean {
-    if (typeof window === 'undefined') return false;
-    const resolved = sessionStorage.getItem('settlement-resolved') === 'true';
-    sessionStorage.removeItem('settlement-resolved');
-    return resolved;
-  }
-
   // State
   let settlement = $state<Settlement | null>(null);
   let split = $state<Split | null>(null);
   let splitName = $state('');
   let isLoading = $state(true);
-  let showReimbursements = $state(checkInitialResolved());
+  let showReimbursements = $state(false);
 
-  // Load settlement data
+  // On mount: calculate the settlement (POST) to show balances immediately.
+  // If a settlement is already persisted, show reimbursements directly.
   $effect(() => {
     if (splitId) {
       loadSettlement(splitId);
@@ -36,12 +29,18 @@
   async function loadSettlement(id: string) {
     isLoading = true;
     settlement = null;
+    showReimbursements = false;
 
     try {
-      const [settlementData, splitData] = await Promise.all([getSettlement(id), getSplit(id)]);
-      settlement = settlementData;
+      const [splitData, settlementData] = await Promise.all([getSplit(id), resolveSettlement(id)]);
       split = splitData;
       splitName = splitData.name;
+      settlement = settlementData;
+
+      if (splitData.settlement != null) {
+        // Already resolved before — show reimbursements directly.
+        showReimbursements = true;
+      }
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
@@ -51,6 +50,10 @@
     } finally {
       isLoading = false;
     }
+  }
+
+  function handleResolve() {
+    showReimbursements = true;
   }
 
   function formatCurrency(amount: number): string {
@@ -71,7 +74,6 @@
     if (balance < -0.005) return `Owes ${formatCurrency(Math.abs(balance))}`;
     return 'Settled';
   }
-
 
   function formatSettlementText(url: string): string {
     if (!split || !settlement) return '';
@@ -144,10 +146,6 @@
     }
   }
 
-  function handleResolve() {
-    showReimbursements = true;
-  }
-
   async function handlePreferredCreditorChange(participantId: string, creditorId: string) {
     if (!split) return;
     const participant = split.participants.find(p => p.id === participantId);
@@ -159,8 +157,11 @@
         share: participant.share,
         preferredCreditorId: creditorId || null,
       });
+      // Preferred creditor change clears the persisted settlement — recalculate and reset to pre-resolve state.
       showReimbursements = false;
-      await loadSettlement(splitId);
+      const [splitData, settlementData] = await Promise.all([getSplit(splitId), resolveSettlement(splitId)]);
+      split = splitData;
+      settlement = settlementData;
     } catch (err: any) {
       addToast({ type: 'error', message: err.detail || 'Failed to save preference' });
     }
@@ -186,96 +187,106 @@
       </svg>
       <p class="text-muted-foreground">Loading settlement...</p>
     </div>
-  {:else if settlement}
+  {:else if split}
     <!-- Header -->
     <SplitPageHeader splitName={splitName} {splitId} showBackButton />
 
-    <!-- Balance Cards -->
-    {#if settlement.balances.length === 0}
-      <p class="text-muted-foreground text-center py-4">No participants</p>
-    {:else}
-      <div class="w-full space-y-3">
-        {#each settlement.balances as balance (balance.participantId)}
-          <Card.Root class="w-full">
-            <Card.Content class="py-4">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <span class="font-semibold text-lg">{balance.participantName}</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm mt-1">
-                    <span class="text-muted-foreground">Paid: <span class="font-medium text-foreground">{formatCurrency(balance.totalPaid)}</span></span>
-                    <span class="text-muted-foreground">Cost: <span class="font-medium text-foreground">{formatCurrency(balance.totalCost)}</span></span>
+    {#if settlement}
+      {#if settlement.balances.length === 0}
+        <p class="text-muted-foreground text-center py-4">No participants</p>
+      {:else}
+        <!-- Action Button (before cards, consistent with Add Participant / Add Expense placement) -->
+        {#if showReimbursements}
+          <Button
+            onclick={handleExportSettlement}
+            variant="outline"
+            class="w-full min-h-[44px]"
+          >
+            Export Settlement
+          </Button>
+        {:else}
+          <Button
+            onclick={handleResolve}
+            class="w-full min-h-[44px]"
+          >
+            Resolve
+          </Button>
+        {/if}
+
+        <!-- Balance Cards -->
+        <div class="w-full space-y-3">
+          {#each settlement.balances as balance (balance.participantId)}
+            <Card.Root class="w-full">
+              <Card.Content class="py-4">
+                <div class="flex items-start justify-between">
+                  <div class="flex-1">
+                    <span class="font-semibold text-lg">{balance.participantName}</span>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm mt-1">
+                      <span class="text-muted-foreground">Paid: <span class="font-medium text-foreground">{formatCurrency(balance.totalPaid)}</span></span>
+                      <span class="text-muted-foreground">Cost: <span class="font-medium text-foreground">{formatCurrency(balance.totalCost)}</span></span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-sm font-medium {balanceColorClass(balance.balance)}">
+                      {balanceLabel(balance.balance)}
+                    </span>
                   </div>
                 </div>
-                <div class="text-right">
-                  <span class="text-sm font-medium {balanceColorClass(balance.balance)}">
-                    {balanceLabel(balance.balance)}
-                  </span>
-                </div>
-              </div>
 
-              <!-- Preferred creditor select for debtors -->
-              {#if balance.balance < -0.005}
-                {@const participant = split?.participants.find(p => p.id === balance.participantId)}
-                <div class="mt-2 pt-2 border-t border-border flex items-center gap-2">
-                  <label class="text-xs text-muted-foreground whitespace-nowrap" for="preferred-{balance.participantId}">
-                    Reimburse first:
-                  </label>
-                  <select
-                    id="preferred-{balance.participantId}"
-                    aria-label="Preferred creditor for {balance.participantName}"
-                    value={participant?.preferredCreditorId ?? ''}
-                    onchange={(e) => handlePreferredCreditorChange(balance.participantId, e.currentTarget.value)}
-                    class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">No preference</option>
-                    {#each settlement.balances.filter(b => b.balance > 0.005) as creditor}
-                      <option value={creditor.participantId}>{creditor.participantName}</option>
-                    {/each}
-                  </select>
-                </div>
-              {/if}
-
-              <!-- Reimbursement details for this participant -->
-              {#if showReimbursements}
-                {@const outgoing = settlement!.reimbursements.filter(r => r.fromId === balance.participantId)}
-                {@const incoming = settlement!.reimbursements.filter(r => r.toId === balance.participantId)}
-                {#if outgoing.length > 0 || incoming.length > 0}
-                  <div class="mt-3 pt-3 border-t border-border space-y-1">
-                    {#each outgoing as r}
-                      <p class="text-sm text-red-600">
-                        Pay {formatCurrency(r.amount)} to {r.toName}
-                      </p>
-                    {/each}
-                    {#each incoming as r}
-                      <p class="text-sm text-green-600">
-                        Receive {formatCurrency(r.amount)} from {r.fromName}
-                      </p>
-                    {/each}
+                <!-- Preferred creditor select for debtors -->
+                {#if balance.balance < -0.005}
+                  {@const participant = split?.participants.find(p => p.id === balance.participantId)}
+                  <div class="mt-2 pt-2 border-t border-border flex items-center gap-2">
+                    <label class="text-xs text-muted-foreground whitespace-nowrap" for="preferred-{balance.participantId}">
+                      Reimburse first:
+                    </label>
+                    <select
+                      id="preferred-{balance.participantId}"
+                      aria-label="Preferred creditor for {balance.participantName}"
+                      value={participant?.preferredCreditorId ?? ''}
+                      onchange={(e) => handlePreferredCreditorChange(balance.participantId, e.currentTarget.value)}
+                      class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">No preference</option>
+                      {#each settlement.balances.filter(b => b.balance > 0.005) as creditor}
+                        <option value={creditor.participantId}>{creditor.participantName}</option>
+                      {/each}
+                    </select>
                   </div>
                 {/if}
-              {/if}
-            </Card.Content>
-          </Card.Root>
-        {/each}
-      </div>
 
-      <!-- Resolve / Export Button -->
-      {#if !showReimbursements}
-        <Button
-          onclick={handleResolve}
-          class="w-full min-h-[44px]"
-        >
-          Resolve
-        </Button>
-      {:else}
-        <Button
-          onclick={handleExportSettlement}
-          variant="outline"
-          class="w-full min-h-[44px]"
-        >
-          Export Settlement
-        </Button>
+                <!-- Reimbursement details for this participant -->
+                {#if showReimbursements}
+                  {@const outgoing = settlement!.reimbursements.filter(r => r.fromId === balance.participantId)}
+                  {@const incoming = settlement!.reimbursements.filter(r => r.toId === balance.participantId)}
+                  {#if outgoing.length > 0 || incoming.length > 0}
+                    <div class="mt-3 pt-3 border-t border-border space-y-1">
+                      {#each outgoing as r}
+                        <p class="text-sm text-red-600">
+                          Pay {formatCurrency(r.amount)} to {r.toName}
+                        </p>
+                      {/each}
+                      {#each incoming as r}
+                        <p class="text-sm text-green-600">
+                          Receive {formatCurrency(r.amount)} from {r.fromName}
+                        </p>
+                      {/each}
+                    </div>
+                  {/if}
+                {/if}
+              </Card.Content>
+            </Card.Root>
+          {/each}
+        </div>
       {/if}
+    {:else}
+      <!-- Settlement not yet loaded (e.g. error on initial load) -->
+      <Button
+        onclick={handleResolve}
+        class="w-full min-h-[44px]"
+      >
+        Resolve
+      </Button>
     {/if}
   {/if}
 </div>

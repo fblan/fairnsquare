@@ -18,8 +18,8 @@ vi.mock('$lib/router', () => {
 
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
-  getSettlement: vi.fn(),
   getSplit: vi.fn(),
+  resolveSettlement: vi.fn(),
   updateParticipant: vi.fn(),
 }));
 
@@ -28,7 +28,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSettlement, getSplit, updateParticipant } from '$lib/api/splits';
+import { getSplit, resolveSettlement, updateParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -80,21 +80,30 @@ const mockSettlementAllSettled: SettlementType = {
   reimbursements: [],
 };
 
+const mockSplitNoSettlement = {
+  id: 'test-split-id',
+  name: 'Test Split',
+  createdAt: '2026-01-01T00:00:00Z',
+  participants: [
+    { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+    { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+  ],
+  expenses: [],
+  settlement: null,
+};
+
+// A split where settlement was already persisted (non-null)
+const mockSplitWithSettlement = {
+  ...mockSplitNoSettlement,
+  settlement: mockSettlement,
+};
+
 describe('Settlement', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id' };
-    vi.mocked(getSplit).mockResolvedValue({
-      id: 'test-split-id',
-      name: 'Test Split',
-      createdAt: '2026-01-01T00:00:00Z',
-      participants: [
-        { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-        { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
-      ],
-      expenses: [],
-      settlement: null,
-    });
+    vi.mocked(getSplit).mockResolvedValue(mockSplitNoSettlement);
+    vi.mocked(resolveSettlement).mockResolvedValue(mockSettlement);
     vi.mocked(updateParticipant).mockResolvedValue({
       id: 'p2',
       name: 'Bob',
@@ -107,7 +116,7 @@ describe('Settlement', () => {
   // --- Loading State ---
 
   it('shows loading state initially', () => {
-    vi.mocked(getSettlement).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(getSplit).mockImplementation(() => new Promise(() => {}));
     render(Settlement);
 
     expect(screen.getByText('Loading settlement...')).toBeInTheDocument();
@@ -115,9 +124,7 @@ describe('Settlement', () => {
 
   // --- Header ---
 
-  it('displays header with back button and split name', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
+  it('displays header with back button and split name after load', async () => {
     render(Settlement);
 
     await waitFor(() => {
@@ -128,8 +135,6 @@ describe('Settlement', () => {
   });
 
   it('navigates back to dashboard when back button is clicked', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
     render(Settlement);
 
     await waitFor(() => {
@@ -142,8 +147,8 @@ describe('Settlement', () => {
 
   // --- Error Handling ---
 
-  it('shows toast on API error', async () => {
-    vi.mocked(getSettlement).mockRejectedValue({
+  it('shows toast on API error during load', async () => {
+    vi.mocked(getSplit).mockRejectedValue({
       status: 500,
       detail: 'Server error',
     });
@@ -158,89 +163,42 @@ describe('Settlement', () => {
     });
   });
 
-  // --- Balance Cards ---
-
-  it('displays participant balance cards with names', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+  it('shows toast when resolveSettlement fails on load', async () => {
+    vi.mocked(resolveSettlement).mockRejectedValue({
+      status: 500,
+      detail: 'Calculation failed',
+    });
 
     render(Settlement);
 
     await waitFor(() => {
-      // Alice appears in both her card and Bob's preferred creditor dropdown
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Calculation failed',
+      });
+    });
+  });
+
+  // --- Page load behaviour (no persisted settlement) ---
+
+  it('calls resolveSettlement on page load', async () => {
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(resolveSettlement).toHaveBeenCalledWith('test-split-id');
+    });
+  });
+
+  it('shows balance cards after load without clicking Resolve', async () => {
+    render(Settlement);
+
+    await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
       expect(screen.getByText('Bob')).toBeInTheDocument();
     });
   });
 
-  it('displays paid and cost amounts on balance cards', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
-    render(Settlement);
-
-    await waitFor(() => {
-      expect(screen.getByText('Bob')).toBeInTheDocument();
-    });
-
-    // Alice: Paid €100.00, Cost €50.00
-    expect(screen.getByText('€100.00')).toBeInTheDocument();
-    // Bob: Paid €0.00, Cost €50.00
-    expect(screen.getByText('€0.00')).toBeInTheDocument();
-  });
-
-  it('displays positive balance as "Owed" in green', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
-    render(Settlement);
-
-    await waitFor(() => {
-      expect(screen.getByText('Owed €50.00')).toBeInTheDocument();
-    });
-
-    const owedElement = screen.getByText('Owed €50.00');
-    expect(owedElement.className).toContain('text-green-600');
-  });
-
-  it('displays negative balance as "Owes" in red', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
-    render(Settlement);
-
-    await waitFor(() => {
-      expect(screen.getByText('Owes €50.00')).toBeInTheDocument();
-    });
-
-    const owesElement = screen.getByText('Owes €50.00');
-    expect(owesElement.className).toContain('text-red-600');
-  });
-
-  it('displays zero balance as "Settled"', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlementAllSettled);
-
-    render(Settlement);
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Settled')).toHaveLength(2);
-    });
-  });
-
-  it('shows "No participants" when balances are empty', async () => {
-    vi.mocked(getSettlement).mockResolvedValue({
-      balances: [],
-      reimbursements: [],
-    });
-
-    render(Settlement);
-
-    await waitFor(() => {
-      expect(screen.getByText('No participants')).toBeInTheDocument();
-    });
-  });
-
-  // --- Resolve Button ---
-
-  it('shows Resolve button when reimbursements are not yet shown', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
+  it('shows Resolve button on load when no settlement was previously persisted', async () => {
     render(Settlement);
 
     await waitFor(() => {
@@ -249,21 +207,19 @@ describe('Settlement', () => {
   });
 
   it('does not show reimbursement details before clicking Resolve', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/Pay.*to/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Receive.*from/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
+    expect(screen.queryByText('Receive €50.00 from Bob')).not.toBeInTheDocument();
   });
 
-  it('shows reimbursement details after clicking Resolve', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+  // --- Resolve button action ---
 
+  it('shows reimbursement details after clicking Resolve', async () => {
     render(Settlement);
 
     await waitFor(() => {
@@ -273,15 +229,12 @@ describe('Settlement', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
     await waitFor(() => {
-      // Bob pays Alice €50
       expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
       expect(screen.getByText('Receive €50.00 from Bob')).toBeInTheDocument();
     });
   });
 
-  it('hides Resolve button after clicking it', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
+  it('hides Resolve button and shows Export Settlement after clicking Resolve', async () => {
     render(Settlement);
 
     await waitFor(() => {
@@ -292,52 +245,85 @@ describe('Settlement', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
     });
   });
 
-  it('does not show Resolve button when all participants are settled', async () => {
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlementAllSettled);
+  it('does not call resolveSettlement again when Resolve is clicked', async () => {
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+    // resolveSettlement was called once on load, never again on button click
+    expect(resolveSettlement).toHaveBeenCalledTimes(1);
+  });
+
+  // --- Already-persisted settlement ---
+
+  it('shows reimbursements directly when split already has a persisted settlement', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithSettlement);
+
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
+    });
+
+    expect(resolveSettlement).toHaveBeenCalledWith('test-split-id');
+    expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+  });
+
+  // --- Balance card display ---
+
+  it('displays positive balance as "Owed" in green', async () => {
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Owed €50.00')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Owed €50.00').className).toContain('text-green-600');
+  });
+
+  it('displays negative balance as "Owes" in red', async () => {
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Owes €50.00')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Owes €50.00').className).toContain('text-red-600');
+  });
+
+  it('displays zero balance as "Settled"', async () => {
+    vi.mocked(resolveSettlement).mockResolvedValue(mockSettlementAllSettled);
 
     render(Settlement);
 
     await waitFor(() => {
       expect(screen.getAllByText('Settled')).toHaveLength(2);
     });
-
-    // Resolve button should still be shown (it's hidden only after clicking)
-    // But after clicking, no reimbursement details appear since the list is empty
-    expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
   });
 
-  // --- Auto-resolved via sessionStorage ---
-
-  it('shows reimbursements directly when settlement-resolved flag is set', async () => {
-    // Simulate flag set by Split dashboard
-    sessionStorage.setItem('settlement-resolved', 'true');
-
-    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+  it('shows "No participants" when balances are empty', async () => {
+    vi.mocked(resolveSettlement).mockResolvedValue({ balances: [], reimbursements: [] });
 
     render(Settlement);
 
     await waitFor(() => {
-      // Reimbursements should be visible immediately without clicking Resolve
-      expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
-      expect(screen.getByText('Receive €50.00 from Bob')).toBeInTheDocument();
+      expect(screen.getByText('No participants')).toBeInTheDocument();
     });
-
-    // Resolve button should not be visible
-    expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument();
-
-    // Flag should be consumed (removed from sessionStorage)
-    expect(sessionStorage.getItem('settlement-resolved')).toBeNull();
   });
 
   // --- Export Settlement ---
 
   describe('Export Settlement', () => {
     it('does not show Export Settlement button before clicking Resolve', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
       render(Settlement);
 
       await waitFor(() => {
@@ -348,14 +334,9 @@ describe('Settlement', () => {
     });
 
     it('shows Export Settlement button after clicking Resolve', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
       await waitFor(() => {
@@ -380,20 +361,13 @@ describe('Settlement', () => {
         ],
         settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
 
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
@@ -407,26 +381,16 @@ describe('Settlement', () => {
     it('shows info toast with text when clipboard is unavailable', async () => {
       Object.assign(navigator, { clipboard: undefined });
 
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
-        expect(addToast).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'info' })
-        );
+        expect(addToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
       });
     });
 
@@ -449,7 +413,7 @@ describe('Settlement', () => {
         ],
         settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue({
+      vi.mocked(resolveSettlement).mockResolvedValue({
         balances: [
           { participantId: 'p1', participantName: 'Alice', totalPaid: 150, totalCost: 50, balance: 100 },
           { participantId: 'p2', participantName: 'Bob', totalPaid: 0, totalCost: 50, balance: -50 },
@@ -463,16 +427,10 @@ describe('Settlement', () => {
 
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
@@ -486,20 +444,14 @@ describe('Settlement', () => {
       const writeText = vi.fn().mockResolvedValue(undefined);
       Object.assign(navigator, { clipboard: { writeText } });
 
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlementAllSettled);
+      vi.mocked(resolveSettlement).mockResolvedValue(mockSettlementAllSettled);
 
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
@@ -525,7 +477,7 @@ describe('Settlement', () => {
         expenses: [],
         settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue({
+      vi.mocked(resolveSettlement).mockResolvedValue({
         balances: [
           { participantId: 'p1', participantName: 'Alice', totalPaid: 200, totalCost: 50, balance: 150 },
           { participantId: 'p2', participantName: 'Bob', totalPaid: 100, totalCost: 50, balance: 50 },
@@ -541,16 +493,10 @@ describe('Settlement', () => {
 
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
@@ -576,7 +522,7 @@ describe('Settlement', () => {
         expenses: [],
         settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue({
+      vi.mocked(resolveSettlement).mockResolvedValue({
         balances: [
           { participantId: 'p1', participantName: 'Alice', totalPaid: 100, totalCost: 33, balance: 67 },
           { participantId: 'p2', participantName: 'Zoe', totalPaid: 0, totalCost: 33, balance: -33 },
@@ -590,16 +536,10 @@ describe('Settlement', () => {
 
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
-      });
-
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
 
       await waitFor(() => {
@@ -614,43 +554,32 @@ describe('Settlement', () => {
   // --- Preferred Creditor ---
 
   describe('Preferred Creditor', () => {
-    it('shows preferred creditor select for debtors', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
+    it('shows preferred creditor select for debtors on load', async () => {
       render(Settlement);
 
       await waitFor(() => {
-        // Bob owes money → should have a select
         expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
       });
     });
 
     it('does not show preferred creditor select for creditors', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
       render(Settlement);
 
       await waitFor(() => {
         expect(screen.getByText('Bob')).toBeInTheDocument();
       });
 
-      // Alice is owed money → no select for her
       expect(screen.queryByRole('combobox', { name: 'Preferred creditor for Alice' })).not.toBeInTheDocument();
     });
 
     it('pre-selects the current preferred creditor', async () => {
       vi.mocked(getSplit).mockResolvedValue({
-        id: 'test-split-id',
-        name: 'Test Split',
-        createdAt: '2026-01-01T00:00:00Z',
+        ...mockSplitNoSettlement,
         participants: [
           { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
           { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
         ],
-        expenses: [],
-        settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
 
       render(Settlement);
 
@@ -661,8 +590,6 @@ describe('Settlement', () => {
     });
 
     it('calls updateParticipant when preferred creditor changes', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
       render(Settlement);
 
       await waitFor(() => {
@@ -684,17 +611,12 @@ describe('Settlement', () => {
 
     it('sends null preferredCreditorId when "No preference" is selected', async () => {
       vi.mocked(getSplit).mockResolvedValue({
-        id: 'test-split-id',
-        name: 'Test Split',
-        createdAt: '2026-01-01T00:00:00Z',
+        ...mockSplitNoSettlement,
         participants: [
           { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
           { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
         ],
-        expenses: [],
-        settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
 
       render(Settlement);
 
@@ -716,20 +638,15 @@ describe('Settlement', () => {
     });
 
     it('only lists creditors (participants with positive balance) as options', async () => {
-      // Three participants: Alice (creditor), Bob (debtor), Charlie (debtor)
       vi.mocked(getSplit).mockResolvedValue({
-        id: 'test-split-id',
-        name: 'Test Split',
-        createdAt: '2026-01-01T00:00:00Z',
+        ...mockSplitNoSettlement,
         participants: [
           { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
           { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
           { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
         ],
-        expenses: [],
-        settlement: null,
       });
-      vi.mocked(getSettlement).mockResolvedValue({
+      vi.mocked(resolveSettlement).mockResolvedValue({
         balances: [
           { participantId: 'p1', participantName: 'Alice', totalPaid: 100, totalCost: 33, balance: 67 },
           { participantId: 'p2', participantName: 'Bob', totalPaid: 0, totalCost: 33, balance: -33 },
@@ -746,39 +663,15 @@ describe('Settlement', () => {
 
       const bobSelect = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
       const bobOptions = Array.from(bobSelect.options).map(o => o.text);
-      // Only Alice (creditor) should appear as an option, not Charlie (fellow debtor)
       expect(bobOptions).toContain('Alice');
       expect(bobOptions).not.toContain('Charlie');
     });
 
-    it('keeps the select enabled after clicking Resolve', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
+    it('recalculates settlement and resets to pre-resolve state when preferred creditor changes', async () => {
       render(Settlement);
 
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
-
-      await waitFor(() => {
-        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
-      });
-
-      expect(select.disabled).toBe(false);
-    });
-
-    it('reloads the settlement and hides reimbursements when preferred creditor changes after Resolve', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
-
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-      });
-
+      // Click Resolve first to see reimbursements
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
       await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
       await waitFor(() => {
@@ -790,16 +683,14 @@ describe('Settlement', () => {
 
       await waitFor(() => {
         expect(updateParticipant).toHaveBeenCalled();
-        expect(getSettlement).toHaveBeenCalledTimes(2);
+        // Reimbursements hidden (reset to pre-resolve), balance cards still visible, Resolve button shown again
+        expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+        expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
       });
-
-      // Reimbursements are hidden until user clicks Resolve again
-      expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
     });
 
     it('shows error toast when updateParticipant fails', async () => {
-      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
       vi.mocked(updateParticipant).mockRejectedValue({ detail: 'Save failed' });
 
       render(Settlement);

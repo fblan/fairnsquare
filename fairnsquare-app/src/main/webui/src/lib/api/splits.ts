@@ -242,10 +242,21 @@ export async function deleteExpense(
 }
 
 /**
- * Gets the settlement for a split: participant balances and reimbursement proposals.
+ * Returns the persisted settlement for a split without recalculating it.
+ * Throws a 404 ApiError if no settlement has been computed yet.
  * @param splitId The split identifier
- * @returns The settlement with balances and reimbursements
+ * @returns The persisted settlement with balances and reimbursements
  */
 export async function getSettlement(splitId: string): Promise<Settlement> {
   return apiRequest<Settlement>(`/splits/${splitId}/settlement`);
+}
+
+/**
+ * Calculates the settlement for a split, persists it, and returns it.
+ * This is the explicit user action — call it only when the user requests resolution.
+ * @param splitId The split identifier
+ * @returns The calculated settlement with balances and reimbursements
+ */
+export async function resolveSettlement(splitId: string): Promise<Settlement> {
+  return apiRequest<Settlement>(`/splits/${splitId}/settlement`, { method: 'POST' });
 }

@@ -140,7 +140,6 @@
         <button
           class="w-full text-left"
           onclick={() => {
-            if (isSettled) sessionStorage.setItem('settlement-resolved', 'true');
             navigate(`/splits/${splitId}/settlement`);
           }}
           aria-label="View settlement"
