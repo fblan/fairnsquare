@@ -130,6 +130,19 @@ const mockSplitForFilters: SplitType = {
   ],
 };
 
+const mockSplitSettled: SplitType = {
+  ...mockSplitWithExpenses,
+  settlement: {
+    balances: [
+      { participantId: 'p1', participantName: 'Alice', totalPaid: 90, totalCost: 75, balance: 15 },
+      { participantId: 'p2', participantName: 'Bob', totalPaid: 60, totalCost: 75, balance: -15 },
+    ],
+    reimbursements: [
+      { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 15 },
+    ],
+  },
+};
+
 describe('ExpenseList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -675,6 +688,82 @@ describe('ExpenseList', () => {
       await waitFor(() => {
         expect(screen.getByText('No matching expenses')).toBeInTheDocument();
       });
+    });
+  });
+
+  // --- Settled read-only mode ---
+
+  describe('Settled read-only mode', () => {
+    it('shows settled banner when split is settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText(/This split is settled/)).toBeInTheDocument();
+      });
+    });
+
+    it('shows "View settlement" link in the settled banner', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'View settlement' })).toBeInTheDocument();
+      });
+    });
+
+    it('"View settlement" link navigates to the settlement page', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'View settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
+      expect(navigate).toHaveBeenCalledWith('/splits/test-split-id-00001/settlement');
+    });
+
+    it('does not show Add Expense button when settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText(/This split is settled/)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: /add expense/i })).not.toBeInTheDocument();
+    });
+
+    it('does not show Edit and Delete buttons on expense cards when settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: 'Edit expense: Groceries' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete expense: Groceries' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Edit expense: Dinner' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete expense: Dinner' })).not.toBeInTheDocument();
+    });
+
+    it('does not show settled banner when split is not settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithExpenses);
+
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/This split is settled/)).not.toBeInTheDocument();
     });
   });
 });

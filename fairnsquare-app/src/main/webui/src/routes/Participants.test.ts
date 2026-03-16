@@ -1043,6 +1043,108 @@ describe('Participants', () => {
     });
   });
 
+  // --- Settled read-only mode ---
+
+  describe('Settled read-only mode', () => {
+    const mockSplitSettled: SplitType = {
+      ...mockSplitWithData,
+      settlement: {
+        balances: [
+          { participantId: 'p1', participantName: 'Alice', totalPaid: 90, totalCost: 75, balance: 15 },
+          { participantId: 'p2', participantName: 'Bob', totalPaid: 60, totalCost: 75, balance: -15 },
+        ],
+        reimbursements: [
+          { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 15 },
+        ],
+      },
+    };
+
+    it('shows settled banner when split is settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText(/This split is settled/)).toBeInTheDocument();
+      });
+    });
+
+    it('shows "View settlement" link in the settled banner', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'View settlement' })).toBeInTheDocument();
+      });
+    });
+
+    it('"View settlement" link navigates to the settlement page', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'View settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'View settlement' }));
+      expect(navigate).toHaveBeenCalledWith('/splits/test-split-id/settlement');
+    });
+
+    it('does not show Add Participant button when settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText(/This split is settled/)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: /Add Participant/i })).not.toBeInTheDocument();
+    });
+
+    it('does not show Edit and Delete buttons on participant cards when settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: 'Edit Alice' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete Alice' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Edit Bob' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Delete Bob' })).not.toBeInTheDocument();
+    });
+
+    it('does not show Add Expense button on participant cards when settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitSettled);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: 'Add expense for Alice' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Add expense for Bob' })).not.toBeInTheDocument();
+    });
+
+    it('does not show settled banner when split is not settled', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+
+      render(Participants);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText(/This split is settled/)).not.toBeInTheDocument();
+    });
+  });
+
   describe('Auto-open from Home creation flow', () => {
     it('auto-opens add form when addParticipant search param is present', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);

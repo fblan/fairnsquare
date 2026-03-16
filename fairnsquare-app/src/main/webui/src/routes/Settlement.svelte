@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settlement Page - Balances & Reimbursement Proposals
 
-  import { getSplit, resolveSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
+  import { getSplit, resolveSettlement, unsettleSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -17,6 +17,7 @@
   let splitName = $state('');
   let isLoading = $state(true);
   let showReimbursements = $state(false);
+  let isUnsettling = $state(false);
 
   // On mount: calculate the settlement (POST) to show balances immediately.
   // If a settlement is already persisted, show reimbursements directly.
@@ -146,6 +147,21 @@
     }
   }
 
+  async function handleUnsettle() {
+    isUnsettling = true;
+    try {
+      await unsettleSettlement(splitId);
+      showReimbursements = false;
+      const [splitData, settlementData] = await Promise.all([getSplit(splitId), resolveSettlement(splitId)]);
+      split = splitData;
+      settlement = settlementData;
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.detail || 'Failed to unsettle' });
+    } finally {
+      isUnsettling = false;
+    }
+  }
+
   async function handlePreferredCreditorChange(participantId: string, creditorId: string) {
     if (!split) return;
     const participant = split.participants.find(p => p.id === participantId);
@@ -195,7 +211,7 @@
       {#if settlement.balances.length === 0}
         <p class="text-muted-foreground text-center py-4">No participants</p>
       {:else}
-        <!-- Action Button (before cards, consistent with Add Participant / Add Expense placement) -->
+        <!-- Action Buttons (before cards, consistent with Add Participant / Add Expense placement) -->
         {#if showReimbursements}
           <Button
             onclick={handleExportSettlement}
@@ -203,6 +219,14 @@
             class="w-full min-h-[44px]"
           >
             Export Settlement
+          </Button>
+          <Button
+            onclick={handleUnsettle}
+            disabled={isUnsettling}
+            variant="ghost"
+            class="w-full min-h-[44px] text-muted-foreground"
+          >
+            {isUnsettling ? 'Unsettling...' : 'Unsettle'}
           </Button>
         {:else}
           <Button

@@ -21,6 +21,7 @@ vi.mock('$lib/api/splits', () => ({
   getSplit: vi.fn(),
   resolveSettlement: vi.fn(),
   updateParticipant: vi.fn(),
+  unsettleSettlement: vi.fn(),
 }));
 
 // Mock the toast store
@@ -28,7 +29,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSplit, resolveSettlement, updateParticipant } from '$lib/api/splits';
+import { getSplit, resolveSettlement, updateParticipant, unsettleSettlement } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -111,6 +112,7 @@ describe('Settlement', () => {
       share: 1,
       preferredCreditorId: null,
     });
+    vi.mocked(unsettleSettlement).mockResolvedValue(undefined);
   });
 
   // --- Loading State ---
@@ -704,6 +706,92 @@ describe('Settlement', () => {
 
       await waitFor(() => {
         expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' });
+      });
+    });
+  });
+
+  // --- Unsettle ---
+
+  describe('Unsettle', () => {
+    it('does not show Unsettle button before clicking Resolve', async () => {
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: 'Unsettle' })).not.toBeInTheDocument();
+    });
+
+    it('shows Unsettle button after clicking Resolve', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Unsettle' })).toBeInTheDocument();
+      });
+    });
+
+    it('shows Unsettle button when split already has a persisted settlement', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Unsettle' })).toBeInTheDocument();
+      });
+    });
+
+    it('calls unsettleSettlement and reloads when Unsettle is clicked', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Unsettle' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Unsettle' }));
+
+      await waitFor(() => {
+        expect(unsettleSettlement).toHaveBeenCalledWith('test-split-id');
+        expect(getSplit).toHaveBeenCalledTimes(2);
+        expect(resolveSettlement).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('resets to pre-resolve state (shows Resolve button, hides reimbursements) after unsettling', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Unsettle' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+        expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Unsettle' })).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows error toast when unsettleSettlement fails', async () => {
+      vi.mocked(unsettleSettlement).mockRejectedValue({ detail: 'Unsettle failed' });
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Unsettle' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Unsettle' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Unsettle failed' });
       });
     });
   });

@@ -260,3 +260,11 @@ export async function getSettlement(splitId: string): Promise<Settlement> {
 export async function resolveSettlement(splitId: string): Promise<Settlement> {
   return apiRequest<Settlement>(`/splits/${splitId}/settlement`, { method: 'POST' });
 }
+
+/**
+ * Clears the persisted settlement for a split, returning it to an editable state.
+ * @param splitId The split identifier
+ */
+export async function unsettleSettlement(splitId: string): Promise<void> {
+  await apiRequest<void>(`/splits/${splitId}/settlement`, { method: 'DELETE' });
+}
