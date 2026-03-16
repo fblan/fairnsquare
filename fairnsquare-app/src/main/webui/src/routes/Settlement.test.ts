@@ -332,6 +332,285 @@ describe('Settlement', () => {
     expect(sessionStorage.getItem('settlement-resolved')).toBeNull();
   });
 
+  // --- Export Settlement ---
+
+  describe('Export Settlement', () => {
+    it('does not show Export Settlement button before clicking Resolve', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: 'Export Settlement' })).not.toBeInTheDocument();
+    });
+
+    it('shows Export Settlement button after clicking Resolve', async () => {
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+    });
+
+    it('copies correct formatted text to clipboard when Export Settlement is clicked', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Trip to Paris',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+        ],
+        expenses: [
+          { id: 'e1', description: 'Dinner', amount: 100, payerId: 'p1', splitMode: 'EQUAL', createdAt: '2026-01-01T00:00:00Z', shares: [] },
+        ],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(
+          '=== Trip to Paris ===\n1 expense — Total: €100.00\n2 participants\n\nSettlements:\nBob → Alice: €50.00\n\nSummary:\nAlice receives €50.00\n\nhttp://localhost:3000/'
+        );
+        expect(addToast).toHaveBeenCalledWith({ type: 'success', message: 'Settlement copied to clipboard!' });
+      });
+    });
+
+    it('shows info toast with text when clipboard is unavailable', async () => {
+      Object.assign(navigator, { clipboard: undefined });
+
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'info' })
+        );
+      });
+    });
+
+    it('formats text with plural expense/participant labels correctly', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Weekend Trip',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+        ],
+        expenses: [
+          { id: 'e1', description: 'Hotel', amount: 90, payerId: 'p1', splitMode: 'EQUAL', createdAt: '2026-01-01T00:00:00Z', shares: [] },
+          { id: 'e2', description: 'Food', amount: 60, payerId: 'p1', splitMode: 'EQUAL', createdAt: '2026-01-01T00:00:00Z', shares: [] },
+        ],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue({
+        balances: [
+          { participantId: 'p1', participantName: 'Alice', totalPaid: 150, totalCost: 50, balance: 100 },
+          { participantId: 'p2', participantName: 'Bob', totalPaid: 0, totalCost: 50, balance: -50 },
+          { participantId: 'p3', participantName: 'Charlie', totalPaid: 0, totalCost: 50, balance: -50 },
+        ],
+        reimbursements: [
+          { fromId: 'p2', fromName: 'Bob', toId: 'p1', toName: 'Alice', amount: 50 },
+          { fromId: 'p3', fromName: 'Charlie', toId: 'p1', toName: 'Alice', amount: 50 },
+        ],
+      });
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(
+          '=== Weekend Trip ===\n2 expenses — Total: €150.00\n3 participants\n\nSettlements:\nBob → Alice: €50.00\nCharlie → Alice: €50.00\n\nSummary:\nAlice receives €50.00 + €50.00 = €100.00\n\nhttp://localhost:3000/'
+        );
+      });
+    });
+
+    it('formats text with "All settled" message when no reimbursements needed', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      vi.mocked(getSettlement).mockResolvedValue(mockSettlementAllSettled);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        const text = writeText.mock.calls[0][0] as string;
+        expect(text).toContain('All settled — no transfers needed!');
+      });
+    });
+
+    it('shows summary with multiple creditors when several people receive money', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Group Trip',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p4', name: 'Diana', nights: 2, share: 1, preferredCreditorId: null },
+        ],
+        expenses: [],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue({
+        balances: [
+          { participantId: 'p1', participantName: 'Alice', totalPaid: 200, totalCost: 50, balance: 150 },
+          { participantId: 'p2', participantName: 'Bob', totalPaid: 100, totalCost: 50, balance: 50 },
+          { participantId: 'p3', participantName: 'Charlie', totalPaid: 0, totalCost: 100, balance: -100 },
+          { participantId: 'p4', participantName: 'Diana', totalPaid: 0, totalCost: 100, balance: -100 },
+        ],
+        reimbursements: [
+          { fromId: 'p3', fromName: 'Charlie', toId: 'p1', toName: 'Alice', amount: 100 },
+          { fromId: 'p4', fromName: 'Diana', toId: 'p1', toName: 'Alice', amount: 50 },
+          { fromId: 'p4', fromName: 'Diana', toId: 'p2', toName: 'Bob', amount: 50 },
+        ],
+      });
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        const text = writeText.mock.calls[0][0] as string;
+        expect(text).toContain('Alice receives €100.00 + €50.00 = €150.00');
+        expect(text).toContain('Bob receives €50.00');
+      });
+    });
+
+    it('sorts reimbursements alphabetically by payer name', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+
+      vi.mocked(getSplit).mockResolvedValue({
+        id: 'test-split-id',
+        name: 'Test',
+        createdAt: '2026-01-01T00:00:00Z',
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
+          { id: 'p2', name: 'Zoe', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+        ],
+        expenses: [],
+        settlement: null,
+      });
+      vi.mocked(getSettlement).mockResolvedValue({
+        balances: [
+          { participantId: 'p1', participantName: 'Alice', totalPaid: 100, totalCost: 33, balance: 67 },
+          { participantId: 'p2', participantName: 'Zoe', totalPaid: 0, totalCost: 33, balance: -33 },
+          { participantId: 'p3', participantName: 'Charlie', totalPaid: 0, totalCost: 34, balance: -34 },
+        ],
+        reimbursements: [
+          { fromId: 'p2', fromName: 'Zoe', toId: 'p1', toName: 'Alice', amount: 33 },
+          { fromId: 'p3', fromName: 'Charlie', toId: 'p1', toName: 'Alice', amount: 34 },
+        ],
+      });
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Export Settlement' }));
+
+      await waitFor(() => {
+        const text = writeText.mock.calls[0][0] as string;
+        const charlieIndex = text.indexOf('Charlie');
+        const zoeIndex = text.indexOf('Zoe');
+        expect(charlieIndex).toBeLessThan(zoeIndex);
+      });
+    });
+  });
+
   // --- Preferred Creditor ---
 
   describe('Preferred Creditor', () => {
