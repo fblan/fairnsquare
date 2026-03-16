@@ -60,6 +60,8 @@ coverage/
 *.zip
 *.tar.gz
 *.rar
+# Except committed test fixture archives
+!**/src/test/resources/fixtures/**/*.zip
 
 # JaCoCo
 jacoco.exec
