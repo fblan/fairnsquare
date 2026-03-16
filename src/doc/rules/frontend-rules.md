@@ -55,6 +55,13 @@
 
 - When a page has a primary action button (e.g. Resolve, Add Participant, Add Expense), place it **after the header, before the content list or cards it acts upon**. This ensures the action is reachable without scrolling and is visually consistent across pages. Do not place primary action buttons below a list of items.
 
+## Read-Only UI State for Locked Resources
+
+- When a resource can be in a locked/read-only state (e.g. a settled split), derive the locked flag reactively using `$derived` from the resource data rather than a separate state variable.
+- Gate action buttons (Add, Edit, Delete) with `{#if !isLocked}` — never just disable them. Hidden actions cannot be accidentally triggered and avoid misleading affordances.
+- Show an amber banner that explains why editing is unavailable and provides a direct link/button to the action that would unlock the resource.
+- Keep the locked-state check in a single `$derived` per page and reference it everywhere on that page — do not duplicate the condition inline.
+
 ## Capturing Transient State Before Reset
 
 - When post-action feedback (e.g. a toast) needs to reference form state that is reset immediately after the API call, always capture those values into local `const` variables *before* the reset. Do not read from form state after it has been cleared — the values will reflect the reset defaults rather than the submitted data.

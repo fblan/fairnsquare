@@ -16,6 +16,7 @@
 
   // State
   let split = $state<Split | null>(null);
+  const isSettled = $derived(split?.settlement != null);
   let isLoading = $state(true);
 
   // Delete confirmation state
@@ -283,6 +284,16 @@
     <!-- Header -->
     <SplitPageHeader splitName={split.name} {splitId} showBackButton />
 
+    <!-- Settled Banner -->
+    {#if isSettled}
+      <div class="w-full flex items-center gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-sm text-amber-800">
+        <span class="flex-1">This split is settled — expenses are read-only.</span>
+        <button onclick={() => navigate(`/splits/${splitId}/settlement`)} class="underline font-medium whitespace-nowrap">
+          View settlement
+        </button>
+      </div>
+    {/if}
+
     <!-- Filter Bar -->
     {#if split.participants.length > 0}
       <section class="w-full" aria-label="Expense filters">
@@ -343,14 +354,16 @@
     </section>
 
     <!-- Add Expense Button -->
-    <Button
-      onclick={handleAddExpense}
-      variant="outline"
-      class="w-full min-h-[44px]"
-    >
-      <Plus class="h-4 w-4 mr-1" />
-      Add Expense
-    </Button>
+    {#if !isSettled}
+      <Button
+        onclick={handleAddExpense}
+        variant="outline"
+        class="w-full min-h-[44px]"
+      >
+        <Plus class="h-4 w-4 mr-1" />
+        Add Expense
+      </Button>
+    {/if}
 
     {#if sortedExpenses.length === 0}
       <!-- Empty State - no expenses at all -->
@@ -401,26 +414,28 @@
               </div>
 
               <!-- Row 4: Actions -->
-              <div class="flex items-center justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onclick={() => handleEditClick(expense)}
-                  class="min-h-[44px] min-w-[44px]"
-                  aria-label="Edit expense: {expense.description}"
-                >
-                  <Pencil class="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onclick={() => handleDeleteClick(expense)}
-                  class="min-h-[44px] min-w-[44px] text-destructive hover:text-destructive"
-                  aria-label="Delete expense: {expense.description}"
-                >
-                  <Trash2 class="h-4 w-4" />
-                </Button>
-              </div>
+              {#if !isSettled}
+                <div class="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => handleEditClick(expense)}
+                    class="min-h-[44px] min-w-[44px]"
+                    aria-label="Edit expense: {expense.description}"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => handleDeleteClick(expense)}
+                    class="min-h-[44px] min-w-[44px] text-destructive hover:text-destructive"
+                    aria-label="Delete expense: {expense.description}"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </Button>
+                </div>
+              {/if}
             </Card.Content>
           </Card.Root>
         {/each}

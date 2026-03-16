@@ -149,6 +149,32 @@ public class SplitResource {
     }
 
     /**
+     * Clears the persisted settlement for a split (unsettle).
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return 204 No Content if cleared, 404 Not Found if split does not exist, 400 Bad Request for invalid ID
+     */
+    @Operation(summary = "Unsettle", description = "Clears the persisted settlement for a split, allowing participants and expenses to be edited again.")
+    @APIResponse(responseCode = "204", description = "Settlement cleared")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid split ID format")
+    @DELETE
+    @Path("/{splitId}/settlement")
+    public Response unsettleSettlement(@PathParam("splitId") String splitId) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        if (!splitService.unsettleSettlement(splitId)) {
+            throw new SplitNotFoundError(splitId);
+        }
+
+        return Response.noContent().build();
+    }
+
+    /**
      * Adds a participant to a split.
      *
      * @param splitId

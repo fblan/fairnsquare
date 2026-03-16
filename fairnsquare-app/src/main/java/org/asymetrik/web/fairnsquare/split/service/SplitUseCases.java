@@ -104,6 +104,22 @@ public class SplitUseCases {
     }
 
     /**
+     * Clears the persisted settlement for a split (unsettle).
+     *
+     * @param splitId
+     *            the split identifier
+     *
+     * @return true if the split was found and unsettled, false if the split does not exist
+     */
+    public boolean unsettleSettlement(@LogTag("splitId") String splitId) {
+        return repository.load(splitId).map(split -> {
+            split.clearSettlement();
+            repository.save(split);
+            return true;
+        }).orElse(false);
+    }
+
+    /**
      * Checks if a split exists.
      *
      * @param splitId

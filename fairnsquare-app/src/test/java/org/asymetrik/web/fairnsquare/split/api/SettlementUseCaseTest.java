@@ -91,6 +91,42 @@ class SettlementUseCaseTest {
                 .statusCode(404);
     }
 
+    // --- DELETE /api/splits/{id}/settlement ---
+
+    @Test
+    void unsettleSettlement_afterCalculation_returns204() {
+        String splitId = createSplitWithParticipantAndExpense();
+
+        given().contentType(ContentType.JSON).when().post("/api/splits/" + splitId + "/settlement").then()
+                .statusCode(200);
+
+        given().when().delete("/api/splits/" + splitId + "/settlement").then().statusCode(204);
+    }
+
+    @Test
+    void unsettleSettlement_afterCalculation_clearsSettlement() {
+        String splitId = createSplitWithParticipantAndExpense();
+
+        given().contentType(ContentType.JSON).when().post("/api/splits/" + splitId + "/settlement").then()
+                .statusCode(200);
+
+        // Unsettle
+        given().when().delete("/api/splits/" + splitId + "/settlement").then().statusCode(204);
+
+        // GET should now return 404 again
+        given().when().get("/api/splits/" + splitId + "/settlement").then().statusCode(404);
+    }
+
+    @Test
+    void unsettleSettlement_withInvalidSplitId_returns400() {
+        given().when().delete("/api/splits/not-a-valid-id/settlement").then().statusCode(400);
+    }
+
+    @Test
+    void unsettleSettlement_withUnknownSplitId_returns404() {
+        given().when().delete("/api/splits/nonExistentSplitId001/settlement").then().statusCode(404);
+    }
+
     // --- helpers ---
 
     /**
