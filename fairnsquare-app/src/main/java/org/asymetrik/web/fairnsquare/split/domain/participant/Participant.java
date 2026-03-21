@@ -1,5 +1,7 @@
 package org.asymetrik.web.fairnsquare.split.domain.participant;
 
+import java.math.BigDecimal;
+
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 /**
@@ -8,12 +10,16 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * <p>
  * The optional {@code preferredCreditorId} stores the ID of the participant this person prefers to reimburse first.
  * When set, the settlement algorithm will honour this preference before running its greedy optimisation.
+ * <p>
+ * The fields {@code totalPaid}, {@code totalCost}, and {@code balance} are computed from the split's expenses and are
+ * never persisted. They are recalculated by the {@code Split} aggregate root whenever participants or expenses change.
  */
-public record Participant(Id id, Name name, Nights nights, Share share, Id preferredCreditorId) {
+public record Participant(Id id, Name name, Nights nights, Share share, Id preferredCreditorId, BigDecimal totalPaid,
+        BigDecimal totalCost, BigDecimal balance) {
 
     @Override
     public String toString() {
-        return "Participant{id=%s, nights=%s, share=%s}".formatted(id, nights, share);
+        return "Participant{id=%s, nights=%s, share=%s, balance=%s}".formatted(id, nights, share, balance);
     }
 
     /**
@@ -27,7 +33,8 @@ public record Participant(Id id, Name name, Nights nights, Share share, Id prefe
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(1.0), null);
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(1.0), null, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     /**
@@ -43,7 +50,8 @@ public record Participant(Id id, Name name, Nights nights, Share share, Id prefe
      * @return a new Participant with a generated NanoID
      */
     public static Participant create(String name, double nights, double share) {
-        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(share), null);
+        return new Participant(Id.generate(), new Name(name), new Nights(nights), new Share(share), null,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
     /**

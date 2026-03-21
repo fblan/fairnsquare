@@ -4,6 +4,12 @@
 
 - In mutation methods on aggregate roots, `validate()` must always be the last method call. Any side effects (e.g. `clearSettlement()`) must happen before validation.
 
+- When a domain record holds computed fields derived from the aggregate's state (e.g. denormalized calculations), the following conventions must apply:
+  - They must be documented in the Javadoc as "computed, never persisted".
+  - They must be initialized to a sensible zero/empty value in all factory methods.
+  - The aggregate root is responsible for recalculating them after every mutation. The recalculation call must happen **after** `clearSettlement()` and **before** `validate()`.
+  - Persistence mappers must initialize them to their zero value; the aggregate's mutation methods will restore correct values as the entity is reconstituted from storage.
+
 ## Dev Infrastructure
 
 - Dev-only beans (seeders, data fixtures, etc.) must be placed in a dedicated `*.dev` sub-package and annotated with `@IfBuildProfile("dev")`. They must never be referenced from production code.

@@ -31,6 +31,7 @@ public class ParticipantMapper {
                 ? participant.preferredCreditorId().value()
                 : null;
         return new ParticipantDTO(participant.id().value(), participant.name().value(), participant.nights().value(),
-                participant.share().value(), preferredCreditorId);
+                participant.share().value(), preferredCreditorId, participant.totalPaid(), participant.totalCost(),
+                participant.balance());
     }
 }

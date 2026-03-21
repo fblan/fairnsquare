@@ -2,6 +2,8 @@ package org.asymetrik.web.fairnsquare.split.persistence.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
@@ -60,5 +62,16 @@ class ParticipantPersistenceMapperTest {
         assertThat(roundTrip.name()).isEqualTo(original.name());
         assertThat(roundTrip.nights()).isEqualTo(original.nights());
         assertThat(roundTrip.share()).isEqualTo(original.share());
+    }
+
+    @Test
+    void balanceFieldsAreNotPersisted_alwaysDeserializedAsZero() {
+        ParticipantPersistenceDTO dto = new ParticipantPersistenceDTO("ABCDEFGHIJKLMNOPQRSTu", "Alice", 3, 1.0, null);
+
+        Participant participant = mapper.toDomain(dto);
+
+        assertThat(participant.totalPaid()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(participant.totalCost()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(participant.balance()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 }

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 
 /**
@@ -35,39 +34,12 @@ public class SettlementCalculator {
     }
 
     /**
-     * Calculates per-participant balances: totalPaid, totalCost, and net balance.
+     * Reads per-participant balances directly from the participant fields maintained by the Split aggregate. The Split
+     * keeps totalPaid, totalCost, and balance up-to-date after every mutation.
      */
     private static List<ParticipantBalance> calculateBalances(Split split) {
-        Map<Participant.Id, BigDecimal> paid = new HashMap<>();
-        Map<Participant.Id, BigDecimal> cost = new HashMap<>();
-
-        // Initialize all participants with zero
-        for (Participant p : split.getParticipants()) {
-            paid.put(p.id(), BigDecimal.ZERO);
-            cost.put(p.id(), BigDecimal.ZERO);
-        }
-
-        // Process each expense
-        for (Expense expense : split.getExpenses()) {
-            // Payer paid the full amount
-            paid.merge(expense.getPayerId(), expense.getAmount(), BigDecimal::add);
-
-            // Each participant owes their share
-            for (Expense.Share share : expense.getShares(split)) {
-                cost.merge(share.participantId(), share.amount(), BigDecimal::add);
-            }
-        }
-
-        // Build balance list (preserving participant order)
-        List<ParticipantBalance> balances = new ArrayList<>();
-        for (Participant p : split.getParticipants()) {
-            BigDecimal totalPaid = paid.getOrDefault(p.id(), BigDecimal.ZERO);
-            BigDecimal totalCost = cost.getOrDefault(p.id(), BigDecimal.ZERO);
-            BigDecimal balance = totalPaid.subtract(totalCost);
-            balances.add(new ParticipantBalance(p.id(), totalPaid, totalCost, balance));
-        }
-
-        return balances;
+        return split.getParticipants().stream()
+                .map(p -> new ParticipantBalance(p.id(), p.totalPaid(), p.totalCost(), p.balance())).toList();
     }
 
     /**

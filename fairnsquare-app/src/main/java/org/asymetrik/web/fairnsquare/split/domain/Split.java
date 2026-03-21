@@ -1,9 +1,12 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -112,6 +115,7 @@ public class Split {
         }
         this.participants.add(participant);
         clearSettlement();
+        recalculateBalances();
         validate();
     }
 
@@ -124,6 +128,7 @@ public class Split {
         }
         this.expenses.add(expense);
         clearSettlement();
+        recalculateBalances();
         validate();
     }
 
@@ -151,11 +156,13 @@ public class Split {
         for (int i = 0; i < participants.size(); i++) {
             if (participants.get(i).id().equals(participantId)) {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
-                        new Participant.Nights(newNights), new Participant.Share(newShare), newPreferredCreditorId);
+                        new Participant.Nights(newNights), new Participant.Share(newShare), newPreferredCreditorId,
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
                 participants.set(i, updated);
                 clearSettlement();
+                recalculateBalances();
                 validate();
-                return updated;
+                return participants.stream().filter(p -> p.id().equals(participantId)).findFirst().orElse(updated);
             }
         }
         throw new ParticipantNotFoundError(participantId.value(), id.value());
@@ -212,10 +219,12 @@ public class Split {
         for (int i = 0; i < participants.size(); i++) {
             Participant p = participants.get(i);
             if (participantId.equals(p.preferredCreditorId())) {
-                participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), null));
+                participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), null, BigDecimal.ZERO,
+                        BigDecimal.ZERO, BigDecimal.ZERO));
             }
         }
         clearSettlement();
+        recalculateBalances();
         validate();
     }
 
@@ -254,6 +263,7 @@ public class Split {
                         existing.getCreatedAt());
                 expenses.set(i, updated);
                 clearSettlement();
+                recalculateBalances();
                 validate();
                 return updated;
             }
@@ -276,6 +286,7 @@ public class Split {
             throw new ExpenseNotFoundError(expenseId.value(), id.value());
         }
         clearSettlement();
+        recalculateBalances();
         validate();
     }
 
@@ -308,6 +319,37 @@ public class Split {
      */
     public void clearSettlement() {
         this.settlement = null;
+    }
+
+    /**
+     * Recomputes {@code totalPaid}, {@code totalCost}, and {@code balance} for every participant based on the current
+     * list of expenses. Called automatically after any mutation to participants or expenses. The computed values are
+     * not persisted; they are recalculated on load.
+     */
+    private void recalculateBalances() {
+        Map<Participant.Id, BigDecimal> paid = new HashMap<>();
+        Map<Participant.Id, BigDecimal> cost = new HashMap<>();
+
+        for (Participant p : participants) {
+            paid.put(p.id(), BigDecimal.ZERO);
+            cost.put(p.id(), BigDecimal.ZERO);
+        }
+
+        for (Expense expense : expenses) {
+            paid.merge(expense.getPayerId(), expense.getAmount(), BigDecimal::add);
+            for (Expense.Share share : expense.getShares(this)) {
+                cost.merge(share.participantId(), share.amount(), BigDecimal::add);
+            }
+        }
+
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            BigDecimal totalPaid = paid.getOrDefault(p.id(), BigDecimal.ZERO);
+            BigDecimal totalCost = cost.getOrDefault(p.id(), BigDecimal.ZERO);
+            BigDecimal balance = totalPaid.subtract(totalCost);
+            participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), p.preferredCreditorId(),
+                    totalPaid, totalCost, balance));
+        }
     }
 
     // Getters - return value objects and unmodifiable collections
