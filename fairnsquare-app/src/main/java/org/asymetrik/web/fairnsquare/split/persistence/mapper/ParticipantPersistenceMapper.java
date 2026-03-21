@@ -1,5 +1,7 @@
 package org.asymetrik.web.fairnsquare.split.persistence.mapper;
 
+import java.math.BigDecimal;
+
 import jakarta.enterprise.context.ApplicationScoped;
 
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
@@ -25,7 +27,10 @@ public class ParticipantPersistenceMapper {
         Participant.Id preferredCreditorId = Participant.Id.isValid(dto.preferredCreditorId())
                 ? Participant.Id.of(dto.preferredCreditorId())
                 : null;
+        // Balance fields are not persisted; they will be recalculated by Split after all participants and expenses are
+        // loaded
         return new Participant(Participant.Id.of(dto.id()), new Participant.Name(dto.name()),
-                new Participant.Nights(dto.nights()), new Participant.Share(share), preferredCreditorId);
+                new Participant.Nights(dto.nights()), new Participant.Share(share), preferredCreditorId,
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }
