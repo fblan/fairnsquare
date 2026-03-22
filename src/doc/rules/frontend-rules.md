@@ -66,3 +66,11 @@
 
 - When post-action feedback (e.g. a toast) needs to reference form state that is reset immediately after the API call, always capture those values into local `const` variables *before* the reset. Do not read from form state after it has been cleared — the values will reflect the reset defaults rather than the submitted data.
 - Example: if `formNights` is reset to `1` before `addToast()` is called, capture it first: `const addedNights = formNights;`.
+
+## Page Load Must Not Trigger Mutations
+
+- `$effect` handlers that run on page load must only call safe read (GET) API methods. Never call a mutation-side-effect API (POST, PUT, DELETE) on page load, even if the operation appears idempotent — it can silently undo intentional prior user actions (e.g., calling a resolve POST on load immediately re-persists a settlement the user had just deleted via Unsettle). Derive UI state from already-loaded data, or use a dedicated GET endpoint.
+
+## `getByText` Ambiguity from `<select>` Options
+
+- When entity names appear both as rendered text nodes AND as `<option>` values in a `<select>`, `getByText('Name')` will throw due to multiple matches. Use `getAllByText` when only testing presence, or use more specific queries (`getByRole('heading', { name: '...' })`, `getByRole('combobox', { name: '...' })`).

@@ -152,11 +152,11 @@ public class Split {
      *             if no participant with the given ID exists
      */
     public Participant updateParticipant(Participant.Id participantId, String newName, double newNights,
-            double newShare, Participant.Id newPreferredCreditorId) {
+            double newShare, Participant.SharedAccountId newSharedAccountId) {
         for (int i = 0; i < participants.size(); i++) {
             if (participants.get(i).id().equals(participantId)) {
                 Participant updated = new Participant(participantId, new Participant.Name(newName),
-                        new Participant.Nights(newNights), new Participant.Share(newShare), newPreferredCreditorId,
+                        new Participant.Nights(newNights), new Participant.Share(newShare), newSharedAccountId,
                         BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
                 participants.set(i, updated);
                 clearSettlement();
@@ -214,14 +214,6 @@ public class Split {
         boolean removed = participants.removeIf(p -> p.id().equals(participantId));
         if (!removed) {
             throw new ParticipantNotFoundError(participantId.value(), id.value());
-        }
-        // Clear preferred creditor references pointing to the removed participant
-        for (int i = 0; i < participants.size(); i++) {
-            Participant p = participants.get(i);
-            if (participantId.equals(p.preferredCreditorId())) {
-                participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), null, BigDecimal.ZERO,
-                        BigDecimal.ZERO, BigDecimal.ZERO));
-            }
         }
         clearSettlement();
         recalculateBalances();
@@ -347,8 +339,8 @@ public class Split {
             BigDecimal totalPaid = paid.getOrDefault(p.id(), BigDecimal.ZERO);
             BigDecimal totalCost = cost.getOrDefault(p.id(), BigDecimal.ZERO);
             BigDecimal balance = totalPaid.subtract(totalCost);
-            participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), p.preferredCreditorId(),
-                    totalPaid, totalCost, balance));
+            participants.set(i, new Participant(p.id(), p.name(), p.nights(), p.share(), p.sharedAccountId(), totalPaid,
+                    totalCost, balance));
         }
     }
 

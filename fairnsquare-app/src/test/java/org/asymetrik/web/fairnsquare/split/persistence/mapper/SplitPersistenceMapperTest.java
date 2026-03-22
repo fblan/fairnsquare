@@ -11,6 +11,7 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
+import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementPartyId;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
@@ -146,8 +147,10 @@ class SplitPersistenceMapperTest {
         assertThat(roundTrip.getSettlement().balances()).hasSize(2);
         assertThat(roundTrip.getSettlement().reimbursements()).hasSize(1);
         assertThat(roundTrip.getSettlement().balances().get(0).participantId()).isEqualTo(alice.id());
-        assertThat(roundTrip.getSettlement().reimbursements().get(0).fromId()).isEqualTo(bob.id());
-        assertThat(roundTrip.getSettlement().reimbursements().get(0).toId()).isEqualTo(alice.id());
+        assertThat(roundTrip.getSettlement().reimbursements().get(0).from())
+                .isEqualTo(new SettlementPartyId.Individual(bob.id()));
+        assertThat(roundTrip.getSettlement().reimbursements().get(0).to())
+                .isEqualTo(new SettlementPartyId.Individual(alice.id()));
         assertThat(roundTrip.getSettlement().reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
     }
 

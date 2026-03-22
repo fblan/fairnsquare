@@ -59,3 +59,15 @@
 ## API Layer Placement
 
 - DTOs and mappers for a domain resource must be co-located under the owning domain's `api/` package (e.g. `split/api/expense/dto/`, `split/api/expense/mapper/`). They must not live in a top-level domain package unrelated to the resource that exposes them.
+
+## Domain Polymorphism — Sealed Interfaces
+
+- When a domain concept has multiple structurally distinct variants handled exhaustively (e.g. in a `switch` or `instanceof` chain), model it as a `sealed interface` with `record` implementations (inner or top-level). This gives compile-time exhaustiveness guarantees and prevents unchecked casts. Example: `SettlementParticipant` (`Standard`, `SharedAccount`, `SharedAccountMember`) and `SettlementPartyId` (`Individual`, `Group`).
+
+## Runtime-Computed Domain Projections
+
+- When a domain concept is derived from persisted entities at runtime and never stored itself (e.g. `SettlementParticipant` computed from `Participant` records), place it in the domain package alongside the entities it derives from. Mark it as "not persisted" in its Javadoc. Its mapper must be a stateless utility class with no injectable dependencies — a single static `from(...)` method is sufficient.
+
+## Backward-Compatible Persistence Discriminators
+
+- When adding a type discriminator field to a persistence DTO (e.g. `fromType` on `ReimbursementPersistenceDTO`), use `null` as the legacy default value rather than introducing a migration or a sentinel string. Null (or absent) must map to the original/default type, and the persistence mapper must apply this default explicitly on load. This allows all files written before the discriminator existed to continue loading without modification.

@@ -12,9 +12,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public record ParticipantDTO(@JsonProperty("id") String id, @JsonProperty("name") String name,
         @JsonProperty("nights") double nights, @JsonProperty("share") double share,
-        @JsonProperty("preferredCreditorId") String preferredCreditorId,
-        @JsonProperty("totalPaid") BigDecimal totalPaid, @JsonProperty("totalCost") BigDecimal totalCost,
-        @JsonProperty("balance") BigDecimal balance) {
+        @JsonProperty("sharedAccountId") String sharedAccountId, @JsonProperty("totalPaid") BigDecimal totalPaid,
+        @JsonProperty("totalCost") BigDecimal totalCost, @JsonProperty("balance") BigDecimal balance) {
 
     @JsonCreator
     public ParticipantDTO {

@@ -15,8 +15,8 @@ public record UpdateParticipantRequest(
 
         @DecimalMin(value = "0.5", message = "Share must be at least 0.5") @DecimalMax(value = "50", message = "Share cannot exceed 50") Double share,
 
-        /** ID of the participant this person prefers to reimburse first. Null clears the preference. */
-        String preferredCreditorId) {
+        /** ID of the shared-account group this participant belongs to. Null removes the participant from any group. */
+        String sharedAccountId) {
 
     /**
      * Returns the share, defaulting to 1.0 if not specified.
