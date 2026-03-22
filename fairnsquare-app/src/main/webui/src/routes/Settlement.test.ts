@@ -19,9 +19,10 @@ vi.mock('$lib/router', () => {
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
   getSplit: vi.fn(),
+  getSettlement: vi.fn(),
   resolveSettlement: vi.fn(),
-  updateParticipant: vi.fn(),
   unsettleSettlement: vi.fn(),
+  updateParticipant: vi.fn(),
 }));
 
 // Mock the toast store
@@ -29,7 +30,7 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
-import { getSplit, resolveSettlement, updateParticipant, unsettleSettlement } from '$lib/api/splits';
+import { getSplit, getSettlement, resolveSettlement, unsettleSettlement, updateParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 
@@ -86,8 +87,8 @@ const mockSplitNoSettlement = {
   name: 'Test Split',
   createdAt: '2026-01-01T00:00:00Z',
   participants: [
-    { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-    { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+    { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 50, balance: 50 },
+    { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 50, balance: -50 },
   ],
   expenses: [],
   settlement: null,
@@ -104,15 +105,12 @@ describe('Settlement', () => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id' };
     vi.mocked(getSplit).mockResolvedValue(mockSplitNoSettlement);
+    vi.mocked(getSettlement).mockResolvedValue(mockSettlement);
     vi.mocked(resolveSettlement).mockResolvedValue(mockSettlement);
-    vi.mocked(updateParticipant).mockResolvedValue({
-      id: 'p2',
-      name: 'Bob',
-      nights: 2,
-      share: 1,
-      preferredCreditorId: null,
-    });
     vi.mocked(unsettleSettlement).mockResolvedValue(undefined);
+    vi.mocked(updateParticipant).mockResolvedValue({
+      id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null,
+    });
   });
 
   // --- Loading State ---
@@ -165,13 +163,33 @@ describe('Settlement', () => {
     });
   });
 
-  it('shows toast when resolveSettlement fails on load', async () => {
+  it('shows toast when getSettlement fails for an already-settled split', async () => {
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithSettlement);
+    vi.mocked(getSettlement).mockRejectedValue({
+      status: 500,
+      detail: 'Load failed',
+    });
+
+    render(Settlement);
+
+    await waitFor(() => {
+      expect(addToast).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Load failed',
+      });
+    });
+  });
+
+  it('shows toast when resolveSettlement fails on Resolve click', async () => {
     vi.mocked(resolveSettlement).mockRejectedValue({
       status: 500,
       detail: 'Calculation failed',
     });
 
     render(Settlement);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
     await waitFor(() => {
       expect(addToast).toHaveBeenCalledWith({
@@ -183,12 +201,14 @@ describe('Settlement', () => {
 
   // --- Page load behaviour (no persisted settlement) ---
 
-  it('calls resolveSettlement on page load', async () => {
+  it('does not call resolveSettlement on page load', async () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(resolveSettlement).toHaveBeenCalledWith('test-split-id');
+      expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
     });
+
+    expect(resolveSettlement).not.toHaveBeenCalled();
   });
 
   it('shows balance cards after load without clicking Resolve', async () => {
@@ -196,7 +216,7 @@ describe('Settlement', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
-      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getAllByText('Bob').length).toBeGreaterThan(0);
     });
   });
 
@@ -251,7 +271,7 @@ describe('Settlement', () => {
     });
   });
 
-  it('does not call resolveSettlement again when Resolve is clicked', async () => {
+  it('calls resolveSettlement exactly once when Resolve is clicked', async () => {
     render(Settlement);
 
     await waitFor(() => {
@@ -260,8 +280,8 @@ describe('Settlement', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
 
-    // resolveSettlement was called once on load, never again on button click
-    expect(resolveSettlement).toHaveBeenCalledTimes(1);
+    // resolveSettlement is called only on user action, never on initial page load
+    await waitFor(() => expect(resolveSettlement).toHaveBeenCalledTimes(1));
   });
 
   // --- Already-persisted settlement ---
@@ -275,7 +295,9 @@ describe('Settlement', () => {
       expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
     });
 
-    expect(resolveSettlement).toHaveBeenCalledWith('test-split-id');
+    // Uses GET (getSettlement), never POST (resolveSettlement) on load
+    expect(getSettlement).toHaveBeenCalledWith('test-split-id');
+    expect(resolveSettlement).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Resolve' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export Settlement' })).toBeInTheDocument();
   });
@@ -303,7 +325,13 @@ describe('Settlement', () => {
   });
 
   it('displays zero balance as "Settled"', async () => {
-    vi.mocked(resolveSettlement).mockResolvedValue(mockSettlementAllSettled);
+    vi.mocked(getSplit).mockResolvedValue({
+      ...mockSplitNoSettlement,
+      participants: [
+        { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 50, totalCost: 50, balance: 0 },
+        { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: null, totalPaid: 50, totalCost: 50, balance: 0 },
+      ],
+    });
 
     render(Settlement);
 
@@ -313,7 +341,7 @@ describe('Settlement', () => {
   });
 
   it('shows "No participants" when balances are empty', async () => {
-    vi.mocked(resolveSettlement).mockResolvedValue({ balances: [], reimbursements: [] });
+    vi.mocked(getSplit).mockResolvedValue({ ...mockSplitNoSettlement, participants: [] });
 
     render(Settlement);
 
@@ -355,8 +383,8 @@ describe('Settlement', () => {
         name: 'Trip to Paris',
         createdAt: '2026-01-01T00:00:00Z',
         participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 50, balance: 50 },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 50, balance: -50 },
         ],
         expenses: [
           { id: 'e1', description: 'Dinner', amount: 100, payerId: 'p1', splitMode: 'EQUAL', createdAt: '2026-01-01T00:00:00Z', shares: [] },
@@ -405,9 +433,9 @@ describe('Settlement', () => {
         name: 'Weekend Trip',
         createdAt: '2026-01-01T00:00:00Z',
         participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
-          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 150, totalCost: 50, balance: 100 },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 50, balance: -50 },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 50, balance: -50 },
         ],
         expenses: [
           { id: 'e1', description: 'Hotel', amount: 90, payerId: 'p1', splitMode: 'EQUAL', createdAt: '2026-01-01T00:00:00Z', shares: [] },
@@ -471,10 +499,10 @@ describe('Settlement', () => {
         name: 'Group Trip',
         createdAt: '2026-01-01T00:00:00Z',
         participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
-          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
-          { id: 'p4', name: 'Diana', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 200, totalCost: 50, balance: 150 },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 50, balance: 50 },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 100, balance: -100 },
+          { id: 'p4', name: 'Diana', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 100, balance: -100 },
         ],
         expenses: [],
         settlement: null,
@@ -517,9 +545,9 @@ describe('Settlement', () => {
         name: 'Test',
         createdAt: '2026-01-01T00:00:00Z',
         participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Zoe', nights: 2, share: 1, preferredCreditorId: null },
-          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 33, balance: 67 },
+          { id: 'p2', name: 'Zoe', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 33, balance: -33 },
+          { id: 'p3', name: 'Charlie', nights: 2, share: 1, sharedAccountId: null, totalPaid: 0, totalCost: 34, balance: -34 },
         ],
         expenses: [],
         settlement: null,
@@ -549,163 +577,6 @@ describe('Settlement', () => {
         const charlieIndex = text.indexOf('Charlie');
         const zoeIndex = text.indexOf('Zoe');
         expect(charlieIndex).toBeLessThan(zoeIndex);
-      });
-    });
-  });
-
-  // --- Preferred Creditor ---
-
-  describe('Preferred Creditor', () => {
-    it('shows preferred creditor select for debtors on load', async () => {
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-    });
-
-    it('does not show preferred creditor select for creditors', async () => {
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByText('Bob')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByRole('combobox', { name: 'Preferred creditor for Alice' })).not.toBeInTheDocument();
-    });
-
-    it('pre-selects the current preferred creditor', async () => {
-      vi.mocked(getSplit).mockResolvedValue({
-        ...mockSplitNoSettlement,
-        participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
-        ],
-      });
-
-      render(Settlement);
-
-      await waitFor(() => {
-        const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-        expect(select.value).toBe('p1');
-      });
-    });
-
-    it('calls updateParticipant when preferred creditor changes', async () => {
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      await fireEvent.change(select, { target: { value: 'p1' } });
-
-      await waitFor(() => {
-        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', {
-          name: 'Bob',
-          nights: 2,
-          share: 1,
-          preferredCreditorId: 'p1',
-        });
-      });
-    });
-
-    it('sends null preferredCreditorId when "No preference" is selected', async () => {
-      vi.mocked(getSplit).mockResolvedValue({
-        ...mockSplitNoSettlement,
-        participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: 'p1' },
-        ],
-      });
-
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      await fireEvent.change(select, { target: { value: '' } });
-
-      await waitFor(() => {
-        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', {
-          name: 'Bob',
-          nights: 2,
-          share: 1,
-          preferredCreditorId: null,
-        });
-      });
-    });
-
-    it('only lists creditors (participants with positive balance) as options', async () => {
-      vi.mocked(getSplit).mockResolvedValue({
-        ...mockSplitNoSettlement,
-        participants: [
-          { id: 'p1', name: 'Alice', nights: 3, share: 1, preferredCreditorId: null },
-          { id: 'p2', name: 'Bob', nights: 2, share: 1, preferredCreditorId: null },
-          { id: 'p3', name: 'Charlie', nights: 2, share: 1, preferredCreditorId: null },
-        ],
-      });
-      vi.mocked(resolveSettlement).mockResolvedValue({
-        balances: [
-          { participantId: 'p1', participantName: 'Alice', totalPaid: 100, totalCost: 33, balance: 67 },
-          { participantId: 'p2', participantName: 'Bob', totalPaid: 0, totalCost: 33, balance: -33 },
-          { participantId: 'p3', participantName: 'Charlie', totalPaid: 0, totalCost: 34, balance: -34 },
-        ],
-        reimbursements: [],
-      });
-
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-
-      const bobSelect = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      const bobOptions = Array.from(bobSelect.options).map(o => o.text);
-      expect(bobOptions).toContain('Alice');
-      expect(bobOptions).not.toContain('Charlie');
-    });
-
-    it('recalculates settlement and resets to pre-resolve state when preferred creditor changes', async () => {
-      render(Settlement);
-
-      // Click Resolve first to see reimbursements
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
-      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
-
-      await waitFor(() => {
-        expect(screen.getByText('Pay €50.00 to Alice')).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      await fireEvent.change(select, { target: { value: 'p1' } });
-
-      await waitFor(() => {
-        expect(updateParticipant).toHaveBeenCalled();
-        // Reimbursements hidden (reset to pre-resolve), balance cards still visible, Resolve button shown again
-        expect(screen.queryByText('Pay €50.00 to Alice')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
-        expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
-      });
-    });
-
-    it('shows error toast when updateParticipant fails', async () => {
-      vi.mocked(updateParticipant).mockRejectedValue({ detail: 'Save failed' });
-
-      render(Settlement);
-
-      await waitFor(() => {
-        expect(screen.getByRole('combobox', { name: 'Preferred creditor for Bob' })).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole('combobox', { name: 'Preferred creditor for Bob' }) as HTMLSelectElement;
-      await fireEvent.change(select, { target: { value: 'p1' } });
-
-      await waitFor(() => {
-        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' });
       });
     });
   });
@@ -744,7 +615,7 @@ describe('Settlement', () => {
       });
     });
 
-    it('calls unsettleSettlement and reloads when Unsettle is clicked', async () => {
+    it('calls unsettleSettlement when Unsettle is clicked', async () => {
       render(Settlement);
 
       await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
@@ -755,8 +626,9 @@ describe('Settlement', () => {
 
       await waitFor(() => {
         expect(unsettleSettlement).toHaveBeenCalledWith('test-split-id');
-        expect(getSplit).toHaveBeenCalledTimes(2);
-        expect(resolveSettlement).toHaveBeenCalledTimes(2);
+        // resolveSettlement called once (Resolve click) — never called again after Unsettle
+        // to avoid immediately re-persisting the settlement that was just deleted
+        expect(resolveSettlement).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -792,6 +664,254 @@ describe('Settlement', () => {
 
       await waitFor(() => {
         expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Unsettle failed' });
+      });
+    });
+  });
+
+  // --- Shared Account Grouping ---
+
+  describe('Shared Account Grouping', () => {
+    const splitWithGroup = {
+      ...mockSplitNoSettlement,
+      participants: [
+        { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: 'grp1', totalPaid: 100, totalCost: 50, balance: 50 },
+        { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: 'grp1', totalPaid: 0, totalCost: 50, balance: -50 },
+      ],
+    };
+
+    // --- Collapsed display ---
+
+    it('shows grouped participants as a single combined card', async () => {
+      vi.mocked(getSplit).mockResolvedValue(splitWithGroup);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice & Bob')).toBeInTheDocument();
+        expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+        expect(screen.queryByText('Bob')).not.toBeInTheDocument();
+      });
+    });
+
+    it('shows combined totalPaid (€100) and totalCost (€100) for the group card', async () => {
+      vi.mocked(getSplit).mockResolvedValue(splitWithGroup);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        // Alice paid €100, Bob paid €0 → combined Paid: €100.00
+        // Alice cost €50, Bob cost €50 → combined Cost: €100.00
+        const hundredEntries = screen.getAllByText('€100.00');
+        expect(hundredEntries).toHaveLength(2);
+      });
+    });
+
+    // --- Group with button ---
+
+    it('shows a "Group with..." button for each standard participant when not settled', async () => {
+      render(Settlement);
+
+      await waitFor(() => {
+        const buttons = screen.getAllByRole('button', { name: 'Group with...' });
+        expect(buttons).toHaveLength(2);
+      });
+    });
+
+    it('does not show "Group with..." buttons after clicking Resolve', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
+
+      await waitFor(() => {
+        expect(screen.queryAllByRole('button', { name: 'Group with...' })).toHaveLength(0);
+      });
+    });
+
+    it('does not show "Group with..." buttons when split is already settled on load', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.queryAllByRole('button', { name: 'Group with...' })).toHaveLength(0);
+      });
+    });
+
+    it('shows "Ungroup" button on a group card, not "Group with..."', async () => {
+      vi.mocked(getSplit).mockResolvedValue(splitWithGroup);
+
+      render(Settlement);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Ungroup' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Group with...' })).not.toBeInTheDocument();
+      });
+    });
+
+    // --- Modal ---
+
+    it('opens modal with participant name when "Group with..." is clicked', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'Group with' })).toBeInTheDocument();
+        expect(screen.getByText(/Group Alice with/)).toBeInTheDocument();
+      });
+    });
+
+    it('modal select lists other standard participants as options', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+
+      await waitFor(() => {
+        const select = screen.getByRole('combobox');
+        const options = Array.from((select as HTMLSelectElement).options).map(o => o.text);
+        expect(options).toContain('(none)');
+        expect(options).toContain('Bob');
+        expect(options).not.toContain('Alice');
+      });
+    });
+
+    it('modal select shows existing groups as a single collapsed entry', async () => {
+      vi.mocked(getSplit).mockResolvedValue({
+        ...mockSplitNoSettlement,
+        participants: [
+          { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 33, balance: 67 },
+          { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: 'grp1', totalPaid: 0, totalCost: 33, balance: -33 },
+          { id: 'p3', name: 'Carol', nights: 2, share: 1, sharedAccountId: 'grp1', totalPaid: 0, totalCost: 34, balance: -34 },
+        ],
+      });
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Group with...' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Group with...' }));
+
+      await waitFor(() => {
+        const select = screen.getByRole('combobox');
+        const options = Array.from((select as HTMLSelectElement).options).map(o => o.text);
+        expect(options).toContain('(none)');
+        expect(options).toContain('Bob & Carol');
+        expect(options).not.toContain('Bob');
+        expect(options).not.toContain('Carol');
+      });
+    });
+
+    it('closes modal when Cancel is clicked without calling updateParticipant', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+      await waitFor(() => expect(screen.getByRole('dialog', { name: 'Group with' })).toBeInTheDocument());
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Group with' })).not.toBeInTheDocument();
+        expect(updateParticipant).not.toHaveBeenCalled();
+      });
+    });
+
+    it('calls updateParticipant twice (new group) when OK is clicked for two ungrouped participants', async () => {
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(mockSplitNoSettlement)
+        .mockResolvedValueOnce(mockSplitNoSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+
+      await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
+      await fireEvent.change(screen.getByRole('combobox'), { target: { value: 'p2' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledTimes(2);
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p1', expect.objectContaining({ sharedAccountId: expect.any(String) }));
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', expect.objectContaining({ sharedAccountId: expect.any(String) }));
+      });
+    });
+
+    it('calls updateParticipant once (join group) when partner already has a sharedAccountId', async () => {
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce({
+          ...mockSplitNoSettlement,
+          participants: [
+            { id: 'p1', name: 'Alice', nights: 3, share: 1, sharedAccountId: null, totalPaid: 100, totalCost: 50, balance: 50 },
+            { id: 'p2', name: 'Bob', nights: 2, share: 1, sharedAccountId: 'existing-grp', totalPaid: 0, totalCost: 50, balance: -50 },
+          ],
+        })
+        .mockResolvedValueOnce(mockSplitNoSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Group with...' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Group with...' }));
+
+      await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
+      await fireEvent.change(screen.getByRole('combobox'), { target: { value: 'p2' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledTimes(1);
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p1', expect.objectContaining({ sharedAccountId: 'existing-grp' }));
+      });
+    });
+
+    it('closes modal immediately when OK is clicked', async () => {
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+      await waitFor(() => expect(screen.getByRole('dialog', { name: 'Group with' })).toBeInTheDocument());
+
+      await fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Group with' })).not.toBeInTheDocument();
+      });
+    });
+
+    // --- Ungroup ---
+
+    it('calls updateParticipant with null for all group members when Ungroup is clicked', async () => {
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce(splitWithGroup)
+        .mockResolvedValueOnce(mockSplitNoSettlement);
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Ungroup' })).toBeInTheDocument());
+      await fireEvent.click(screen.getByRole('button', { name: 'Ungroup' }));
+
+      await waitFor(() => {
+        expect(updateParticipant).toHaveBeenCalledTimes(2);
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p1', expect.objectContaining({ sharedAccountId: null }));
+        expect(updateParticipant).toHaveBeenCalledWith('test-split-id', 'p2', expect.objectContaining({ sharedAccountId: null }));
+      });
+    });
+
+    it('shows error toast when updateParticipant fails', async () => {
+      vi.mocked(updateParticipant).mockRejectedValue({ detail: 'Update failed' });
+
+      render(Settlement);
+
+      await waitFor(() => expect(screen.getAllByRole('button', { name: 'Group with...' })).toHaveLength(2));
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Group with...' })[0]);
+
+      await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument());
+      await fireEvent.change(screen.getByRole('combobox'), { target: { value: 'p2' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Update failed' });
       });
     });
   });

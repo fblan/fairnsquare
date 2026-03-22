@@ -18,7 +18,7 @@ export interface UpdateParticipantRequest {
   name: string;
   nights: number;
   share: number;
-  preferredCreditorId?: string | null;
+  sharedAccountId?: string | null;
 }
 
 export interface Participant {
@@ -26,7 +26,10 @@ export interface Participant {
   name: string;
   nights: number;
   share: number;
-  preferredCreditorId?: string | null;
+  sharedAccountId?: string | null;
+  totalPaid?: number;
+  totalCost?: number;
+  balance?: number;
 }
 
 export type SplitMode = 'BY_NIGHT' | 'BY_SHARE' | 'EQUAL' | 'FREE';

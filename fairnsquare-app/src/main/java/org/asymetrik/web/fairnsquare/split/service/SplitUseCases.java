@@ -167,11 +167,11 @@ public class SplitUseCases {
             @LogTag("participantId") String participantId, UpdateParticipantRequest request) {
         return repository.load(splitId).map(split -> {
             Participant.Id partId = Participant.Id.of(participantId);
-            Participant.Id preferredCreditorId = Participant.Id.isValid(request.preferredCreditorId())
-                    ? Participant.Id.of(request.preferredCreditorId())
+            Participant.SharedAccountId sharedAccountId = Participant.SharedAccountId.isValid(request.sharedAccountId())
+                    ? Participant.SharedAccountId.of(request.sharedAccountId())
                     : null;
             Participant updated = split.updateParticipant(partId, request.name(), request.nights(),
-                    request.shareOrDefault(), preferredCreditorId);
+                    request.shareOrDefault(), sharedAccountId);
             repository.save(split);
             return updated;
         });

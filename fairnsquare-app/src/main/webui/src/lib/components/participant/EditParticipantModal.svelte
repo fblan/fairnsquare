@@ -201,6 +201,8 @@
         name: editName.trim(),
         nights: editNights,
         share: editShare,
+        // Preserve the current shared account grouping — it is managed from the Settlement page
+        sharedAccountId: participant.sharedAccountId ?? null,
       });
 
       addToast({
@@ -220,6 +222,7 @@
       isLoading = false;
     }
   }
+
 
   function handleCloseAttempt() {
     if (isDirty) {

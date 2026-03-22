@@ -39,12 +39,12 @@ class PersistenceBackwardCompatibilityTest {
     FileSystemService fileSystemService;
 
     /**
-     * Files saved before feature #71 (preferred reimbursement destination) do not contain a {@code preferredCreditorId}
-     * field on participants. Jackson deserializes the missing field as {@code null}, and the mapper maps it to a
-     * {@code null} preferred creditor ID on the domain object.
+     * Files saved before the shared-account feature do not contain a {@code sharedAccountId} field on participants.
+     * Jackson deserializes the missing field as {@code null}, so all participants load with {@code sharedAccountId =
+     * null} (i.e., treated as standard individual participants in settlement).
      */
     @Test
-    void shouldLoadSplitWhoseParticipantsHaveNoPreferredCreditorId() throws IOException {
+    void shouldLoadSplitWhoseParticipantsHaveNoSharedAccountId() throws IOException {
         String splitId = "splitNoPreferredCred1";
         loadFixtureIntoStorage("fixtures/compat/v1-no-preferred-creditor.zip", splitId);
 
@@ -52,8 +52,8 @@ class PersistenceBackwardCompatibilityTest {
 
         assertThat(loaded.getId().value()).isEqualTo(splitId);
         assertThat(loaded.getParticipants()).hasSize(2);
-        assertThat(loaded.getParticipants().get(0).preferredCreditorId()).isNull();
-        assertThat(loaded.getParticipants().get(1).preferredCreditorId()).isNull();
+        assertThat(loaded.getParticipants().get(0).sharedAccountId()).isNull();
+        assertThat(loaded.getParticipants().get(1).sharedAccountId()).isNull();
     }
 
     /**

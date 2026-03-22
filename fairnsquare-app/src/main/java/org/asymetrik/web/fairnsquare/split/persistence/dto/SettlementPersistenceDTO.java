@@ -13,6 +13,17 @@ public record SettlementPersistenceDTO(List<ParticipantBalancePersistenceDTO> ba
             BigDecimal balance) {
     }
 
-    public record ReimbursementPersistenceDTO(String fromId, String toId, BigDecimal amount) {
+    /**
+     * Persistence record for a reimbursement.
+     * <p>
+     * {@code fromType} and {@code toType} distinguish individual participants from shared-account groups:
+     * <ul>
+     * <li>{@code null} or {@code "participant"} → {@link SettlementPartyId.Individual} (backward compatible with files
+     * written before shared accounts were introduced).</li>
+     * <li>{@code "group"} → {@link SettlementPartyId.Group}.</li>
+     * </ul>
+     */
+    public record ReimbursementPersistenceDTO(String fromId, String fromType, String toId, String toType,
+            BigDecimal amount) {
     }
 }
