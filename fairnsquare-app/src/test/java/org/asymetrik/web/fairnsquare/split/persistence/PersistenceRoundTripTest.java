@@ -137,7 +137,7 @@ class PersistenceRoundTripTest {
 
         // Verify metadata
         assertThat(metadata).contains("\"version\"");
-        assertThat(metadata).contains("\"1.0\"");
+        assertThat(metadata).contains("\"2.0\"");
         assertThat(metadata).contains("\"deserializer\"");
         assertThat(metadata).contains("\"clear\"");
 

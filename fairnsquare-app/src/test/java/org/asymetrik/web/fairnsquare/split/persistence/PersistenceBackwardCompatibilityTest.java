@@ -89,6 +89,28 @@ class PersistenceBackwardCompatibilityTest {
         assertThat(loaded.getExpenses().getFirst().getAmount()).isEqualByComparingTo("100.00");
     }
 
+    /**
+     * Files saved when the preferred-creditor feature existed contain a {@code preferredCreditorId} field on
+     * participants. Jackson discards the unknown field (default behaviour), and {@code sharedAccountId} is absent so it
+     * defaults to {@code null}. The persisted settlement reimbursements use plain participant IDs, which are loaded as
+     * {@link org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementPartyId.Individual} via the null-type
+     * backward-compatibility path in the persistence mapper.
+     */
+    @Test
+    void shouldLoadSplitWithLegacyPreferredCreditorId() throws IOException {
+        String splitId = "IJH99J9pWl0wUoOKtEfmI";
+        loadFixtureIntoStorage("fixtures/compat/v1-prefered-creditor.zip", splitId);
+
+        Split loaded = splitRepository.load(splitId).orElseThrow();
+
+        assertThat(loaded.getId().value()).isEqualTo(splitId);
+        assertThat(loaded.getParticipants()).hasSize(4);
+        assertThat(loaded.getParticipants()).allSatisfy(p -> assertThat(p.sharedAccountId()).isNull());
+        assertThat(loaded.getExpenses()).hasSize(3);
+        assertThat(loaded.getSettlement()).isNotNull();
+        assertThat(loaded.getSettlement().reimbursements()).hasSize(3);
+    }
+
     // --- helpers ---
 
     private void loadFixtureIntoStorage(String resourcePath, String splitId) throws IOException {
