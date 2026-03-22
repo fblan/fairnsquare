@@ -43,7 +43,7 @@
         <asymetrik-modular.version>0.0.2</asymetrik-modular.version>
 
         <!-- Quarkiverse Extensions -->
-        <quarkus-quinoa.version>2.7.1</quarkus-quinoa.version>
+        <quarkus-quinoa.version>2.7.2</quarkus-quinoa.version>
     </properties>
 
     <dependencyManagement>
