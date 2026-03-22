@@ -1,7 +1,7 @@
 <script lang="ts">
   // Settlement Page - Balances & Reimbursement Proposals
 
-  import { getSplit, resolveSettlement, unsettleSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
+  import { getSplit, getSettlement, resolveSettlement, unsettleSettlement, updateParticipant, type Settlement, type Split } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
@@ -18,9 +18,100 @@
   let isLoading = $state(true);
   let showReimbursements = $state(false);
   let isUnsettling = $state(false);
+  let isUpdatingGroup = $state(false);
+  let groupModalParticipantId = $state<string | null>(null);
+  let groupModalPartnerId = $state('');
 
-  // On mount: calculate the settlement (POST) to show balances immediately.
-  // If a settlement is already persisted, show reimbursements directly.
+  interface DisplayEntry {
+    key: string;
+    displayName: string;
+    totalPaid: number;
+    totalCost: number;
+    balance: number;
+    type: 'standard' | 'group';
+    matchId: string;
+    participantId?: string;   // standard only: for "Group with" modal
+    memberIds?: string[];     // group only: for Ungroup action
+  }
+
+  // Collapsed balance list: shared-account members are merged into one group entry.
+  const displayBalances = $derived((() => {
+    if (!split || !settlement) return [] as DisplayEntry[];
+    const seen = new Set<string>();
+    const result: DisplayEntry[] = [];
+
+    for (const p of split.participants) {
+      if (seen.has(p.id)) continue;
+
+      if (!p.sharedAccountId) {
+        const b = settlement.balances.find(b => b.participantId === p.id);
+        if (!b) { seen.add(p.id); continue; }
+        result.push({
+          key: p.id,
+          displayName: p.name,
+          totalPaid: b.totalPaid,
+          totalCost: b.totalCost,
+          balance: b.balance,
+          type: 'standard',
+          matchId: p.id,
+          participantId: p.id,
+        });
+        seen.add(p.id);
+      } else {
+        const members = split.participants.filter(m => m.sharedAccountId === p.sharedAccountId);
+        members.forEach(m => seen.add(m.id));
+        const memberBalances = members
+          .map(m => settlement!.balances.find(b => b.participantId === m.id))
+          .filter((b): b is NonNullable<typeof b> => b != null);
+        const displayName = [...members]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(m => m.name)
+          .join(' & ');
+        result.push({
+          key: p.sharedAccountId,
+          displayName,
+          totalPaid: memberBalances.reduce((s, b) => s + b.totalPaid, 0),
+          totalCost: memberBalances.reduce((s, b) => s + b.totalCost, 0),
+          balance: memberBalances.reduce((s, b) => s + b.balance, 0),
+          type: 'group',
+          matchId: p.sharedAccountId,
+          memberIds: members.map(m => m.id),
+        });
+      }
+    }
+    return result;
+  })());
+
+  const groupModalParticipant = $derived(
+    groupModalParticipantId ? split?.participants.find(p => p.id === groupModalParticipantId) ?? null : null
+  );
+
+  // Modal options: standard participants shown individually, existing groups shown as one entry.
+  const groupModalOptions = $derived((() => {
+    if (!groupModalParticipantId || !split) return [] as { id: string; displayName: string }[];
+    const seen = new Set<string>();
+    const result: { id: string; displayName: string }[] = [];
+    for (const p of split.participants) {
+      if (p.id === groupModalParticipantId || seen.has(p.id)) continue;
+      if (!p.sharedAccountId) {
+        result.push({ id: p.id, displayName: p.name });
+        seen.add(p.id);
+      } else {
+        const members = split.participants.filter(m => m.sharedAccountId === p.sharedAccountId);
+        members.forEach(m => seen.add(m.id));
+        const displayName = [...members]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(m => m.name)
+          .join(' & ');
+        result.push({ id: members[0].id, displayName });
+      }
+    }
+    return result;
+  })());
+
+  // On mount: load the split and derive balances from participant computed fields.
+  // Never POST on load — that would persist a settlement and undo an intentional unsettle.
+  // If a settlement is already persisted, fetch its reimbursements and show them directly.
   $effect(() => {
     if (splitId) {
       loadSettlement(splitId);
@@ -33,14 +124,26 @@
     showReimbursements = false;
 
     try {
-      const [splitData, settlementData] = await Promise.all([getSplit(id), resolveSettlement(id)]);
+      const splitData = await getSplit(id);
       split = splitData;
       splitName = splitData.name;
-      settlement = settlementData;
+
+      // Derive balances from participant computed fields (always available, no POST needed).
+      const balances = splitData.participants.map(p => ({
+        participantId: p.id,
+        participantName: p.name,
+        totalPaid: p.totalPaid ?? 0,
+        totalCost: p.totalCost ?? 0,
+        balance: p.balance ?? 0,
+      }));
 
       if (splitData.settlement != null) {
-        // Already resolved before — show reimbursements directly.
+        // Already resolved — fetch persisted reimbursements and show them directly.
+        const persisted = await getSettlement(id);
+        settlement = { balances, reimbursements: persisted.reimbursements };
         showReimbursements = true;
+      } else {
+        settlement = { balances, reimbursements: [] };
       }
     } catch (err) {
       const apiError = err as ApiError;
@@ -53,8 +156,14 @@
     }
   }
 
-  function handleResolve() {
-    showReimbursements = true;
+  async function handleResolve() {
+    try {
+      const settlementData = await resolveSettlement(splitId);
+      settlement = settlementData;
+      showReimbursements = true;
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.detail || 'Failed to resolve' });
+    }
   }
 
   function formatCurrency(amount: number): string {
@@ -147,14 +256,111 @@
     }
   }
 
+  function generateSharedAccountId(): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+    const bytes = crypto.getRandomValues(new Uint8Array(21));
+    return Array.from(bytes, b => alphabet[b & 63]).join('');
+  }
+
+  async function handleSharedAccountChange(participantId: string, newPartnerIdOrEmpty: string) {
+    if (!split) return;
+    const participant = split.participants.find(p => p.id === participantId);
+    if (!participant) return;
+
+    isUpdatingGroup = true;
+    try {
+      if (!newPartnerIdOrEmpty) {
+        // Ungroup: clear shared account
+        await updateParticipant(splitId, participantId, {
+          name: participant.name,
+          nights: participant.nights,
+          share: participant.share,
+          sharedAccountId: null,
+        });
+      } else {
+        const partner = split.participants.find(p => p.id === newPartnerIdOrEmpty);
+        if (!partner) return;
+
+        if (partner.sharedAccountId) {
+          // Join partner's existing group
+          await updateParticipant(splitId, participantId, {
+            name: participant.name,
+            nights: participant.nights,
+            share: participant.share,
+            sharedAccountId: partner.sharedAccountId,
+          });
+        } else {
+          // Create new group for both
+          const newGroupId = generateSharedAccountId();
+          await updateParticipant(splitId, participantId, {
+            name: participant.name,
+            nights: participant.nights,
+            share: participant.share,
+            sharedAccountId: newGroupId,
+          });
+          await updateParticipant(splitId, newPartnerIdOrEmpty, {
+            name: partner.name,
+            nights: partner.nights,
+            share: partner.share,
+            sharedAccountId: newGroupId,
+          });
+        }
+      }
+
+      // Reload split and recompute balances from fresh participant data
+      const updatedSplit = await getSplit(splitId);
+      split = updatedSplit;
+      const balances = updatedSplit.participants.map(p => ({
+        participantId: p.id,
+        participantName: p.name,
+        totalPaid: p.totalPaid ?? 0,
+        totalCost: p.totalCost ?? 0,
+        balance: p.balance ?? 0,
+      }));
+      settlement = { ...settlement!, balances };
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.detail || 'Failed to update group' });
+    } finally {
+      isUpdatingGroup = false;
+    }
+  }
+
+  async function handleUngroup(memberIds: string[]) {
+    if (!split) return;
+    isUpdatingGroup = true;
+    try {
+      for (const memberId of memberIds) {
+        const p = split.participants.find(m => m.id === memberId);
+        if (!p) continue;
+        await updateParticipant(splitId, memberId, {
+          name: p.name,
+          nights: p.nights,
+          share: p.share,
+          sharedAccountId: null,
+        });
+      }
+      const updatedSplit = await getSplit(splitId);
+      split = updatedSplit;
+      const balances = updatedSplit.participants.map(p => ({
+        participantId: p.id,
+        participantName: p.name,
+        totalPaid: p.totalPaid ?? 0,
+        totalCost: p.totalCost ?? 0,
+        balance: p.balance ?? 0,
+      }));
+      settlement = { ...settlement!, balances };
+    } catch (err: any) {
+      addToast({ type: 'error', message: err.detail || 'Failed to ungroup' });
+    } finally {
+      isUpdatingGroup = false;
+    }
+  }
+
   async function handleUnsettle() {
     isUnsettling = true;
     try {
       await unsettleSettlement(splitId);
       showReimbursements = false;
-      const [splitData, settlementData] = await Promise.all([getSplit(splitId), resolveSettlement(splitId)]);
-      split = splitData;
-      settlement = settlementData;
     } catch (err: any) {
       addToast({ type: 'error', message: err.detail || 'Failed to unsettle' });
     } finally {
@@ -162,26 +368,6 @@
     }
   }
 
-  async function handlePreferredCreditorChange(participantId: string, creditorId: string) {
-    if (!split) return;
-    const participant = split.participants.find(p => p.id === participantId);
-    if (!participant) return;
-    try {
-      await updateParticipant(splitId, participantId, {
-        name: participant.name,
-        nights: participant.nights,
-        share: participant.share,
-        preferredCreditorId: creditorId || null,
-      });
-      // Preferred creditor change clears the persisted settlement — recalculate and reset to pre-resolve state.
-      showReimbursements = false;
-      const [splitData, settlementData] = await Promise.all([getSplit(splitId), resolveSettlement(splitId)]);
-      split = splitData;
-      settlement = settlementData;
-    } catch (err: any) {
-      addToast({ type: 'error', message: err.detail || 'Failed to save preference' });
-    }
-  }
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
@@ -208,7 +394,7 @@
     <SplitPageHeader splitName={splitName} {splitId} showBackButton />
 
     {#if settlement}
-      {#if settlement.balances.length === 0}
+      {#if displayBalances.length === 0}
         <p class="text-muted-foreground text-center py-4">No participants</p>
       {:else}
         <!-- Action Buttons (before cards, consistent with Add Participant / Add Expense placement) -->
@@ -237,52 +423,53 @@
           </Button>
         {/if}
 
-        <!-- Balance Cards -->
+        <!-- Balance Cards (shared-account members collapsed into one group card) -->
         <div class="w-full space-y-3">
-          {#each settlement.balances as balance (balance.participantId)}
+          {#each displayBalances as entry (entry.key)}
             <Card.Root class="w-full">
               <Card.Content class="py-4">
                 <div class="flex items-start justify-between">
                   <div class="flex-1">
-                    <span class="font-semibold text-lg">{balance.participantName}</span>
+                    <span class="font-semibold text-lg">{entry.displayName}</span>
                     <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm mt-1">
-                      <span class="text-muted-foreground">Paid: <span class="font-medium text-foreground">{formatCurrency(balance.totalPaid)}</span></span>
-                      <span class="text-muted-foreground">Cost: <span class="font-medium text-foreground">{formatCurrency(balance.totalCost)}</span></span>
+                      <span class="text-muted-foreground">Paid: <span class="font-medium text-foreground">{formatCurrency(entry.totalPaid)}</span></span>
+                      <span class="text-muted-foreground">Cost: <span class="font-medium text-foreground">{formatCurrency(entry.totalCost)}</span></span>
                     </div>
                   </div>
                   <div class="text-right">
-                    <span class="text-sm font-medium {balanceColorClass(balance.balance)}">
-                      {balanceLabel(balance.balance)}
+                    <span class="text-sm font-medium {balanceColorClass(entry.balance)}">
+                      {balanceLabel(entry.balance)}
                     </span>
                   </div>
                 </div>
 
-                <!-- Preferred creditor select for debtors -->
-                {#if balance.balance < -0.005}
-                  {@const participant = split?.participants.find(p => p.id === balance.participantId)}
-                  <div class="mt-2 pt-2 border-t border-border flex items-center gap-2">
-                    <label class="text-xs text-muted-foreground whitespace-nowrap" for="preferred-{balance.participantId}">
-                      Reimburse first:
-                    </label>
-                    <select
-                      id="preferred-{balance.participantId}"
-                      aria-label="Preferred creditor for {balance.participantName}"
-                      value={participant?.preferredCreditorId ?? ''}
-                      onchange={(e) => handlePreferredCreditorChange(balance.participantId, e.currentTarget.value)}
-                      class="flex-1 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">No preference</option>
-                      {#each settlement.balances.filter(b => b.balance > 0.005) as creditor}
-                        <option value={creditor.participantId}>{creditor.participantName}</option>
-                      {/each}
-                    </select>
+                <!-- Group actions (only when not yet settled) -->
+                {#if !showReimbursements}
+                  <div class="mt-2 flex gap-3">
+                    {#if entry.type === 'standard'}
+                      <button
+                        onclick={() => { groupModalParticipantId = entry.participantId!; groupModalPartnerId = ''; }}
+                        disabled={isUpdatingGroup}
+                        class="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+                      >
+                        Group with...
+                      </button>
+                    {:else}
+                      <button
+                        onclick={() => handleUngroup(entry.memberIds!)}
+                        disabled={isUpdatingGroup}
+                        class="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-50"
+                      >
+                        Ungroup
+                      </button>
+                    {/if}
                   </div>
                 {/if}
 
-                <!-- Reimbursement details for this participant -->
+                <!-- Reimbursement details for this entry -->
                 {#if showReimbursements}
-                  {@const outgoing = settlement!.reimbursements.filter(r => r.fromId === balance.participantId)}
-                  {@const incoming = settlement!.reimbursements.filter(r => r.toId === balance.participantId)}
+                  {@const outgoing = settlement!.reimbursements.filter(r => r.fromId === entry.matchId)}
+                  {@const incoming = settlement!.reimbursements.filter(r => r.toId === entry.matchId)}
                   {#if outgoing.length > 0 || incoming.length > 0}
                     <div class="mt-3 pt-3 border-t border-border space-y-1">
                       {#each outgoing as r}
@@ -314,3 +501,51 @@
     {/if}
   {/if}
 </div>
+
+<!-- Group with modal -->
+{#if groupModalParticipantId}
+  <!-- Backdrop -->
+  <div
+    class="fixed inset-0 z-50 bg-black/50"
+    role="presentation"
+    onclick={() => (groupModalParticipantId = null)}
+  ></div>
+
+  <!-- Dialog -->
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="Group with"
+    class="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-background rounded-lg shadow-lg p-6 max-w-sm mx-auto"
+  >
+    <h2 class="text-lg font-semibold mb-4">Group {groupModalParticipant?.name} with</h2>
+
+    <label for="group-modal-select" class="text-sm text-muted-foreground block mb-1">Partner</label>
+    <select
+      id="group-modal-select"
+      bind:value={groupModalPartnerId}
+      class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-6"
+    >
+      <option value="">(none)</option>
+      {#each groupModalOptions as opt (opt.id)}
+        <option value={opt.id}>{opt.displayName}</option>
+      {/each}
+    </select>
+
+    <div class="flex gap-3 justify-end">
+      <Button variant="ghost" onclick={() => (groupModalParticipantId = null)}>
+        Cancel
+      </Button>
+      <Button
+        onclick={async () => {
+          const pid = groupModalParticipantId!;
+          const partner = groupModalPartnerId;
+          groupModalParticipantId = null;
+          await handleSharedAccountChange(pid, partner);
+        }}
+      >
+        OK
+      </Button>
+    </div>
+  </div>
+{/if}

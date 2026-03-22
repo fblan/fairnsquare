@@ -268,7 +268,7 @@ describe('EditParticipantModal', () => {
         expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
           'split-1',
           'participant-1',
-          { name: 'Alice Updated', nights: 3, share: 1 }
+          expect.objectContaining({ name: 'Alice Updated', nights: 3, share: 1 })
         );
       });
     });
@@ -734,7 +734,7 @@ describe('EditParticipantModal', () => {
         expect(splitsApi.updateParticipant).toHaveBeenCalledWith(
           'split-1',
           'participant-1',
-          { name: 'Alice', nights: 3, share: 2 }
+          expect.objectContaining({ name: 'Alice', nights: 3, share: 2 })
         );
       });
     });
@@ -760,6 +760,43 @@ describe('EditParticipantModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/cannot exceed 50/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  // Shared account editing is handled in the Settlement page, not here.
+  // EditParticipantModal preserves the existing sharedAccountId unchanged.
+  describe('Shared account preservation', () => {
+    it('does not show a "Group with" select (shared account is managed in Settlement)', () => {
+      render(EditParticipantModal, { props: defaultProps });
+
+      expect(screen.queryByLabelText('Group with')).not.toBeInTheDocument();
+    });
+
+    it('preserves the existing sharedAccountId when saving name/nights/share changes', async () => {
+      const groupId = 'group-abc';
+      vi.mocked(splitsApi.updateParticipant).mockResolvedValue({ ...mockParticipant, sharedAccountId: groupId });
+      vi.mocked(defaultProps.onSuccess).mockResolvedValue(undefined);
+
+      render(EditParticipantModal, {
+        props: {
+          ...defaultProps,
+          participant: { ...mockParticipant, sharedAccountId: groupId },
+          participants: [
+            { ...mockParticipant, sharedAccountId: groupId },
+            { id: 'participant-2', name: 'Bob', nights: 2, share: 1, sharedAccountId: groupId },
+          ],
+        },
+      });
+
+      const nightsInput = screen.getByLabelText('Nights');
+      await fireEvent.input(nightsInput, { target: { value: '5' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+      await waitFor(() => {
+        expect(splitsApi.updateParticipant).toHaveBeenCalledWith('split-1', 'participant-1', expect.objectContaining({
+          sharedAccountId: groupId,
+        }));
       });
     });
   });

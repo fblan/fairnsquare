@@ -13,7 +13,7 @@
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X } from 'lucide-svelte';
+  import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users } from 'lucide-svelte';
 
   // Field info modal state (add form)
   let activeFieldInfo = $state<'nights' | 'share' | null>(null);
@@ -165,6 +165,16 @@
     return 'Settled';
   }
 
+
+  // Returns the names of co-members in the same shared account group, or null if not grouped.
+  function getSharedAccountPartners(participant: Participant): string[] | null {
+    if (!participant.sharedAccountId || !split) return null;
+    const partners = split.participants
+      .filter(p => p.id !== participant.id && p.sharedAccountId === participant.sharedAccountId)
+      .map(p => p.name)
+      .sort();
+    return partners.length > 0 ? partners : null;
+  }
 
   // Add Participant handlers
   async function handleShowAddForm() {
@@ -516,6 +526,7 @@
     <!-- Participant Cards -->
     {#each sortedParticipants as participant (participant.id)}
       {@const stats = getParticipantStats(participant.id)}
+      {@const sharedAccountPartners = getSharedAccountPartners(participant)}
       <Card.Root class="w-full">
         <Card.Content class="py-4 transition-colors duration-500 {highlightedParticipantId === participant.id ? 'bg-teal-50' : ''}">
           <div class="flex flex-col gap-1">
@@ -572,6 +583,12 @@
               <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                 {stats.expenseCount} {stats.expenseCount === 1 ? 'expense' : 'expenses'}
               </span>
+              {#if sharedAccountPartners}
+                <span class="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                  <Users class="h-3 w-3 shrink-0" />
+                  {sharedAccountPartners.join(' & ')}
+                </span>
+              {/if}
             </div>
             <!-- Row 3: stats (full width) -->
             <div class="flex items-center justify-between text-base">

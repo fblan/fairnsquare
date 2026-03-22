@@ -14,23 +14,21 @@ import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenc
 public class ParticipantPersistenceMapper {
 
     public ParticipantPersistenceDTO toPersistenceDTO(Participant participant) {
-        String preferredCreditorId = participant.preferredCreditorId() != null
-                ? participant.preferredCreditorId().value()
-                : null;
+        String sharedAccountId = participant.sharedAccountId() != null ? participant.sharedAccountId().value() : null;
         return new ParticipantPersistenceDTO(participant.id().value(), participant.name().value(),
-                participant.nights().value(), participant.share().value(), preferredCreditorId);
+                participant.nights().value(), participant.share().value(), sharedAccountId);
     }
 
     public Participant toDomain(ParticipantPersistenceDTO dto) {
         // Default to 1.0 for backward compatibility with existing data without share
         double share = dto.share() > 0 ? dto.share() : 1.0;
-        Participant.Id preferredCreditorId = Participant.Id.isValid(dto.preferredCreditorId())
-                ? Participant.Id.of(dto.preferredCreditorId())
+        Participant.SharedAccountId sharedAccountId = Participant.SharedAccountId.isValid(dto.sharedAccountId())
+                ? Participant.SharedAccountId.of(dto.sharedAccountId())
                 : null;
         // Balance fields are not persisted; they will be recalculated by Split after all participants and expenses are
         // loaded
         return new Participant(Participant.Id.of(dto.id()), new Participant.Name(dto.name()),
-                new Participant.Nights(dto.nights()), new Participant.Share(share), preferredCreditorId,
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+                new Participant.Nights(dto.nights()), new Participant.Share(share), sharedAccountId, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO);
     }
 }

@@ -8,14 +8,14 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * Participant entity - represents a person participating in a split with their stay duration. Rich domain model with
  * value objects for fields. A participant can represent a family or group via the share field.
  * <p>
- * The optional {@code preferredCreditorId} stores the ID of the participant this person prefers to reimburse first.
- * When set, the settlement algorithm will honour this preference before running its greedy optimisation.
+ * The optional {@code sharedAccountId} links this participant to a shared-account group. Multiple participants sharing
+ * the same {@code sharedAccountId} are treated as a single entity during settlement calculation.
  * <p>
  * The fields {@code totalPaid}, {@code totalCost}, and {@code balance} are computed from the split's expenses and are
  * never persisted. They are recalculated by the {@code Split} aggregate root whenever participants or expenses change.
  */
-public record Participant(Id id, Name name, Nights nights, Share share, Id preferredCreditorId, BigDecimal totalPaid,
-        BigDecimal totalCost, BigDecimal balance) {
+public record Participant(Id id, Name name, Nights nights, Share share, SharedAccountId sharedAccountId,
+        BigDecimal totalPaid, BigDecimal totalCost, BigDecimal balance) {
 
     @Override
     public String toString() {
@@ -185,6 +185,47 @@ public record Participant(Id id, Name name, Nights nights, Share share, Id prefe
         @Override
         public String toString() {
             return String.valueOf(value);
+        }
+    }
+
+    /**
+     * Value object identifying a shared-account group. Multiple participants with the same {@code SharedAccountId} are
+     * treated as one entity during settlement calculation. Uses the same 21-character NanoID format as
+     * {@link Participant.Id}.
+     */
+    public record SharedAccountId(String value) {
+
+        private static final int NANOID_LENGTH = 21;
+        private static final String NANOID_PATTERN = "^[A-Za-z0-9_-]+$";
+
+        public SharedAccountId {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("SharedAccountId cannot be null or blank");
+            }
+            if (!value.matches(NANOID_PATTERN)) {
+                throw new IllegalArgumentException("SharedAccountId contains invalid characters");
+            }
+            if (value.length() != NANOID_LENGTH) {
+                throw new IllegalArgumentException("SharedAccountId must be exactly " + NANOID_LENGTH + " characters");
+            }
+        }
+
+        public static boolean isValid(String value) {
+            return value != null && !value.isBlank() && value.length() == NANOID_LENGTH
+                    && value.matches(NANOID_PATTERN);
+        }
+
+        public static SharedAccountId generate() {
+            return new SharedAccountId(NanoIdUtils.randomNanoId());
+        }
+
+        public static SharedAccountId of(String value) {
+            return new SharedAccountId(value);
+        }
+
+        @Override
+        public String toString() {
+            return value;
         }
     }
 }

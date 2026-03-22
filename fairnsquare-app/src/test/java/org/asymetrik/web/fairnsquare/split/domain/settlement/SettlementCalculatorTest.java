@@ -1,7 +1,6 @@
 package org.asymetrik.web.fairnsquare.split.domain.settlement;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
@@ -12,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for SettlementCalculator: balance computation and naive greedy reimbursement algorithm.
+ * Unit tests for SettlementCalculator: balance computation and greedy reimbursement algorithm.
  */
 class SettlementCalculatorTest {
 
@@ -147,8 +146,8 @@ class SettlementCalculatorTest {
 
         assertThat(settlement.reimbursements()).hasSize(1);
         Reimbursement r = settlement.reimbursements().get(0);
-        assertThat(r.fromId()).isEqualTo(bob.id());
-        assertThat(r.toId()).isEqualTo(alice.id());
+        assertThat(r.from()).isEqualTo(new SettlementPartyId.Individual(bob.id()));
+        assertThat(r.to()).isEqualTo(new SettlementPartyId.Individual(alice.id()));
         assertThat(r.amount()).isEqualByComparingTo("50.00");
     }
 
@@ -170,12 +169,12 @@ class SettlementCalculatorTest {
 
         assertThat(settlement.reimbursements()).hasSize(2);
         // Bob pays Alice 50
-        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(bob.id());
-        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(alice.id());
+        assertThat(settlement.reimbursements().get(0).from()).isEqualTo(new SettlementPartyId.Individual(bob.id()));
+        assertThat(settlement.reimbursements().get(0).to()).isEqualTo(new SettlementPartyId.Individual(alice.id()));
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
         // Charlie pays Alice 50
-        assertThat(settlement.reimbursements().get(1).fromId()).isEqualTo(charlie.id());
-        assertThat(settlement.reimbursements().get(1).toId()).isEqualTo(alice.id());
+        assertThat(settlement.reimbursements().get(1).from()).isEqualTo(new SettlementPartyId.Individual(charlie.id()));
+        assertThat(settlement.reimbursements().get(1).to()).isEqualTo(new SettlementPartyId.Individual(alice.id()));
         assertThat(settlement.reimbursements().get(1).amount()).isEqualByComparingTo("50.00");
     }
 
@@ -224,8 +223,8 @@ class SettlementCalculatorTest {
         // Bob: paid 60, cost 30, balance +30
         // Charlie: paid 0, cost 30, balance -30
         assertThat(settlement.reimbursements()).hasSize(1);
-        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(charlie.id());
-        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(bob.id());
+        assertThat(settlement.reimbursements().get(0).from()).isEqualTo(new SettlementPartyId.Individual(charlie.id()));
+        assertThat(settlement.reimbursements().get(0).to()).isEqualTo(new SettlementPartyId.Individual(bob.id()));
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("30.00");
     }
 
@@ -248,31 +247,6 @@ class SettlementCalculatorTest {
 
     @Test
     void calculate_largestDebtSettledFirst_regardlessOfInsertionOrder() {
-        // Alice owes €10, Bob owes €2 — inserted in that order.
-        // Charlie is owed €7, Dave is owed €5 — inserted in that order.
-        // With sorting: largest debtor (Alice -10) pays largest creditor (Charlie +7) first,
-        // then Alice pays Dave €3, then Bob pays Dave €2.
-        // Without sorting: Alice would pay Charlie first too in this case, but if insertion
-        // order were reversed (Bob before Alice), the naive algorithm would give different results.
-        Split splitNaturalOrder = createSplit();
-        Participant alice = Participant.create("Alice", 1);
-        Participant bob = Participant.create("Bob", 1);
-        Participant charlie = Participant.create("Charlie", 1);
-        Participant dave = Participant.create("Dave", 1);
-        splitNaturalOrder.addParticipant(alice);
-        splitNaturalOrder.addParticipant(bob);
-        splitNaturalOrder.addParticipant(charlie);
-        splitNaturalOrder.addParticipant(dave);
-
-        // Alice pays €2 of a €12 total → balance -10
-        splitNaturalOrder.addExpense(ExpenseEqual.create(new BigDecimal("12.00"), "Hotel", charlie.id()));
-        splitNaturalOrder.addExpense(ExpenseEqual.create(new BigDecimal("12.00"), "Dinner", dave.id()));
-        // Each owes €6 per expense → total cost per person €12
-        // Alice paid 0, Bob paid 0, Charlie paid 12, Dave paid 12
-        // Alice: cost 12, paid 0, balance -12 (but we want -10 and -2 — use different amounts)
-
-        // Let's build the scenario directly: use 3 expenses to get precise balances
-        // Reset with a clean split
         Split split = createSplit();
         Participant a = Participant.create("Alice", 1); // will owe €10
         Participant b = Participant.create("Bob", 1); // will owe €2
@@ -298,23 +272,21 @@ class SettlementCalculatorTest {
         // Alice → Dave 3 (Dave has 2 left, Alice done)
         // Bob → Dave 2 (Dave done, Bob done)
         assertThat(settlement.reimbursements()).hasSize(3);
-        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(a.id());
-        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(c.id());
+        assertThat(settlement.reimbursements().get(0).from()).isEqualTo(new SettlementPartyId.Individual(a.id()));
+        assertThat(settlement.reimbursements().get(0).to()).isEqualTo(new SettlementPartyId.Individual(c.id()));
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("7.00");
 
-        assertThat(settlement.reimbursements().get(1).fromId()).isEqualTo(a.id());
-        assertThat(settlement.reimbursements().get(1).toId()).isEqualTo(d.id());
+        assertThat(settlement.reimbursements().get(1).from()).isEqualTo(new SettlementPartyId.Individual(a.id()));
+        assertThat(settlement.reimbursements().get(1).to()).isEqualTo(new SettlementPartyId.Individual(d.id()));
         assertThat(settlement.reimbursements().get(1).amount()).isEqualByComparingTo("3.00");
 
-        assertThat(settlement.reimbursements().get(2).fromId()).isEqualTo(b.id());
-        assertThat(settlement.reimbursements().get(2).toId()).isEqualTo(d.id());
+        assertThat(settlement.reimbursements().get(2).from()).isEqualTo(new SettlementPartyId.Individual(b.id()));
+        assertThat(settlement.reimbursements().get(2).to()).isEqualTo(new SettlementPartyId.Individual(d.id()));
         assertThat(settlement.reimbursements().get(2).amount()).isEqualByComparingTo("2.00");
     }
 
     @Test
     void calculate_sortingIsDeterministic_regardlessOfInsertionOrder() {
-        // Same balances as above but participants added in reverse order.
-        // Without sorting the reimbursements would differ; with sorting they must be identical.
         Split split = createSplit();
         Participant b = Participant.create("Bob", 1); // will owe €2
         Participant a = Participant.create("Alice", 1); // will owe €10
@@ -338,40 +310,18 @@ class SettlementCalculatorTest {
 
         Reimbursement first = settlement.reimbursements().get(0);
         assertThat(first.amount()).isEqualByComparingTo("7.00"); // largest single transaction first
-        assertThat(first.toId()).isEqualTo(c.id()); // largest creditor (Charlie +7) paid first
-        assertThat(first.fromId()).isEqualTo(a.id()); // largest debtor (Alice -10) pays first
+        assertThat(first.to()).isEqualTo(new SettlementPartyId.Individual(c.id())); // largest creditor (Charlie +7)
+        assertThat(first.from()).isEqualTo(new SettlementPartyId.Individual(a.id())); // largest debtor (Alice -10)
     }
 
-    // --- Preferred Creditor Pairing ---
+    // --- Shared Account ---
 
     @Test
-    void calculate_preferredCreditor_honouredBeforeGreedy() {
-        // Alice paid €100 split equally (Alice +50, Bob -50).
-        // Bob prefers to reimburse Alice → must produce Bob→Alice(50).
-        Split split = createSplit();
-        Participant alice = Participant.create("Alice", 1);
-        Participant bob = Participant.create("Bob", 1);
-        split.addParticipant(alice);
-        split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
-
-        // Set Bob's preferred creditor to Alice
-        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
-
-        Settlement settlement = SettlementCalculator.calculate(split);
-
-        assertThat(settlement.reimbursements()).hasSize(1);
-        Reimbursement r = settlement.reimbursements().get(0);
-        assertThat(r.fromId()).isEqualTo(bob.id());
-        assertThat(r.toId()).isEqualTo(alice.id());
-        assertThat(r.amount()).isEqualByComparingTo("50.00");
-    }
-
-    @Test
-    void calculate_preferredCreditor_partialThenGreedyForRemainder() {
-        // Three participants: Alice paid €150 equally (Alice +100, Bob -50, Charlie -50).
-        // Bob prefers Alice. Charlie has no preference.
-        // Expected: Bob→Alice(50) [preferred], Charlie→Alice(50) [greedy].
+    void calculate_sharedAccount_treatedAsSingleDebtor() {
+        // Alice paid €150 equally among 3. Bob and Charlie share an account (same group).
+        // Individual balances: Alice +100, Bob -50, Charlie -50.
+        // Settlement participants: Alice (Standard), BobCharlie (SharedAccount, balance -100).
+        // Expected: BobCharlie → Alice (100).
         Split split = createSplit();
         Participant alice = Participant.create("Alice", 1);
         Participant bob = Participant.create("Bob", 1);
@@ -381,28 +331,31 @@ class SettlementCalculatorTest {
         split.addParticipant(charlie);
         split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
 
-        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
+        // Bob and Charlie share an account
+        Participant.SharedAccountId groupId = Participant.SharedAccountId.generate();
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), groupId);
+        split.updateParticipant(charlie.id(), charlie.name().value(), charlie.nights().value(), charlie.share().value(),
+                groupId);
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
-        assertThat(settlement.reimbursements()).hasSize(2);
-        // First reimbursement: Bob → Alice (preferred)
-        Reimbursement preferred = settlement.reimbursements().get(0);
-        assertThat(preferred.fromId()).isEqualTo(bob.id());
-        assertThat(preferred.toId()).isEqualTo(alice.id());
-        assertThat(preferred.amount()).isEqualByComparingTo("50.00");
-        // Second reimbursement: Charlie → Alice (greedy)
-        Reimbursement greedy = settlement.reimbursements().get(1);
-        assertThat(greedy.fromId()).isEqualTo(charlie.id());
-        assertThat(greedy.toId()).isEqualTo(alice.id());
-        assertThat(greedy.amount()).isEqualByComparingTo("50.00");
+        // Individual balances: 3 entries (Alice, Bob, Charlie)
+        assertThat(settlement.balances()).hasSize(3);
+
+        // One reimbursement: the shared account group → Alice
+        assertThat(settlement.reimbursements()).hasSize(1);
+        Reimbursement r = settlement.reimbursements().get(0);
+        assertThat(r.from()).isEqualTo(new SettlementPartyId.Group(groupId));
+        assertThat(r.to()).isEqualTo(new SettlementPartyId.Individual(alice.id()));
+        assertThat(r.amount()).isEqualByComparingTo("100.00");
     }
 
     @Test
-    void calculate_preferredCreditor_notOwedMoney_silentlyIgnored() {
-        // Alice pays €100 equally (Alice +50, Bob -50).
-        // Bob's preferred creditor is Charlie, but Charlie is not a creditor.
-        // Result should be the normal greedy: Bob → Alice(50).
+    void calculate_sharedAccount_treatedAsSingleCreditor() {
+        // Alice and Bob share an account. Alice paid €150 equally among 3.
+        // Individual balances: Alice +100, Bob -50, Charlie -50.
+        // SharedAccount balance: Alice+Bob = +50. Charlie = -50.
+        // Settlement: Charlie → SharedAccount(50).
         Split split = createSplit();
         Participant alice = Participant.create("Alice", 1);
         Participant bob = Participant.create("Bob", 1);
@@ -410,22 +363,27 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
         split.addParticipant(charlie);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Groceries", alice.id()));
-        // Charlie paid nothing and cost was shared equally — Charlie is also a debtor
-        // So Bob prefers Charlie (another debtor, not a creditor)
-        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), charlie.id());
+        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
+
+        Participant.SharedAccountId groupId = Participant.SharedAccountId.generate();
+        split.updateParticipant(alice.id(), alice.name().value(), alice.nights().value(), alice.share().value(),
+                groupId);
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), groupId);
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
-        // Preference ignored; greedy resolves normally
-        assertThat(settlement.reimbursements()).hasSize(2);
-        // Both Bob and Charlie pay Alice (greedy, no preference applied)
-        assertThat(settlement.reimbursements()).allMatch(r -> r.toId().equals(alice.id()));
+        // One reimbursement: Charlie → SharedAccount
+        assertThat(settlement.reimbursements()).hasSize(1);
+        Reimbursement r = settlement.reimbursements().get(0);
+        assertThat(r.from()).isEqualTo(new SettlementPartyId.Individual(charlie.id()));
+        assertThat(r.to()).isEqualTo(new SettlementPartyId.Group(groupId));
+        assertThat(r.amount()).isEqualByComparingTo("50.00");
     }
 
     @Test
-    void calculate_noPreferredCreditor_behavesLikeOriginalGreedy() {
-        // No preferences set — output must match the original greedy algorithm.
+    void calculate_singletonSharedAccount_treatedAsStandard() {
+        // Bob has a sharedAccountId but is the only participant in that group.
+        // Should produce the same result as if he had no sharedAccountId.
         Split split = createSplit();
         Participant alice = Participant.create("Alice", 1);
         Participant bob = Participant.create("Bob", 1);
@@ -433,52 +391,16 @@ class SettlementCalculatorTest {
         split.addParticipant(bob);
         split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
 
+        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(),
+                Participant.SharedAccountId.generate());
+
         Settlement settlement = SettlementCalculator.calculate(split);
 
         assertThat(settlement.reimbursements()).hasSize(1);
-        assertThat(settlement.reimbursements().get(0).fromId()).isEqualTo(bob.id());
-        assertThat(settlement.reimbursements().get(0).toId()).isEqualTo(alice.id());
+        // Bob is treated as Standard → Individual party ID
+        assertThat(settlement.reimbursements().get(0).from()).isEqualTo(new SettlementPartyId.Individual(bob.id()));
+        assertThat(settlement.reimbursements().get(0).to()).isEqualTo(new SettlementPartyId.Individual(alice.id()));
         assertThat(settlement.reimbursements().get(0).amount()).isEqualByComparingTo("50.00");
-    }
-
-    // --- removeParticipant cleanup of preferredCreditorId ---
-
-    @Test
-    void removeParticipant_clearsPreferredCreditorReferences() {
-        // Bob's preferred creditor is Alice. Removing Alice must clear Bob's preference.
-        Split split = createSplit();
-        Participant alice = Participant.create("Alice", 1);
-        Participant bob = Participant.create("Bob", 1);
-        split.addParticipant(alice);
-        split.addParticipant(bob);
-
-        split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(), alice.id());
-        assertThat(split.getParticipant(bob.id()).preferredCreditorId()).isEqualTo(alice.id());
-
-        split.removeParticipant(alice.id());
-
-        assertThat(split.getParticipants()).hasSize(1);
-        assertThat(split.getParticipant(bob.id()).preferredCreditorId()).isNull();
-    }
-
-    @Test
-    void removeParticipant_doesNotClearUnrelatedPreferences() {
-        // Charlie's preferred creditor is Alice. Removing Bob must leave Charlie's preference intact.
-        Split split = createSplit();
-        Participant alice = Participant.create("Alice", 1);
-        Participant bob = Participant.create("Bob", 1);
-        Participant charlie = Participant.create("Charlie", 1);
-        split.addParticipant(alice);
-        split.addParticipant(bob);
-        split.addParticipant(charlie);
-
-        split.updateParticipant(charlie.id(), charlie.name().value(), charlie.nights().value(), charlie.share().value(),
-                alice.id());
-
-        split.removeParticipant(bob.id());
-
-        assertThat(split.getParticipants()).hasSize(2);
-        assertThat(split.getParticipant(charlie.id()).preferredCreditorId()).isEqualTo(alice.id());
     }
 
     private Split createSplit() {
