@@ -111,6 +111,30 @@ class PersistenceBackwardCompatibilityTest {
         assertThat(loaded.getSettlement().reimbursements()).hasSize(3);
     }
 
+    /**
+     * A real split file created when the frontend still allowed half-night values. One participant has {@code nights =
+     * 1.5}. The backend domain model accepts this (min is 0.5) and must deserialize it without error.
+     */
+    @Test
+    void shouldLoadSplitWithDecimalNightsValue() throws IOException {
+        String splitId = "CfyH-2W8bzPq3P6csLMGU";
+        loadFixtureIntoStorage("fixtures/compat/v2-decimal-nights.zip", splitId);
+
+        Split loaded = splitRepository.load(splitId).orElseThrow();
+
+        assertThat(loaded.getId().value()).isEqualTo(splitId);
+        assertThat(loaded.getParticipants()).hasSize(2);
+        assertThat(loaded.getParticipants()).anySatisfy(p -> {
+            assertThat(p.name().value()).isEqualTo("FRed");
+            assertThat(p.nights().value()).isEqualTo(1.5);
+        });
+        assertThat(loaded.getParticipants()).anySatisfy(p -> {
+            assertThat(p.name().value()).isEqualTo("Sheshe");
+            assertThat(p.nights().value()).isEqualTo(3.0);
+        });
+        assertThat(loaded.getExpenses()).hasSize(1);
+    }
+
     // --- helpers ---
 
     private void loadFixtureIntoStorage(String resourcePath, String splitId) throws IOException {

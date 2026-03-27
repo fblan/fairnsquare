@@ -5,13 +5,15 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.WholeNumber;
+
 /**
  * Request DTO for adding a participant to a split.
  */
 public record AddParticipantRequest(
         @NotBlank(message = "Name is required") @Size(max = 50, message = "Name cannot exceed 50 characters") String name,
 
-        @DecimalMin(value = "0.5", message = "Nights must be at least 0.5") @DecimalMax(value = "365", message = "Nights cannot exceed 365") double nights,
+        @DecimalMin(value = "1", message = "Nights must be at least 1") @DecimalMax(value = "365", message = "Nights cannot exceed 365") @WholeNumber(message = "Nights must be a whole number") double nights,
 
         @DecimalMin(value = "0.5", message = "Share must be at least 0.5") @DecimalMax(value = "50", message = "Share cannot exceed 50") Double share) {
 
