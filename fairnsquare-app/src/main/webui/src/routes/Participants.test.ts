@@ -31,16 +31,23 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
   addToast: vi.fn(),
 }));
 
+// Mock the nights default store
+vi.mock('$lib/stores/nightsDefaultStore', () => ({
+  loadNightsDefault: vi.fn(() => 1),
+  saveNightsDefault: vi.fn(),
+}));
+
 import { getSplit, addParticipant, deleteParticipant } from '$lib/api/splits';
 import { navigate, route } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
+import { loadNightsDefault, saveNightsDefault } from '$lib/stores/nightsDefaultStore';
 
 describe('Participants', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (route as any).params = { splitId: 'test-split-id' };
     (route as any).search = {};
-    localStorage.removeItem('fairnsquare_lastParticipantNights');
+    vi.mocked(loadNightsDefault).mockReturnValue(1);
   });
 
   const mockSplitEmpty: SplitType = {
@@ -457,7 +464,7 @@ describe('Participants', () => {
     });
 
     it('uses last entered value for subsequent additions', async () => {
-      localStorage.setItem('fairnsquare_lastParticipantNights', '3');
+      vi.mocked(loadNightsDefault).mockReturnValue(3);
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
       render(Participants);
@@ -581,7 +588,7 @@ describe('Participants', () => {
       await fireEvent.click(screen.getByRole('button', { name: /Add Participant/i }));
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '0' } });
 
-      expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
+      expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
@@ -601,7 +608,7 @@ describe('Participants', () => {
       expect(addParticipant).not.toHaveBeenCalled();
     });
 
-    it('shows validation error for nights less than 0.5', async () => {
+    it('shows validation error for nights less than 1', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
       render(Participants);
@@ -617,7 +624,7 @@ describe('Participants', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       await waitFor(() => {
-        expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
+        expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
       });
       expect(addParticipant).not.toHaveBeenCalled();
     });

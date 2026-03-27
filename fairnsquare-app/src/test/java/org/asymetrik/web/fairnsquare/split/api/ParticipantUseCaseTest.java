@@ -178,6 +178,20 @@ class ParticipantUseCaseTest {
     }
 
     /**
+     * Nights must be integers: POST returns 400 for decimal nights value.
+     */
+    @Test
+    void addParticipant_withDecimalNights_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Decimal Nights Test Split"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 1.5}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(400);
+    }
+
+    /**
      * Story 3.1 AC 10: POST returns 400 for name exceeding 50 characters.
      */
     @Test
@@ -308,6 +322,25 @@ class ParticipantUseCaseTest {
                 {"name": "Alice", "nights": 366}
                 """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(400)
                 .body("type", containsString("validation-error")).body("status", equalTo(400));
+    }
+
+    /**
+     * Nights must be integers: PUT returns 400 for decimal nights value.
+     */
+    @Test
+    void updateParticipant_withDecimalNights_returns400() {
+        String splitId = given().contentType(ContentType.JSON).body("""
+                {"name": "Decimal Update Test"}
+                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
+
+        String participantId = given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 2}
+                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
+                .path("id");
+
+        given().contentType(ContentType.JSON).body("""
+                {"name": "Alice", "nights": 1.5}
+                """).when().put("/api/splits/" + splitId + "/participants/" + participantId).then().statusCode(400);
     }
 
     /**

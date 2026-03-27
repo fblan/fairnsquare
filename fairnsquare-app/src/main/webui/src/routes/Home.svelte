@@ -10,6 +10,7 @@
   import type { ApiError } from '$lib/api/client';
   import { navigate } from '$lib/router';
   import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
+  import { saveNightsDefault } from '$lib/stores/nightsDefaultStore';
 
   // Resume state
   interface ResumeCandidate { id: string; name: string }
@@ -64,7 +65,7 @@
 
   let nightsError = $derived.by(() => {
     if (!nightsTouched) return null;
-    if (nights < 0.5) return 'Nights must be at least 0.5';
+    if (nights < 1) return 'Nights must be at least 1';
     if (nights > 365) return 'Nights cannot exceed 365';
     return null;
   });
@@ -82,7 +83,7 @@
     splitName.length <= 100 &&
     participantName.trim().length > 0 &&
     participantName.length <= 50 &&
-    nights >= 0.5 &&
+    nights >= 1 &&
     nights <= 365 &&
     share >= 0.5 &&
     share <= 50
@@ -110,7 +111,10 @@
         share,
       });
 
-      // Step 3: Go to participants page with form pre-opened to add next participant
+      // Step 3: Persist the nights value so the next participant form defaults to it
+      saveNightsDefault(nights);
+
+      // Step 4: Go to participants page with form pre-opened to add next participant
       navigate('/splits/:splitId/participants', { params: { splitId: split.id }, search: { addParticipant: 'true' } });
     } catch (err) {
       const apiError = err as ApiError;
@@ -220,8 +224,8 @@
                   bind:value={nights}
                   onblur={() => { nightsTouched = true; }}
                   oninput={() => { nightsTouched = true; }}
-                  step={0.5}
-                  min={0.5}
+                  step={1}
+                  min={1}
                   max={365}
                   disabled={isLoading}
                   class="min-h-[44px]"

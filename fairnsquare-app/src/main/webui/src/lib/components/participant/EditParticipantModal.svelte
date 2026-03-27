@@ -21,7 +21,7 @@
   const fieldInfo = {
     nights: {
       title: 'Nights',
-      description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nHalf-nights (0.5) are supported for arrivals or departures during the day.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
+      description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
     },
     share: {
       title: 'Share',
@@ -90,7 +90,7 @@
   );
 
   const isNightsValid = $derived(
-    editNights >= 0.5 && editNights <= 365
+    editNights >= 1 && editNights <= 365
   );
 
   const isShareValid = $derived(
@@ -108,7 +108,7 @@
   $effect(() => {
     if (open && participant) {
       editName = participant.name;
-      editNights = participant.nights;
+      editNights = Math.max(1, Math.round(participant.nights));
       editShare = participant.share;
       validationErrors = {};
       nameTouched = false;
@@ -142,8 +142,8 @@
   }
 
   function validateNights() {
-    if (editNights < 0.5) {
-      validationErrors.nights = 'Nights must be at least 0.5';
+    if (editNights < 1) {
+      validationErrors.nights = 'Nights must be at least 1';
     } else if (editNights > 365) {
       validationErrors.nights = 'Nights cannot exceed 365';
     } else {
@@ -382,8 +382,8 @@
             <Input
               id="edit-participant-nights-modal"
               type="number"
-              step="0.5"
-              min="0.5"
+              step="1"
+              min="1"
               max="365"
               bind:value={editNights}
               onblur={handleNightsBlur}
