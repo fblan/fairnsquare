@@ -13,6 +13,7 @@
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
+  import { loadNightsDefault, saveNightsDefault } from '$lib/stores/nightsDefaultStore';
   import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users } from 'lucide-svelte';
 
   // Field info modal state (add form)
@@ -21,7 +22,7 @@
   const fieldInfo = {
     nights: {
       title: 'Nights',
-      description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nHalf-nights (0.5) are supported for arrivals or departures during the day.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
+      description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
     },
     share: {
       title: 'Share',
@@ -64,20 +65,6 @@
   let showAddExpenseModal = $state(false);
   let selectedPayerId = $state<string | null>(null);
 
-  // Smart default for nights - persist to localStorage
-  const NIGHTS_STORAGE_KEY = 'fairnsquare_lastParticipantNights';
-
-  function getSmartDefaultNights(): number {
-    if (typeof window === 'undefined') return 1;
-    const stored = localStorage.getItem(NIGHTS_STORAGE_KEY);
-    return stored ? parseInt(stored, 10) : 1;
-  }
-
-  function saveSmartDefaultNights(nights: number): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(NIGHTS_STORAGE_KEY, nights.toString());
-    }
-  }
 
   // Load split data
   $effect(() => {
@@ -180,7 +167,7 @@
   async function handleShowAddForm() {
     showAddForm = true;
     formName = '';
-    formNights = getSmartDefaultNights();
+    formNights = loadNightsDefault();
     formShare = 1;
     validationErrors = {};
     await tick();
@@ -211,8 +198,8 @@
 
   function validateNightsOnInput() {
     let nightsError: string | undefined;
-    if (formNights < 0.5) {
-      nightsError = 'Nights must be at least 0.5';
+    if (formNights < 1) {
+      nightsError = 'Nights must be at least 1';
     } else if (formNights > 365) {
       nightsError = 'Nights cannot exceed 365';
     }
@@ -240,8 +227,8 @@
       errors.name = 'A participant with this name already exists';
     }
 
-    if (formNights < 0.5) {
-      errors.nights = 'Nights must be at least 0.5';
+    if (formNights < 1) {
+      errors.nights = 'Nights must be at least 1';
     } else if (formNights > 365) {
       errors.nights = 'Nights cannot exceed 365';
     }
@@ -271,7 +258,7 @@
         share: formShare,
       });
 
-      saveSmartDefaultNights(formNights);
+      saveNightsDefault(formNights);
       showAddForm = false;
       formName = '';
       formNights = 1;
@@ -460,7 +447,8 @@
                 <Input
                   id="participant-nights"
                   type="number"
-                  step="0.5"
+                  step="1"
+                  min="1"
                   bind:value={formNights}
                   oninput={validateNightsOnInput}
                   class="min-h-[44px]"

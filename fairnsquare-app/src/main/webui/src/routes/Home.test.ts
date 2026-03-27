@@ -29,10 +29,17 @@ vi.mock('$lib/stores/lastSplitStore', () => ({
   saveLastSplit: vi.fn(),
 }));
 
+// Mock the nights default store
+vi.mock('$lib/stores/nightsDefaultStore', () => ({
+  saveNightsDefault: vi.fn(),
+  loadNightsDefault: vi.fn(() => 1),
+}));
+
 import { createSplit, addParticipant, getSplit } from '$lib/api/splits';
 import { navigate } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
 import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
+import { saveNightsDefault } from '$lib/stores/nightsDefaultStore';
 
 describe('Home', () => {
   beforeEach(() => {
@@ -121,13 +128,13 @@ describe('Home', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows validation error for nights less than 0.5', async () => {
+  it('shows validation error for nights less than 1', async () => {
     render(Home);
 
     const nightsInput = screen.getByLabelText('Nights');
     await fireEvent.input(nightsInput, { target: { value: 0 } });
 
-    expect(screen.getByText('Nights must be at least 0.5')).toBeInTheDocument();
+    expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
   });
 
   it('shows validation error for nights greater than 365', async () => {
@@ -203,6 +210,47 @@ describe('Home', () => {
         search: { addParticipant: 'true' },
       });
     });
+  });
+
+  it('saves nights default after creating split so next participant form defaults to it', async () => {
+    const mockSplit = {
+      id: 'abc123',
+      name: 'Weekend Trip',
+      createdAt: '2026-02-04T12:00:00Z',
+      participants: [],
+      expenses: [],
+    };
+    vi.mocked(createSplit).mockResolvedValue(mockSplit);
+    vi.mocked(addParticipant).mockResolvedValue({ id: 'p1', name: 'Alice', nights: 7, share: 1 });
+
+    render(Home);
+
+    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Weekend Trip' } });
+    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+    await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: 7 } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+    await waitFor(() => {
+      expect(saveNightsDefault).toHaveBeenCalledWith(7);
+    });
+  });
+
+  it('does not save nights default when API call fails', async () => {
+    vi.mocked(createSplit).mockRejectedValue({ detail: 'Server error' });
+
+    render(Home);
+
+    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Weekend Trip' } });
+    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+    await waitFor(() => {
+      expect(addToast).toHaveBeenCalled();
+    });
+
+    expect(saveNightsDefault).not.toHaveBeenCalled();
   });
 
   it('sends share in API call', async () => {

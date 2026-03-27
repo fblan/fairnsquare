@@ -186,7 +186,7 @@ describe('EditParticipantModal', () => {
 
   // AC 5: Nights validation errors
   describe('AC 5: Nights validation', () => {
-    it('should show error for nights less than 0.5', async () => {
+    it('should show error for nights less than 1', async () => {
       render(EditParticipantModal, { props: defaultProps });
 
       const nightsInput = screen.getByLabelText('Nights');
@@ -194,7 +194,7 @@ describe('EditParticipantModal', () => {
       await fireEvent.blur(nightsInput);
 
       await waitFor(() => {
-        expect(screen.getByText(/at least 0\.5/i)).toBeInTheDocument();
+        expect(screen.getByText(/at least 1/i)).toBeInTheDocument();
       });
     });
 
