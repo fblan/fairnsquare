@@ -109,10 +109,11 @@ export interface Settlement {
  * @param request The create split request containing the name
  * @returns The created split with generated ID and timestamp
  */
-export async function createSplit(request: CreateSplitRequest): Promise<Split> {
+export async function createSplit(request: CreateSplitRequest, extraHeaders?: Record<string, string>): Promise<Split> {
   return apiRequest<Split>('/splits', {
     method: 'POST',
     body: JSON.stringify(request),
+    headers: extraHeaders,
   });
 }
 

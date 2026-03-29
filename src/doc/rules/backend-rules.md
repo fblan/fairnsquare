@@ -68,6 +68,14 @@
 
 - When a domain concept is derived from persisted entities at runtime and never stored itself (e.g. `SettlementParticipant` computed from `Participant` records), place it in the domain package alongside the entities it derives from. Mark it as "not persisted" in its Javadoc. Its mapper must be a stateless utility class with no injectable dependencies — a single static `from(...)` method is sufficient.
 
+## Cross-Module Test Helpers
+
+- When integration tests in module X need to use types from unexported packages of module Y (e.g., generating signed tokens in split tests), create the helper class in the root package `org.asymetrik.web.fairnsquare` (no `@Module` annotation), not inside any module package. Root-package classes fall outside the `ModularVerifier` boundary check and can access all modules freely.
+
+## Module Exports for Cross-Module Annotations
+
+- When a `@NameBinding` or other annotation is designed to be applied by other modules (e.g., `@CaptchaProtected` on a split endpoint), its package must be explicitly listed in the provider module's `@Module(exports = {...})`. Omitting it causes `ModularArchitectureTest` to fail for every consuming module. Export the minimal set of packages needed (typically the `api` package containing the annotation).
+
 ## Backward-Compatible Persistence Discriminators
 
 - When adding a type discriminator field to a persistence DTO (e.g. `fromType` on `ReimbursementPersistenceDTO`), use `null` as the legacy default value rather than introducing a migration or a sentinel string. Null (or absent) must map to the original/default type, and the persistence mapper must apply this default explicitly on load. This allows all files written before the discriminator existed to continue loading without modification.
