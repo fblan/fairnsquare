@@ -56,9 +56,11 @@ FROM registry.access.redhat.com/ubi9/openjdk-25-runtime:latest
 
 WORKDIR /deployments
 USER root
-RUN chown 1001 /deployments \
+# Install fontconfig + DejaVu fonts required by java.awt (CaptchaImageGenerator) in headless mode
+RUN microdnf install -y fontconfig dejavu-sans-fonts && microdnf clean all \
+    && chown 1001 /deployments \
     && chmod "g+rwX" /deployments \
-    && chown 1001:root /deployments 
+    && chown 1001:root /deployments
 
 # Copy built artifacts from builder stage
 # Four distinct layers for efficient image caching:
