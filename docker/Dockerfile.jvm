@@ -78,7 +78,7 @@ USER 1001
 # Persist split data outside the container filesystem
 VOLUME ["/data"]
 
-ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager -Xmx512m"
+ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager -Djava.awt.headless=true -Xmx512m"
 ENV FAIRNSQUARE_DATA_PATH="/data"
 ENV FAIRNSQUARE_CORS_ORIGINS="https://fairnsquare.web.asymetrik.org"
 
