@@ -4,11 +4,16 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
 
+import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 
 /**
@@ -21,6 +26,17 @@ import io.restassured.http.ContentType;
 @QuarkusTest
 @QuarkusTestResource(TempStorageTestResource.class)
 class SettlementUseCaseTest {
+
+    @BeforeEach
+    void installCaptchaToken() {
+        RestAssured.requestSpecification = new RequestSpecBuilder()
+                .addHeader("X-Captcha-Token", CaptchaTokenTestHelper.generateToken()).build();
+    }
+
+    @AfterEach
+    void resetRequestSpec() {
+        RestAssured.requestSpecification = null;
+    }
 
     // --- GET /api/splits/{id}/settlement ---
 

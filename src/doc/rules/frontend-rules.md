@@ -71,6 +71,10 @@
 
 - `$effect` handlers that run on page load must only call safe read (GET) API methods. Never call a mutation-side-effect API (POST, PUT, DELETE) on page load, even if the operation appears idempotent — it can silently undo intentional prior user actions (e.g., calling a resolve POST on load immediately re-persists a settlement the user had just deleted via Unsettle). Derive UI state from already-loaded data, or use a dedicated GET endpoint.
 
+## Error Message Lifecycle in Async Load Functions
+
+- When a component function resets state and then awaits an async call (e.g., `loadChallenge` after a wrong answer), do not clear `errorMessage` at the top of the function. Clear it only in the success branch, after the await resolves. Clearing it synchronously at the top batches the reset with the other state changes before the first `await`, so the DOM never shows the error — breaking both UX (error flashes invisibly) and `waitFor` assertions in tests. Always pattern: set error → call `loadFn` → inside `loadFn`, clear error on success.
+
 ## `getByText` Ambiguity from `<select>` Options
 
 - When entity names appear both as rendered text nodes AND as `<option>` values in a `<select>`, `getByText('Name')` will throw due to multiple matches. Use `getAllByText` when only testing presence, or use more specific queries (`getByRole('heading', { name: '...' })`, `getByRole('combobox', { name: '...' })`).
