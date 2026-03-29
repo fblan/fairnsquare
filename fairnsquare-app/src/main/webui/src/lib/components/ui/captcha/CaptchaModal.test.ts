@@ -26,6 +26,7 @@ describe('CaptchaModal', () => {
     vi.mocked(createChallenge).mockResolvedValue({
       challengeToken: 'encrypted-challenge-token',
       imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      secretFingerprint: 'a3f9b2c1',
     });
   });
 
@@ -81,6 +82,14 @@ describe('CaptchaModal', () => {
     });
   });
 
+  it('displays secret fingerprint after challenge loads', async () => {
+    render(CaptchaModal, { props: defaultProps });
+
+    await waitFor(() => {
+      expect(screen.getByText('key: a3f9b2c1')).toBeInTheDocument();
+    });
+  });
+
   // --- Correct answer flow ---
 
   it('calls verifyChallenge with challengeToken and click coordinates when image is clicked', async () => {
@@ -132,6 +141,7 @@ describe('CaptchaModal', () => {
     vi.mocked(createChallenge).mockResolvedValueOnce({
       challengeToken: 'encrypted-challenge-token',
       imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      secretFingerprint: 'a3f9b2c1',
     }).mockReturnValueOnce(new Promise(() => {}));
 
     render(CaptchaModal, { props: defaultProps });

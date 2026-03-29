@@ -21,6 +21,7 @@
 
   let challengeToken = $state<string | null>(null);
   let imageBase64 = $state<string | null>(null);
+  let secretFingerprint = $state<string | null>(null);
   let loading = $state(false);
   let errorMessage = $state<string | null>(null);
   let imgElement = $state<HTMLImageElement | null>(null);
@@ -33,6 +34,7 @@
       const response = await createChallenge();
       challengeToken = response.challengeToken;
       imageBase64 = response.imageBase64;
+      secretFingerprint = response.secretFingerprint;
       errorMessage = null;
     } catch {
       errorMessage = 'Failed to load the verification challenge. Please try again.';
@@ -125,7 +127,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="px-6 pb-6 pt-2 flex justify-center">
+      <div class="px-6 pb-6 pt-2 flex flex-col items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -136,6 +138,9 @@
           <RefreshCw class="h-4 w-4" />
           New challenge
         </Button>
+        {#if secretFingerprint}
+          <p class="text-xs text-muted-foreground font-mono">key: {secretFingerprint}</p>
+        {/if}
       </div>
     </div>
   </div>
