@@ -2,6 +2,7 @@ package org.asymetrik.web.fairnsquare.infrastructure.captcha.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -183,6 +184,20 @@ public class CaptchaService {
      */
     public boolean validateToken(String token) {
         return CaptchaToken.isValid(token, secret);
+    }
+
+    /**
+     * Return the first 8 hex characters of SHA-256(secret) as a stable fingerprint. Safe to expose publicly — reveals
+     * nothing about the secret itself.
+     */
+    public String getSecretFingerprint() {
+        try {
+            MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            byte[] hash = sha.digest(secret.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash).substring(0, 8);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to compute secret fingerprint", e);
+        }
     }
 
     private SecretKeySpec deriveKey() throws Exception {

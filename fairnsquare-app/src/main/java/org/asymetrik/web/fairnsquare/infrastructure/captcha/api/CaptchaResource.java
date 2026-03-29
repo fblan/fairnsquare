@@ -53,8 +53,9 @@ public class CaptchaResource {
         byte[] png = imageGenerator.generate(challenge);
         String imageBase64 = Base64.getEncoder().encodeToString(png);
         String challengeToken = captchaService.encryptChallenge(challenge);
+        String secretFingerprint = captchaService.getSecretFingerprint();
         return Response.status(Response.Status.CREATED)
-                .entity(new CaptchaChallengeResponseDTO(challengeToken, imageBase64)).build();
+                .entity(new CaptchaChallengeResponseDTO(challengeToken, imageBase64, secretFingerprint)).build();
     }
 
     /**

@@ -206,6 +206,19 @@ class CaptchaServiceTest {
         assertThat(service.validateToken("")).isFalse();
     }
 
+    // --- Secret fingerprint ---
+
+    @Test
+    void getSecretFingerprint_returnsFirst8HexCharsOfSha256() {
+        // SHA-256("test-secret") starts with 9caf06bb
+        assertThat(service.getSecretFingerprint()).isEqualTo("9caf06bb");
+    }
+
+    @Test
+    void getSecretFingerprint_hasLength8() {
+        assertThat(service.getSecretFingerprint()).hasSize(8);
+    }
+
     // --- CaptchaToken unit ---
 
     @Test
