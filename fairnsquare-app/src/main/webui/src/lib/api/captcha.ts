@@ -7,6 +7,7 @@ import { apiRequest } from './client';
 export interface CaptchaChallengeResponse {
   challengeToken: string;
   imageBase64: string;
+  secretFingerprint: string;
 }
 
 export interface CaptchaTokenResponse {
