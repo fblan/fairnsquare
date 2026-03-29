@@ -38,6 +38,7 @@ import org.asymetrik.web.fairnsquare.split.domain.SplitNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.domain.UpdateParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.service.SettlementResult;
+import org.asymetrik.web.fairnsquare.infrastructure.captcha.api.CaptchaProtected;
 import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
 
 /**
@@ -65,7 +66,7 @@ public class SplitResource {
     }
 
     /**
-     * Creates a new split.
+     * Creates a new split. Requires a valid CAPTCHA token in the {@code X-Captcha-Token} header.
      *
      * @param request
      *            the create split request
@@ -73,6 +74,7 @@ public class SplitResource {
      * @return 201 Created with the created split and Location header
      */
     @POST
+    @CaptchaProtected
     public Response createSplit(@Valid CreateSplitRequest request) {
         Split split = splitService.createSplit(request);
 

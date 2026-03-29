@@ -11,6 +11,16 @@
   import { navigate } from '$lib/router';
   import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
   import { saveNightsDefault } from '$lib/stores/nightsDefaultStore';
+  import { hasValidToken, loadToken, clearToken, CAPTCHA_TOKEN_HEADER } from '$lib/stores/captchaStore';
+  import CaptchaModal from '$lib/components/ui/captcha/CaptchaModal.svelte';
+
+  // CAPTCHA state — shown when user clicks Create Split without a valid token
+  let showCaptcha = $state(false);
+
+  function handleCaptchaSuccess() {
+    showCaptcha = false;
+    doCreateSplit();
+  }
 
   // Resume state
   interface ResumeCandidate { id: string; name: string }
@@ -89,7 +99,7 @@
     share <= 50
   );
 
-  async function handleCreateSplit() {
+  function handleCreateSplit() {
     // Touch all fields to show errors
     splitNameTouched = true;
     participantNameTouched = true;
@@ -98,11 +108,25 @@
 
     if (!isValid) return;
 
-    isLoading = true;
+    if (!hasValidToken()) {
+      showCaptcha = true;
+      return;
+    }
 
+    doCreateSplit();
+  }
+
+  async function doCreateSplit() {
+    isLoading = true;
     try {
-      // Step 1: Create the split
-      const split = await createSplit({ name: splitName.trim() });
+      const token = loadToken();
+      if (!token) {
+        showCaptcha = true;
+        return;
+      }
+
+      // Step 1: Create the split (with CAPTCHA token header)
+      const split = await createSplit({ name: splitName.trim() }, { [CAPTCHA_TOKEN_HEADER]: token });
 
       // Step 2: Add the first participant
       await addParticipant(split.id, {
@@ -118,15 +142,22 @@
       navigate('/splits/:splitId/participants', { params: { splitId: split.id }, search: { addParticipant: 'true' } });
     } catch (err) {
       const apiError = err as ApiError;
-      addToast({
-        type: 'error',
-        message: apiError.detail || 'Failed to create split',
-      });
+      if (apiError.status === 401) {
+        clearToken();
+        showCaptcha = true;
+      } else {
+        addToast({
+          type: 'error',
+          message: apiError.detail || 'Failed to create split',
+        });
+      }
     } finally {
       isLoading = false;
     }
   }
 </script>
+
+<CaptchaModal open={showCaptcha} onSuccess={handleCaptchaSuccess} />
 
 <div class="flex flex-col items-center space-y-6">
   <!-- Header -->
@@ -288,4 +319,17 @@
   <section class="text-center text-muted-foreground text-sm max-w-[520px]">
     <p>No account needed. Create a split and share the link!</p>
   </section>
+
+  <!-- Dev tools -->
+  {#if import.meta.env.DEV}
+    <section class="w-full max-w-[520px] border border-dashed border-orange-300 rounded-lg p-3 space-y-1">
+      <p class="text-xs font-semibold text-orange-500 uppercase tracking-wide">Dev tools</p>
+      <button
+        onclick={() => clearToken()}
+        class="text-xs text-orange-600 underline underline-offset-2 hover:text-orange-800"
+      >
+        Clear CAPTCHA token
+      </button>
+    </section>
+  {/if}
 </div>

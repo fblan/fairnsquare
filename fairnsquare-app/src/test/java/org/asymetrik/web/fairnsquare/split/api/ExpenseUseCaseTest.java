@@ -11,11 +11,16 @@ import static org.hamcrest.Matchers.hasSize;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 
 /**
@@ -25,6 +30,17 @@ import io.restassured.http.ContentType;
 @QuarkusTest
 @QuarkusTestResource(TempStorageTestResource.class)
 class ExpenseUseCaseTest {
+
+    @BeforeEach
+    void installCaptchaToken() {
+        RestAssured.requestSpecification = new RequestSpecBuilder()
+                .addHeader("X-Captcha-Token", CaptchaTokenTestHelper.generateToken()).build();
+    }
+
+    @AfterEach
+    void resetRequestSpec() {
+        RestAssured.requestSpecification = null;
+    }
 
     // ==================== Story 4.1: Add Expense Tests ====================
 
