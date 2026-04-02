@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNightCustom;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.PayerNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
@@ -243,6 +244,34 @@ public class Split {
      */
     public Expense updateExpense(Expense.Id expenseId, java.math.BigDecimal amount, String description,
             Participant.Id payerId, SplitMode splitMode) {
+        return updateExpense(expenseId, amount, description, payerId, splitMode, null);
+    }
+
+    /**
+     * Update an existing expense in the split.
+     *
+     * @param expenseId
+     *            the ID of the expense to update
+     * @param amount
+     *            the new amount
+     * @param description
+     *            the new description
+     * @param payerId
+     *            the new payer ID
+     * @param splitMode
+     *            the new split mode
+     * @param participantIds
+     *            the participant IDs for BY_NIGHT_CUSTOM mode (may be null for other modes)
+     *
+     * @return the updated expense with recalculated shares
+     *
+     * @throws ExpenseNotFoundError
+     *             if no expense with the given ID exists
+     * @throws PayerNotFoundError
+     *             if the new payer is not a participant in this split
+     */
+    public Expense updateExpense(Expense.Id expenseId, java.math.BigDecimal amount, String description,
+            Participant.Id payerId, SplitMode splitMode, List<Participant.Id> participantIds) {
         // Validate payer exists
         validatePayerExists(payerId);
 
@@ -251,8 +280,14 @@ public class Split {
             Expense existing = expenses.get(i);
             if (existing.getId().equals(expenseId)) {
                 // Preserve original ID and createdAt, create new instance with updated values
-                Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
-                        existing.getCreatedAt());
+                Expense updated;
+                if (splitMode == SplitMode.BY_NIGHT_CUSTOM) {
+                    updated = ExpenseByNightCustom.fromJson(expenseId, amount, description, payerId, participantIds,
+                            existing.getCreatedAt());
+                } else {
+                    updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
+                            existing.getCreatedAt());
+                }
                 expenses.set(i, updated);
                 clearSettlement();
                 recalculateBalances();

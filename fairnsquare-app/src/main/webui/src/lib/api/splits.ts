@@ -32,7 +32,7 @@ export interface Participant {
   balance?: number;
 }
 
-export type SplitMode = 'BY_NIGHT' | 'BY_SHARE' | 'EQUAL' | 'FREE';
+export type SplitMode = 'BY_NIGHT' | 'BY_NIGHT_CUSTOM' | 'BY_SHARE' | 'EQUAL' | 'FREE';
 
 export interface Share {
   participantId: string;
@@ -72,6 +72,14 @@ export interface UpdateExpenseRequest {
   description: string;
   payerId: string;
   splitMode: SplitMode;
+  participantIds?: string[];
+}
+
+export interface AddByNightCustomExpenseRequest {
+  amount: number;
+  description: string;
+  payerId: string;
+  participantIds: string[];
 }
 
 export interface Split {
@@ -194,6 +202,22 @@ export async function addExpense(
   return apiRequest<Expense>(endpoint, {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Adds a BY_NIGHT_CUSTOM expense with a selected subset of participants.
+ * @param splitId The split identifier
+ * @param request The request containing amount, description, payerId, and participantIds
+ * @returns The created expense with calculated shares
+ */
+export async function addByNightCustomExpense(
+  splitId: string,
+  request: AddByNightCustomExpenseRequest
+): Promise<Expense> {
+  return apiRequest<Expense>(`/splits/${splitId}/expenses/by-night-custom`, {
+    method: 'POST',
+    body: JSON.stringify(request),
   });
 }
 

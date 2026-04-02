@@ -115,7 +115,7 @@ describe('ExpenseEditModal', () => {
     it('sets BY_NIGHT as default split mode', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byNightRadio = screen.getByRole('radio', { name: /by night/i });
+      const byNightRadio = screen.getByRole('radio', { name: /^by night$/i });
       expect(byNightRadio).toBeChecked();
     });
 

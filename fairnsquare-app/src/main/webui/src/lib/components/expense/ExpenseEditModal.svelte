@@ -5,7 +5,7 @@
    */
 
   import { untrack } from 'svelte';
-  import { addExpense, addFreeExpense, updateExpense, deleteExpense, type Expense, type Participant, type SplitMode } from '$lib/api/splits';
+  import { addExpense, addFreeExpense, addByNightCustomExpense, updateExpense, deleteExpense, type Expense, type Participant, type SplitMode, type AddByNightCustomExpenseRequest } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import Button from '$lib/components/ui/button/button.svelte';
   import Input from '$lib/components/ui/input/input.svelte';
@@ -15,7 +15,8 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import ShareEditModal from './ShareEditModal.svelte';
-  import { Moon, Equal, Edit3, Users, X, Info } from 'lucide-svelte';
+  import ByNightParticipantsModal from './ByNightParticipantsModal.svelte';
+  import { Moon, MoonStar, Equal, Edit3, Users, X, Info } from 'lucide-svelte';
 
   // Props
   let {
@@ -63,6 +64,10 @@
       title: 'By Night',
       description: `The cost is shared proportionally based on each participant's total "night-shares" — calculated as nights × share weight.\n\nThe share weight represents the number of persons. For example, a couple has a share of 2, while a solo traveller has a share of 1.\n\nExample: Alice (1 person) stays 3 nights = 3 night-shares. Bob & Carol (couple, 2 persons) stay 2 nights = 4 night-shares. Total = 7 night-shares.\n\nAlice pays 3/7 of the expense, Bob & Carol pay 4/7.`,
     },
+    BY_NIGHT_CUSTOM: {
+      title: 'By Night (Custom)',
+      description: `Like "By Night", but only a selected subset of participants are included in this expense.\n\nUseful when a "van guest" participates in most shared nights expenses, but not all.\n\nThe cost is still shared proportionally based on each included participant's nights × share weight.`,
+    },
     EQUAL: {
       title: 'Equal',
       description: `The cost is divided equally among all participants, regardless of their nights, share weight, or any other factor.\n\nExample: 3 participants share a €90 expense → each pays €30.`,
@@ -87,7 +92,11 @@
   let showDiscardConfirm = $state(false);
   let showDeleteConfirm = $state(false);
   let showShareEditModal = $state(false);
+  let showByNightParticipantsModal = $state(false);
   let isDeleting = $state(false);
+
+  // BY_NIGHT_CUSTOM selected participant IDs
+  let byNightCustomParticipantIds = $state<string[]>([]);
 
   // Dirty tracking (edit mode)
   const isSharesDirty = $derived(
@@ -101,13 +110,26 @@
     })
   );
 
+  const isByNightCustomParticipantsDirty = $derived(
+    expense != null && splitMode === 'BY_NIGHT_CUSTOM' && (() => {
+      const originalIds = expense.splitMode === 'BY_NIGHT_CUSTOM'
+        ? (expense.shares?.map(s => s.participantId) ?? [])
+        : participants.map(p => p.id);
+      if (originalIds.length !== byNightCustomParticipantIds.length) return true;
+      const sortedOriginal = [...originalIds].sort();
+      const sortedCurrent = [...byNightCustomParticipantIds].sort();
+      return sortedOriginal.some((id, i) => id !== sortedCurrent[i]);
+    })()
+  );
+
   const isDirtyEdit = $derived(
     expense != null && (
       (typeof amount === 'number' ? amount : parseFloat(amount as string) || 0) !== expense.amount ||
       description !== expense.description ||
       payerId !== expense.payerId ||
       splitMode !== expense.splitMode ||
-      isSharesDirty
+      isSharesDirty ||
+      isByNightCustomParticipantsDirty
     )
   );
 
@@ -140,7 +162,9 @@
   );
 
   const isPartsValid = $derived(
-    splitMode !== 'FREE' || totalParts > 0
+    splitMode !== 'FREE'
+      ? (splitMode !== 'BY_NIGHT_CUSTOM' || byNightCustomParticipantIds.length > 0)
+      : totalParts > 0
   );
 
   const isValid = $derived(isAmountValid && isDescriptionValid && isPayerValid && isPartsValid);
@@ -207,11 +231,19 @@
           }
         }
       }
+
+      // Populate selected participants for BY_NIGHT_CUSTOM mode
+      if (expense.splitMode === 'BY_NIGHT_CUSTOM' && expense.shares) {
+        byNightCustomParticipantIds = expense.shares.map(s => s.participantId);
+      } else {
+        byNightCustomParticipantIds = [];
+      }
     } else {
       // Add mode: blank form with optional pre-selected payer
       amount = '';
       description = '';
       splitMode = 'BY_NIGHT';
+      byNightCustomParticipantIds = [];
 
       if (preselectedPayerId) {
         const participant = participants.find(p => p.id === preselectedPayerId);
@@ -304,7 +336,34 @@
     isLoading = true;
 
     try {
-      if (splitMode === 'FREE') {
+      if (splitMode === 'BY_NIGHT_CUSTOM') {
+        if (isEditMode && expense) {
+          await updateExpense(splitId, expense.id, {
+            amount: amountValue,
+            description: description.trim(),
+            payerId,
+            splitMode,
+            participantIds: byNightCustomParticipantIds,
+          });
+          addToast({
+            type: 'success',
+            message: 'Expense updated',
+            description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+          });
+        } else {
+          await addByNightCustomExpense(splitId, {
+            amount: amountValue,
+            description: description.trim(),
+            payerId,
+            participantIds: byNightCustomParticipantIds,
+          });
+          addToast({
+            type: 'success',
+            message: 'Expense added',
+            description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+          });
+        }
+      } else if (splitMode === 'FREE') {
         const shares = participants.map(p => ({
           participantId: p.id,
           parts: typeof shareParts[p.id] === 'number'
@@ -418,7 +477,7 @@
   function handleKeydown(event: KeyboardEvent) {
     if (!open) return;
 
-    if (event.key === 'Escape' && !isLoading && !showDiscardConfirm && !showDeleteConfirm && !showShareEditModal) {
+    if (event.key === 'Escape' && !isLoading && !showDiscardConfirm && !showDeleteConfirm && !showShareEditModal && !showByNightParticipantsModal) {
       handleCloseAttempt();
     }
 
@@ -569,6 +628,16 @@
               </button>
             </div>
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
+              <RadioGroup.Item value="BY_NIGHT_CUSTOM" id="modal-mode-by-night-custom" />
+              <Label for="modal-mode-by-night-custom" class="flex items-center gap-2 cursor-pointer flex-1">
+                <MoonStar class="h-4 w-4" aria-hidden="true" />
+                <span>By Night (Custom)</span>
+              </Label>
+              <button type="button" onclick={(e) => openInfo('BY_NIGHT_CUSTOM', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Night Custom">
+                <Info class="h-4 w-4" />
+              </button>
+            </div>
+            <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
               <RadioGroup.Item value="EQUAL" id="modal-mode-equal" />
               <Label for="modal-mode-equal" class="flex items-center gap-2 cursor-pointer flex-1">
                 <Equal class="h-4 w-4" aria-hidden="true" />
@@ -632,6 +701,39 @@
             >
               <Edit3 class="h-4 w-4 mr-2" />
               Edit shares
+            </Button>
+          </div>
+        {/if}
+
+        <!-- BY_NIGHT_CUSTOM Participants Summary -->
+        {#if splitMode === 'BY_NIGHT_CUSTOM'}
+          <div class="space-y-2 p-4 border rounded-lg bg-muted/30">
+            <div class="flex items-center justify-between">
+              <Label class="text-sm font-medium">Participants</Label>
+              <span class="text-sm {byNightCustomParticipantIds.length > 0 ? 'text-green-600' : 'text-destructive'}">
+                {byNightCustomParticipantIds.length} / {participants.length} {byNightCustomParticipantIds.length === 1 ? 'participant' : 'participants'}
+              </span>
+            </div>
+            {#if byNightCustomParticipantIds.length > 0}
+              <div class="text-sm text-muted-foreground">
+                {participants.filter(p => byNightCustomParticipantIds.includes(p.id)).map(p => p.name).join(', ')}
+              </div>
+            {:else}
+              <p class="text-sm text-muted-foreground">No participants selected</p>
+            {/if}
+            {#if byNightCustomParticipantIds.length === 0 && (amountTouched || descriptionTouched)}
+              <p class="text-xs text-destructive">At least one participant must be selected</p>
+            {/if}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onclick={() => { showByNightParticipantsModal = true; }}
+              disabled={isLoading || isDeleting}
+              class="w-full min-h-[44px]"
+            >
+              <MoonStar class="h-4 w-4 mr-2" />
+              Edit participants
             </Button>
           </div>
         {/if}
@@ -759,5 +861,14 @@
   initialData={{ shareParts, shareChecked, sharePreviousValues }}
   onConfirm={handleShareEditConfirm}
   onCancel={() => { showShareEditModal = false; }}
+/>
+
+<!-- By Night Custom Participants Sub-Modal -->
+<ByNightParticipantsModal
+  open={showByNightParticipantsModal}
+  {participants}
+  initialParticipantIds={byNightCustomParticipantIds}
+  onConfirm={(ids) => { byNightCustomParticipantIds = ids; showByNightParticipantsModal = false; }}
+  onCancel={() => { showByNightParticipantsModal = false; }}
 />
 

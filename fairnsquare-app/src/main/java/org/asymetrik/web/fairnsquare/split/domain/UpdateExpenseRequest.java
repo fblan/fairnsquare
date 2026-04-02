@@ -1,9 +1,11 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,5 +21,7 @@ public record UpdateExpenseRequest(
 
         @NotBlank(message = "Payer is required") String payerId,
 
-        @NotNull(message = "Split mode is required") SplitMode splitMode) {
+        @NotNull(message = "Split mode is required") SplitMode splitMode,
+
+        @Nullable List<String> participantIds) {
 }

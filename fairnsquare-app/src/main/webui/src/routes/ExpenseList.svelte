@@ -1,15 +1,16 @@
 <script lang="ts">
   // Expense List Screen - Story FNS-002-5
 
-  import { getSplit, deleteExpense, type Split, type Expense, type SplitMode } from '$lib/api/splits';
+  import { getSplit, deleteExpense, updateExpense, type Split, type Expense, type SplitMode } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
+  import ByNightParticipantsModal from '$lib/components/expense/ByNightParticipantsModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { Plus, Pencil, Trash2, Receipt, ListFilter, X } from 'lucide-svelte';
+  import { Plus, Pencil, Trash2, Receipt, ListFilter, X, MoonStar, UserMinus } from 'lucide-svelte';
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
   const splitId = $derived(route.params.splitId || '');
@@ -30,6 +31,10 @@
   // Edit expense modal state
   let showEditExpense = $state(false);
   let expenseToEdit = $state<Expense | null>(null);
+
+  // Edit participants modal state (BY_NIGHT / BY_NIGHT_CUSTOM)
+  let showParticipantsModal = $state(false);
+  let expenseForParticipants = $state<Expense | null>(null);
 
   // Filter state — initialized from URL query params, then managed as local state
   let selectedPayer = $state(String(route.search?.payer || ''));
@@ -120,6 +125,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return '\u{1F319}';
+      case 'BY_NIGHT_CUSTOM':
+        return '\u{1F31F}';
       case 'EQUAL':
         return '\u229C';
       case 'BY_SHARE':
@@ -133,6 +140,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return 'By Night';
+      case 'BY_NIGHT_CUSTOM':
+        return 'By Night (Custom)';
       case 'EQUAL':
         return 'Equal';
       case 'BY_SHARE':
@@ -190,6 +199,39 @@
     updateFilterUrl('', '');
   }
 
+
+  function handleEditParticipantsClick(expense: Expense) {
+    expenseForParticipants = expense;
+    showParticipantsModal = true;
+  }
+
+  async function handleParticipantsConfirm(participantIds: string[]) {
+    if (!expenseForParticipants) return;
+    const expense = expenseForParticipants;
+    try {
+      await updateExpense(splitId, expense.id, {
+        amount: expense.amount,
+        description: expense.description,
+        payerId: expense.payerId,
+        splitMode: participantIds.length === split!.participants.length ? 'BY_NIGHT' : 'BY_NIGHT_CUSTOM',
+        participantIds: participantIds.length === split!.participants.length ? undefined : participantIds,
+      });
+      addToast({
+        type: 'success',
+        message: 'Participants updated',
+        description: expense.description,
+      });
+      showParticipantsModal = false;
+      expenseForParticipants = null;
+      await loadSplit(splitId);
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      addToast({
+        type: 'error',
+        message: error.detail || 'Failed to update participants',
+      });
+    }
+  }
 
   function handleDeleteClick(expense: Expense) {
     if (!expense || !expense.id) {
@@ -416,6 +458,17 @@
               <!-- Row 4: Actions -->
               {#if !isSettled}
                 <div class="flex items-center justify-end gap-1">
+                  {#if expense.splitMode === 'BY_NIGHT' || expense.splitMode === 'BY_NIGHT_CUSTOM'}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onclick={() => handleEditParticipantsClick(expense)}
+                      class="min-h-[44px] min-w-[44px]"
+                      aria-label="Edit participants: {expense.description}"
+                    >
+                      <UserMinus class="h-4 w-4" />
+                    </Button>
+                  {/if}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -477,5 +530,18 @@
     participants={split.participants}
     onClose={handleCloseEditExpense}
     onSuccess={handleEditExpenseSuccess}
+  />
+{/if}
+
+<!-- Edit Participants Modal (BY_NIGHT / BY_NIGHT_CUSTOM) -->
+{#if split}
+  <ByNightParticipantsModal
+    open={showParticipantsModal}
+    participants={split.participants}
+    initialParticipantIds={expenseForParticipants?.splitMode === 'BY_NIGHT_CUSTOM'
+      ? (expenseForParticipants?.shares?.map(s => s.participantId) ?? [])
+      : []}
+    onConfirm={handleParticipantsConfirm}
+    onCancel={() => { showParticipantsModal = false; expenseForParticipants = null; }}
   />
 {/if}

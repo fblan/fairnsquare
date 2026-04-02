@@ -23,6 +23,7 @@ import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.SettlementMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.service.AddByNightCustomExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddFreeExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddParticipantRequest;
@@ -454,6 +455,36 @@ public class SplitResource {
 
         return splitService.addExpenseFree(splitId, request).flatMap(expense -> splitService.getSplit(splitId).map(
                 split -> Response.status(Response.Status.CREATED).entity(expenseMapper.toDTO(expense, split)).build()))
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds a BY_NIGHT_CUSTOM expense to a split. Shares are calculated proportionally to participant nights for a
+     * specified subset of participants.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add by-night-custom expense request with participant IDs
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Add BY_NIGHT_CUSTOM expense", description = "Creates an expense with shares calculated proportionally to participant nights for a subset of participants")
+    @APIResponse(responseCode = "201", description = "Expense created successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid request or participant IDs not found")
+    @POST
+    @Path("/{splitId}/expenses/by-night-custom")
+    public Response addExpenseByNightCustom(@PathParam("splitId") String splitId,
+            @Valid AddByNightCustomExpenseRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addExpenseByNightCustom(splitId, request)
+                .flatMap(expense -> splitService.getSplit(splitId)
+                        .map(split -> Response.status(Response.Status.CREATED)
+                                .entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }
 }
