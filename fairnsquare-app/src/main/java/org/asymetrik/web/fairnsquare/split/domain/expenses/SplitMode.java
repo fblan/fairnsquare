@@ -23,7 +23,13 @@ public enum SplitMode {
     /**
      * Allow manual specification of each participant's share.
      */
-    FREE("FREE");
+    FREE("FREE"),
+
+    /**
+     * Distribute expense proportionally based on number of nights stayed, but only for a selected subset of
+     * participants (e.g. van guests who do not participate in house rent).
+     */
+    BY_NIGHT_CUSTOM("BY_NIGHT_CUSTOM");
 
     private final String value;
 

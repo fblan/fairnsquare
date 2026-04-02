@@ -3,6 +3,7 @@ package org.asymetrik.web.fairnsquare.split.api.expense.mapper;
 import java.util.Collections;
 import java.util.List;
 
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightCustomDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByShareDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
@@ -11,6 +12,7 @@ import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseFreeDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ShareDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNightCustom;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
@@ -51,6 +53,10 @@ public class ExpenseMapper {
             case ExpenseByNight byNight -> new ExpenseByNightDTO(byNight.getId().value(), byNight.getDescription(),
                     byNight.getAmount(), byNight.getPayerId() != null ? byNight.getPayerId().value() : null, "BY_NIGHT",
                     "BY_NIGHT", byNight.getCreatedAt().toString(), shares);
+            case ExpenseByNightCustom byNightCustom -> new ExpenseByNightCustomDTO(byNightCustom.getId().value(),
+                    byNightCustom.getDescription(), byNightCustom.getAmount(),
+                    byNightCustom.getPayerId() != null ? byNightCustom.getPayerId().value() : null, "BY_NIGHT_CUSTOM",
+                    "BY_NIGHT_CUSTOM", byNightCustom.getCreatedAt().toString(), shares);
             case ExpenseByShare byShare -> new ExpenseByShareDTO(byShare.getId().value(), byShare.getDescription(),
                     byShare.getAmount(), byShare.getPayerId() != null ? byShare.getPayerId().value() : null, "BY_SHARE",
                     "BY_SHARE", byShare.getCreatedAt().toString(), shares);

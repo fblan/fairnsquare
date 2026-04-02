@@ -26,6 +26,7 @@
   function formatSplitMode(mode: string): string {
     switch (mode) {
       case 'BY_NIGHT': return 'By Night';
+      case 'BY_NIGHT_CUSTOM': return 'By Night (Custom)';
       case 'EQUAL': return 'Equal';
       case 'FREE': return 'Free';
       default: return mode;
@@ -46,6 +47,13 @@
 
     if (expense.splitMode === 'BY_NIGHT') {
       const totalNights = split.participants.reduce((sum, p) => sum + p.nights, 0);
+      return `${participant.nights}/${totalNights} nights`;
+    } else if (expense.splitMode === 'BY_NIGHT_CUSTOM') {
+      // Only count nights among the participating subset
+      const participatingIds = new Set(expense.shares.map(s => s.participantId));
+      const totalNights = split.participants
+        .filter(p => participatingIds.has(p.id))
+        .reduce((sum, p) => sum + p.nights, 0);
       return `${participant.nights}/${totalNights} nights`;
     } else if (expense.splitMode === 'EQUAL') {
       return 'Split equally';

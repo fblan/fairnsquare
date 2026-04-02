@@ -120,6 +120,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return '\u{1F319}';
+      case 'BY_NIGHT_CUSTOM':
+        return '\u{1F319}\u270F\uFE0F';
       case 'EQUAL':
         return '\u229C';
       case 'BY_SHARE':
@@ -133,6 +135,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return 'By Night';
+      case 'BY_NIGHT_CUSTOM':
+        return 'By Night (Custom)';
       case 'EQUAL':
         return 'Equal';
       case 'BY_SHARE':

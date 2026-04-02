@@ -13,6 +13,7 @@ import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.LogTag;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNightCustom;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
@@ -267,7 +268,52 @@ public class SplitUseCases {
                     addExpenseEqual(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use addExpenseFree() with AddFreeExpenseRequest");
+            case BY_NIGHT_CUSTOM -> throw new UnsupportedOperationException(
+                    "BY_NIGHT_CUSTOM mode requires participant IDs - use addExpenseByNightCustom() with AddByNightCustomExpenseRequest");
         };
+    }
+
+    /**
+     * Adds a BY_NIGHT_CUSTOM expense to an existing split. Shares are calculated proportionally based on nights stayed,
+     * but only for the specified subset of participants.
+     *
+     * @param splitId
+     *            the split identifier
+     * @param request
+     *            the add by-night-custom expense request containing amount, description, payerId, and participantIds
+     *
+     * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
+     *         InvalidSharesError if any participant ID is invalid.
+     */
+    public Optional<ExpenseByNightCustom> addExpenseByNightCustom(@LogTag("splitId") String splitId,
+            AddByNightCustomExpenseRequest request) {
+        return repository.load(splitId).map(split -> {
+            Participant.Id payer = Participant.Id.of(request.payerId());
+            split.validatePayerExists(payer);
+
+            // Validate all participant IDs exist in split
+            for (String participantIdStr : request.participantIds()) {
+                try {
+                    Participant.Id participantId = Participant.Id.of(participantIdStr);
+                    split.getParticipant(participantId);
+                } catch (ParticipantNotFoundError e) {
+                    throw new InvalidSharesError("Participant with ID '" + participantIdStr
+                            + "' not found in split. All participant IDs must exist.");
+                }
+            }
+
+            List<Participant.Id> participantIds = request.participantIds().stream().map(Participant.Id::of).toList();
+
+            try {
+                ExpenseByNightCustom expense = ExpenseByNightCustom.create(request.amount(), request.description(),
+                        payer, participantIds);
+                split.addExpense(expense);
+                repository.save(split);
+                return expense;
+            } catch (IllegalArgumentException e) {
+                throw new InvalidSharesError(e.getMessage());
+            }
+        });
     }
 
     /**
@@ -284,6 +330,7 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created expense if the split exists, empty otherwise
      */
+
     public Optional<ExpenseByNight> addExpenseByNight(@LogTag("splitId") String splitId, BigDecimal amount,
             String description, @LogTag("payerId") String payerId) {
         return repository.load(splitId).map(split -> {

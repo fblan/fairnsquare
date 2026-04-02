@@ -131,7 +131,7 @@ describe('ExpenseEditModal', () => {
     it('pre-selects split mode from expense', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byNightRadio = screen.getByRole('radio', { name: /by night/i });
+      const byNightRadio = screen.getByRole('radio', { name: 'By Night' });
       expect(byNightRadio).toBeChecked();
     });
 
