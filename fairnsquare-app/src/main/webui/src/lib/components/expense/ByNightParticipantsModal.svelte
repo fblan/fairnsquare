@@ -54,6 +54,10 @@
 
   const isConfirmDisabled = $derived(selectedCount === 0);
 
+  function handleCheckChange(participantId: string, checked: boolean) {
+    localChecked = { ...localChecked, [participantId]: checked };
+  }
+
   function handleConfirm() {
     const ids = participants
       .filter(p => localChecked[p.id])
@@ -126,9 +130,7 @@
               <Checkbox
                 id="night-check-{participant.id}"
                 checked={localChecked[participant.id]}
-                onchange={(e: Event) => {
-                  localChecked[participant.id] = (e.target as HTMLInputElement).checked;
-                }}
+                onchange={(e: Event) => handleCheckChange(participant.id, (e.target as HTMLInputElement).checked)}
                 aria-label="Include {participant.name}"
                 class="min-w-[20px] min-h-[20px]"
               />

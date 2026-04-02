@@ -243,15 +243,7 @@ public class SplitUseCases {
                     throw new InvalidSharesError(
                             "BY_NIGHT_CUSTOM mode requires participantIds to be provided and non-empty");
                 }
-                for (String pid : request.participantIds()) {
-                    try {
-                        split.getParticipant(Participant.Id.of(pid));
-                    } catch (ParticipantNotFoundError e) {
-                        throw new InvalidSharesError(
-                                "Participant with ID '" + pid + "' not found in split. All participantIds must exist.");
-                    }
-                }
-                participantIds = request.participantIds().stream().map(Participant.Id::of).toList();
+                participantIds = validateAndConvertParticipantIds(split, request.participantIds());
             }
             Expense updated = split.updateExpense(expId, request.amount(), request.description(), payerId,
                     request.splitMode(), participantIds);
@@ -447,16 +439,7 @@ public class SplitUseCases {
             Participant.Id payer = Participant.Id.of(request.payerId());
             split.validatePayerExists(payer);
 
-            for (String pid : request.participantIds()) {
-                try {
-                    split.getParticipant(Participant.Id.of(pid));
-                } catch (ParticipantNotFoundError e) {
-                    throw new InvalidSharesError(
-                            "Participant with ID '" + pid + "' not found in split. All participantIds must exist.");
-                }
-            }
-
-            List<Participant.Id> participantIds = request.participantIds().stream().map(Participant.Id::of).toList();
+            List<Participant.Id> participantIds = validateAndConvertParticipantIds(split, request.participantIds());
 
             ExpenseByNightCustom expense = ExpenseByNightCustom.create(request.amount(), request.description(), payer,
                     participantIds);
@@ -464,5 +447,30 @@ public class SplitUseCases {
             repository.save(split);
             return expense;
         });
+    }
+
+    /**
+     * Validates that all participant IDs exist in the split and converts them to domain objects.
+     *
+     * @param split
+     *            the split to validate against
+     * @param participantIds
+     *            the participant ID strings to validate
+     *
+     * @return the list of validated {@link Participant.Id} domain objects
+     *
+     * @throws InvalidSharesError
+     *             if any participant ID does not exist in the split
+     */
+    private List<Participant.Id> validateAndConvertParticipantIds(Split split, List<String> participantIds) {
+        for (String pid : participantIds) {
+            try {
+                split.getParticipant(Participant.Id.of(pid));
+            } catch (ParticipantNotFoundError e) {
+                throw new InvalidSharesError(
+                        "Participant with ID '" + pid + "' not found in split. All participantIds must exist.");
+            }
+        }
+        return participantIds.stream().map(Participant.Id::of).toList();
     }
 }

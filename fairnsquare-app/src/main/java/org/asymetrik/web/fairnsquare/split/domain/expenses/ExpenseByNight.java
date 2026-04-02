@@ -61,10 +61,25 @@ public final class ExpenseByNight extends Expense {
 
     @Override
     public List<Share> getShares(Split split) {
-        return calculateShares(split.getParticipants());
+        return calculateShares(getAmount(), split.getParticipants());
     }
 
     List<Share> calculateShares(List<Participant> participants) {
+        return calculateShares(getAmount(), participants);
+    }
+
+    /**
+     * Package-private static utility for calculating shares proportional to nights × share weight. Used by both
+     * ExpenseByNight and ExpenseByNightCustom (which filters the participant list first).
+     *
+     * @param amount
+     *            the total expense amount to distribute
+     * @param participants
+     *            the participants to include in the calculation
+     *
+     * @return the list of calculated shares, or empty if no participants or zero total weight
+     */
+    static List<Share> calculateShares(BigDecimal amount, List<Participant> participants) {
         if (participants == null || participants.isEmpty()) {
             return Collections.emptyList();
         }
@@ -85,9 +100,9 @@ public final class ExpenseByNight extends Expense {
 
             if (i == participants.size() - 1) {
                 // Last participant gets the remainder to ensure sum = amount
-                share = getAmount().subtract(totalAssigned);
+                share = amount.subtract(totalAssigned);
             } else {
-                share = getAmount().multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalWeight), SCALE,
+                share = amount.multiply(BigDecimal.valueOf(weight)).divide(BigDecimal.valueOf(totalWeight), SCALE,
                         ROUNDING_MODE);
                 totalAssigned = totalAssigned.add(share);
             }

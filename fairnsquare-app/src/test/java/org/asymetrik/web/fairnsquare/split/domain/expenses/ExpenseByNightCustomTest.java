@@ -18,8 +18,8 @@ class ExpenseByNightCustomTest {
     @Test
     void getSplitMode_returnsByNightCustom() {
         Participant alice = Participant.create("Alice", 3);
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("100.00"), "Test", alice.id(), List.of(alice.id()));
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(),
+                List.of(alice.id()));
 
         assertThat(expense.getSplitMode()).isEqualTo(SplitMode.BY_NIGHT_CUSTOM);
     }
@@ -37,8 +37,7 @@ class ExpenseByNightCustomTest {
         split.addParticipant(vanGuest);
 
         // Only alice and bob participate in this expense (vanGuest excluded)
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("180.00"), "House Rent", alice.id(),
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("180.00"), "House Rent", alice.id(),
                 List.of(alice.id(), bob.id()));
         split.addExpense(expense);
 
@@ -46,8 +45,8 @@ class ExpenseByNightCustomTest {
 
         // Only 2 shares, vanGuest is excluded
         assertThat(shares).hasSize(2);
-        assertThat(shares).extracting(s -> s.participantId().value())
-                .containsExactlyInAnyOrder(alice.id().value(), bob.id().value());
+        assertThat(shares).extracting(s -> s.participantId().value()).containsExactlyInAnyOrder(alice.id().value(),
+                bob.id().value());
     }
 
     @Test
@@ -63,20 +62,17 @@ class ExpenseByNightCustomTest {
         split.addParticipant(bob);
         split.addParticipant(vanGuest);
 
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("180.00"), "Groceries", alice.id(),
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("180.00"), "Groceries", alice.id(),
                 List.of(alice.id(), bob.id()));
         split.addExpense(expense);
 
         List<Expense.Share> shares = expense.getShares(split);
 
         assertThat(shares).hasSize(2);
-        BigDecimal aliceShare = shares.stream()
-                .filter(s -> s.participantId().equals(alice.id()))
-                .findFirst().orElseThrow().amount();
-        BigDecimal bobShare = shares.stream()
-                .filter(s -> s.participantId().equals(bob.id()))
-                .findFirst().orElseThrow().amount();
+        BigDecimal aliceShare = shares.stream().filter(s -> s.participantId().equals(alice.id())).findFirst()
+                .orElseThrow().amount();
+        BigDecimal bobShare = shares.stream().filter(s -> s.participantId().equals(bob.id())).findFirst().orElseThrow()
+                .amount();
 
         assertThat(aliceShare).isEqualByComparingTo("120.00");
         assertThat(bobShare).isEqualByComparingTo("60.00");
@@ -95,8 +91,7 @@ class ExpenseByNightCustomTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
 
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("100.00"), "Hotel", alice.id(),
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("100.00"), "Hotel", alice.id(),
                 List.of(alice.id()));
         split.addExpense(expense);
 
@@ -110,20 +105,16 @@ class ExpenseByNightCustomTest {
     void create_withNullParticipantIds_throwsException() {
         Participant alice = Participant.create("Alice", 3);
 
-        assertThatThrownBy(() ->
-                ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(), null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("participantIds cannot be null");
+        assertThatThrownBy(() -> ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(), null))
+                .isInstanceOf(NullPointerException.class).hasMessageContaining("participantIds cannot be null");
     }
 
     @Test
     void create_withEmptyParticipantIds_throwsException() {
         Participant alice = Participant.create("Alice", 3);
 
-        assertThatThrownBy(() ->
-                ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(), List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("participantIds cannot be empty");
+        assertThatThrownBy(() -> ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(), List.of()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("participantIds cannot be empty");
     }
 
     @Test
@@ -131,12 +122,10 @@ class ExpenseByNightCustomTest {
         Participant alice = Participant.create("Alice", 3);
         Participant bob = Participant.create("Bob", 2);
 
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("100.00"), "Test", alice.id(),
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", alice.id(),
                 List.of(alice.id(), bob.id()));
 
-        assertThat(expense.getParticipantIds())
-                .containsExactly(alice.id(), bob.id());
+        assertThat(expense.getParticipantIds()).containsExactly(alice.id(), bob.id());
     }
 
     @Test
@@ -145,8 +134,7 @@ class ExpenseByNightCustomTest {
         Participant.Id payerId = Participant.Id.generate();
         Participant.Id participantId = Participant.Id.generate();
 
-        ExpenseByNightCustom expense = ExpenseByNightCustom.fromJson(
-                id, new BigDecimal("150.00"), "Dinner", payerId,
+        ExpenseByNightCustom expense = ExpenseByNightCustom.fromJson(id, new BigDecimal("150.00"), "Dinner", payerId,
                 List.of(participantId), java.time.Instant.now());
 
         assertThat(expense.getId()).isEqualTo(id);
@@ -171,20 +159,17 @@ class ExpenseByNightCustomTest {
         split.addParticipant(bob);
         split.addParticipant(vanGuest);
 
-        ExpenseByNightCustom expense = ExpenseByNightCustom.create(
-                new BigDecimal("90.00"), "House Rent", alice.id(),
+        ExpenseByNightCustom expense = ExpenseByNightCustom.create(new BigDecimal("90.00"), "House Rent", alice.id(),
                 List.of(alice.id(), bob.id()));
         split.addExpense(expense);
 
         List<Expense.Share> shares = expense.getShares(split);
 
         assertThat(shares).hasSize(2);
-        BigDecimal aliceShare = shares.stream()
-                .filter(s -> s.participantId().equals(alice.id()))
-                .findFirst().orElseThrow().amount();
-        BigDecimal bobShare = shares.stream()
-                .filter(s -> s.participantId().equals(bob.id()))
-                .findFirst().orElseThrow().amount();
+        BigDecimal aliceShare = shares.stream().filter(s -> s.participantId().equals(alice.id())).findFirst()
+                .orElseThrow().amount();
+        BigDecimal bobShare = shares.stream().filter(s -> s.participantId().equals(bob.id())).findFirst().orElseThrow()
+                .amount();
 
         assertThat(aliceShare).isEqualByComparingTo("60.00");
         assertThat(bobShare).isEqualByComparingTo("30.00");

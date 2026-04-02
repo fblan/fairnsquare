@@ -72,9 +72,7 @@ public final class ExpenseByNightCustom extends Expense {
     public List<Share> getShares(Split split) {
         List<Participant> filtered = split.getParticipants().stream().filter(p -> participantIds.contains(p.id()))
                 .toList();
-        ExpenseByNight delegate = new ExpenseByNight(getId(), getAmount(), getDescription(), getPayerId(),
-                getCreatedAt());
-        return delegate.calculateShares(filtered);
+        return ExpenseByNight.calculateShares(getAmount(), filtered);
     }
 
     public List<Participant.Id> getParticipantIds() {
