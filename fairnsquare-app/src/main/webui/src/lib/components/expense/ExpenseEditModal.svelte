@@ -5,7 +5,7 @@
    */
 
   import { untrack } from 'svelte';
-  import { addExpense, addFreeExpense, updateExpense, deleteExpense, type Expense, type Participant, type SplitMode } from '$lib/api/splits';
+  import { addExpense, addFreeExpense, addByNightCustomExpense, updateExpense, deleteExpense, type Expense, type Participant, type SplitMode } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import Button from '$lib/components/ui/button/button.svelte';
   import Input from '$lib/components/ui/input/input.svelte';
@@ -15,7 +15,7 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import ShareEditModal from './ShareEditModal.svelte';
-  import { Moon, Equal, Edit3, Users, X, Info } from 'lucide-svelte';
+  import { Moon, Equal, Edit3, Users, X, Info, MoonStar } from 'lucide-svelte';
 
   // Props
   let {
@@ -63,6 +63,10 @@
       title: 'By Night',
       description: `The cost is shared proportionally based on each participant's total "night-shares" — calculated as nights × share weight.\n\nThe share weight represents the number of persons. For example, a couple has a share of 2, while a solo traveller has a share of 1.\n\nExample: Alice (1 person) stays 3 nights = 3 night-shares. Bob & Carol (couple, 2 persons) stay 2 nights = 4 night-shares. Total = 7 night-shares.\n\nAlice pays 3/7 of the expense, Bob & Carol pay 4/7.`,
     },
+    BY_NIGHT_CUSTOM: {
+      title: 'By Night (Custom)',
+      description: `Same as By Night, but only among a custom subset of participants.\n\nUse the "Edit Participants" button on the expense card to select who is included. Nights per participant are not modified — only participation is toggled.`,
+    },
     EQUAL: {
       title: 'Equal',
       description: `The cost is divided equally among all participants, regardless of their nights, share weight, or any other factor.\n\nExample: 3 participants share a €90 expense → each pays €30.`,
@@ -109,6 +113,13 @@
       splitMode !== expense.splitMode ||
       isSharesDirty
     )
+  );
+
+  // When editing a BY_NIGHT_CUSTOM expense, we need the participant IDs to recreate it
+  const byNightCustomParticipantIds = $derived(
+    expense?.splitMode === 'BY_NIGHT_CUSTOM'
+      ? expense.shares.map((s) => s.participantId)
+      : []
   );
 
   // Dirty tracking (add mode)
@@ -324,6 +335,21 @@
         addToast({
           type: 'success',
           message: isEditMode ? 'Expense updated' : 'Expense added',
+          description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
+        });
+      } else if (splitMode === 'BY_NIGHT_CUSTOM' && isEditMode && expense) {
+        // BY_NIGHT_CUSTOM update: delete old + create new to preserve participant IDs
+        const participantIds = byNightCustomParticipantIds;
+        await deleteExpense(splitId, expense.id);
+        await addByNightCustomExpense(splitId, {
+          amount: amountValue,
+          description: description.trim(),
+          payerId,
+          participantIds,
+        });
+        addToast({
+          type: 'success',
+          message: 'Expense updated',
           description: `${description.trim()} · €${amountValue.toFixed(2)} · Paid by ${participants.find(p => p.id === payerId)?.name ?? 'Unknown'}`,
         });
       } else if (isEditMode && expense) {
@@ -568,6 +594,18 @@
                 <Info class="h-4 w-4" />
               </button>
             </div>
+            {#if expense?.splitMode === 'BY_NIGHT_CUSTOM'}
+              <div class="flex items-center space-x-2 p-3 border rounded-lg bg-muted/30 min-h-[44px]">
+                <RadioGroup.Item value="BY_NIGHT_CUSTOM" id="modal-mode-by-night-custom" />
+                <Label for="modal-mode-by-night-custom" class="flex items-center gap-2 cursor-pointer flex-1">
+                  <MoonStar class="h-4 w-4" aria-hidden="true" />
+                  <span>By Night (Custom)</span>
+                </Label>
+                <button type="button" onclick={(e) => openInfo('BY_NIGHT_CUSTOM', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Night Custom">
+                  <Info class="h-4 w-4" />
+                </button>
+              </div>
+            {/if}
             <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
               <RadioGroup.Item value="EQUAL" id="modal-mode-equal" />
               <Label for="modal-mode-equal" class="flex items-center gap-2 cursor-pointer flex-1">

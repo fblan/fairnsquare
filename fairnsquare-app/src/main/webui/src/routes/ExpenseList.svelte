@@ -1,15 +1,16 @@
 <script lang="ts">
   // Expense List Screen - Story FNS-002-5
 
-  import { getSplit, deleteExpense, type Split, type Expense, type SplitMode } from '$lib/api/splits';
+  import { getSplit, deleteExpense, addByNightCustomExpense, type Split, type Expense, type SplitMode } from '$lib/api/splits';
   import type { ApiError } from '$lib/api/client';
   import { Button } from '$lib/components/ui/button';
   import * as Card from '$lib/components/ui/card';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
+  import ParticipantSelectModal from '$lib/components/expense/ParticipantSelectModal.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import { Plus, Pencil, Trash2, Receipt, ListFilter, X } from 'lucide-svelte';
+  import { Plus, Pencil, Trash2, Receipt, ListFilter, X, UserCog } from 'lucide-svelte';
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
   const splitId = $derived(route.params.splitId || '');
@@ -31,6 +32,11 @@
   let showEditExpense = $state(false);
   let expenseToEdit = $state<Expense | null>(null);
 
+  // Edit participants modal state
+  let showEditParticipants = $state(false);
+  let expenseToEditParticipants = $state<Expense | null>(null);
+  let isEditingParticipants = $state(false);
+
   // Filter state — initialized from URL query params, then managed as local state
   let selectedPayer = $state(String(route.search?.payer || ''));
   let selectedBeneficiary = $state(String(route.search?.beneficiary || ''));
@@ -51,7 +57,7 @@
       if (selectedBeneficiary) {
         const activeShares = expense.splitMode === 'FREE'
           ? expense.shares.filter((s) => s.parts != null && s.parts > 0)
-          : expense.shares;
+          : expense.shares; // BY_NIGHT_CUSTOM shares already contain only included participants
         if (!activeShares.some((s) => s.participantId === selectedBeneficiary)) return false;
       }
       return true;
@@ -120,6 +126,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return '\u{1F319}';
+      case 'BY_NIGHT_CUSTOM':
+        return '\u{1F319}\u2605';
       case 'EQUAL':
         return '\u229C';
       case 'BY_SHARE':
@@ -133,6 +141,8 @@
     switch (mode) {
       case 'BY_NIGHT':
         return 'By Night';
+      case 'BY_NIGHT_CUSTOM':
+        return 'By Night (Custom)';
       case 'EQUAL':
         return 'Equal';
       case 'BY_SHARE':
@@ -149,6 +159,7 @@
   function getParticipantNames(expense: Expense): string {
     if (!split) return '';
     // For FREE mode, only show participants with positive parts
+    // For BY_NIGHT_CUSTOM, shares already contain only the included participants
     const activeShares = expense.splitMode === 'FREE'
       ? expense.shares.filter((s) => s.parts != null && s.parts > 0)
       : expense.shares;
@@ -258,6 +269,48 @@
 
   async function handleEditExpenseSuccess() {
     await loadSplit(splitId);
+  }
+
+  function handleEditParticipantsClick(expense: Expense) {
+    expenseToEditParticipants = expense;
+    showEditParticipants = true;
+  }
+
+  function handleCloseEditParticipants() {
+    showEditParticipants = false;
+    expenseToEditParticipants = null;
+  }
+
+  async function handleConfirmEditParticipants(selectedIds: string[]) {
+    if (!expenseToEditParticipants) return;
+    isEditingParticipants = true;
+    const expense = expenseToEditParticipants;
+
+    try {
+      await deleteExpense(splitId, expense.id);
+      await addByNightCustomExpense(splitId, {
+        amount: expense.amount,
+        description: expense.description,
+        payerId: expense.payerId,
+        participantIds: selectedIds,
+      });
+      addToast({
+        type: 'success',
+        message: 'Participants updated',
+        description: `${expense.description} · now split among ${selectedIds.length} participant${selectedIds.length !== 1 ? 's' : ''}`,
+      });
+      showEditParticipants = false;
+      expenseToEditParticipants = null;
+      await loadSplit(splitId);
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      addToast({
+        type: 'error',
+        message: error.detail || 'Failed to update participants. Please try again.',
+      });
+    } finally {
+      isEditingParticipants = false;
+    }
   }
 </script>
 
@@ -416,6 +469,17 @@
               <!-- Row 4: Actions -->
               {#if !isSettled}
                 <div class="flex items-center justify-end gap-1">
+                  {#if expense.splitMode === 'BY_NIGHT' || expense.splitMode === 'BY_NIGHT_CUSTOM'}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onclick={() => handleEditParticipantsClick(expense)}
+                      class="min-h-[44px] min-w-[44px]"
+                      aria-label="Edit participants: {expense.description}"
+                    >
+                      <UserCog class="h-4 w-4" />
+                    </Button>
+                  {/if}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -477,5 +541,16 @@
     participants={split.participants}
     onClose={handleCloseEditExpense}
     onSuccess={handleEditExpenseSuccess}
+  />
+{/if}
+
+<!-- Edit Participants Modal -->
+{#if split && expenseToEditParticipants}
+  <ParticipantSelectModal
+    open={showEditParticipants}
+    participants={split.participants}
+    initialSelectedIds={expenseToEditParticipants.shares.map((s) => s.participantId)}
+    onConfirm={handleConfirmEditParticipants}
+    onCancel={handleCloseEditParticipants}
   />
 {/if}

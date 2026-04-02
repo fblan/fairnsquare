@@ -6,10 +6,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNightCustom;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightCustomPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseBySharePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
@@ -31,6 +33,12 @@ public class ExpensePersistenceMapper {
         return switch (expense) {
             case ExpenseByNight _ -> new ExpenseByNightPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
+            case ExpenseByNightCustom custom -> {
+                var participantIdStrings = custom.getIncludedParticipantIds().stream()
+                        .map(Participant.Id::value).toList();
+                yield new ExpenseByNightCustomPersistenceDTO(id, expense.getAmount(), expense.getDescription(), payerId,
+                        createdAt, participantIdStrings);
+            }
             case ExpenseByShare _ -> new ExpenseBySharePersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
             case ExpenseEqual _ -> new ExpenseEqualPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
@@ -62,6 +70,11 @@ public class ExpensePersistenceMapper {
         return switch (dto) {
             case ExpenseByNightPersistenceDTO _ ->
                     ExpenseByNight.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
+            case ExpenseByNightCustomPersistenceDTO custom -> {
+                var participantIds = custom.participantIds().stream().map(Participant.Id::of).toList();
+                yield ExpenseByNightCustom.fromJson(id, dto.amount(), dto.description(), payerId, participantIds,
+                        createdAt);
+            }
             case ExpenseBySharePersistenceDTO _ ->
                     ExpenseByShare.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
             case ExpenseEqualPersistenceDTO _ ->
