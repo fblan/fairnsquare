@@ -330,7 +330,6 @@ public class SplitUseCases {
      *
      * @return an Optional containing the created expense if the split exists, empty otherwise
      */
-
     public Optional<ExpenseByNight> addExpenseByNight(@LogTag("splitId") String splitId, BigDecimal amount,
             String description, @LogTag("payerId") String payerId) {
         return repository.load(splitId).map(split -> {
