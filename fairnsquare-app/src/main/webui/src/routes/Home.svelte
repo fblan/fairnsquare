@@ -1,16 +1,15 @@
 <script lang="ts">
-  // Home page - Create Split with First Participant
-  // Story FNS-002-1: Create Split Flow & Direct Dashboard Redirect
+  // Home page - Create Split
+  // Issue #94: Rework welcome page — list of recent splits, no first-participant form
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import * as Card from '$lib/components/ui/card';
   import { Label } from '$lib/components/ui/label';
-  import { createSplit, addParticipant, getSplit } from '$lib/api/splits';
+  import { createSplit, getSplit } from '$lib/api/splits';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import type { ApiError } from '$lib/api/client';
   import { navigate } from '$lib/router';
-  import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
-  import { saveNightsDefault } from '$lib/stores/nightsDefaultStore';
+  import { saveLastSplit, loadLastSplits, removeLastSplit } from '$lib/stores/lastSplitStore';
   import { hasValidToken, loadToken, clearToken, CAPTCHA_TOKEN_HEADER } from '$lib/stores/captchaStore';
   import CaptchaModal from '$lib/components/ui/captcha/CaptchaModal.svelte';
 
@@ -22,43 +21,40 @@
     doCreateSplit();
   }
 
-  // Resume state
-  interface ResumeCandidate { id: string; name: string }
-  let resumeSplit = $state<ResumeCandidate | null>(null);
+  // Recent splits state
+  interface RecentSplit { id: string; name: string }
+  let recentSplits = $state<RecentSplit[]>([]);
 
   $effect(() => {
-    const stored = loadLastSplit();
-    if (!stored) return;
-    getSplit(stored.id)
-      .then((split) => { resumeSplit = { id: split.id, name: split.name }; })
-      .catch(() => { clearLastSplit(); });
+    const stored = loadLastSplits();
+    if (stored.length === 0) return;
+    Promise.allSettled(stored.map((s) => getSplit(s.id))).then((results) => {
+      const verified: RecentSplit[] = [];
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          verified.push({ id: result.value.id, name: result.value.name });
+        } else {
+          removeLastSplit(stored[i].id);
+        }
+      });
+      recentSplits = verified;
+    });
   });
 
-  function handleResume() {
-    if (resumeSplit) {
-      navigate('/splits/:splitId', { params: { splitId: resumeSplit.id } });
-    }
+  function handleResume(id: string) {
+    navigate('/splits/:splitId', { params: { splitId: id } });
   }
 
-  function handleDismiss() {
-    clearLastSplit();
-    resumeSplit = null;
+  function handleDismiss(id: string) {
+    removeLastSplit(id);
+    recentSplits = recentSplits.filter((s) => s.id !== id);
   }
 
   // Form state
   let splitName = $state('');
-  let participantName = $state('');
-  let nights = $state(1);
-  let share = $state(1);
   let isLoading = $state(false);
-
-  // Track whether fields have been touched for validation display
   let splitNameTouched = $state(false);
-  let participantNameTouched = $state(false);
-  let nightsTouched = $state(false);
-  let shareTouched = $state(false);
 
-  // Derived validation errors (only shown after field is touched)
   let splitNameError = $derived.by(() => {
     if (!splitNameTouched) return null;
     if (!splitName.trim()) return 'Split name is required';
@@ -66,53 +62,17 @@
     return null;
   });
 
-  let participantNameError = $derived.by(() => {
-    if (!participantNameTouched) return null;
-    if (!participantName.trim()) return 'Participant name is required';
-    if (participantName.length > 50) return 'Participant name cannot exceed 50 characters';
-    return null;
-  });
-
-  let nightsError = $derived.by(() => {
-    if (!nightsTouched) return null;
-    if (nights < 1) return 'Nights must be at least 1';
-    if (nights > 365) return 'Nights cannot exceed 365';
-    return null;
-  });
-
-  let shareError = $derived.by(() => {
-    if (!shareTouched) return null;
-    if (share < 0.5) return 'Share must be at least 0.5';
-    if (share > 50) return 'Share cannot exceed 50';
-    return null;
-  });
-
-  // Derived: form validity (independent of touched state)
   let isValid = $derived(
-    splitName.trim().length > 0 &&
-    splitName.length <= 100 &&
-    participantName.trim().length > 0 &&
-    participantName.length <= 50 &&
-    nights >= 1 &&
-    nights <= 365 &&
-    share >= 0.5 &&
-    share <= 50
+    splitName.trim().length > 0 && splitName.length <= 100
   );
 
   function handleCreateSplit() {
-    // Touch all fields to show errors
     splitNameTouched = true;
-    participantNameTouched = true;
-    nightsTouched = true;
-    shareTouched = true;
-
     if (!isValid) return;
-
     if (!hasValidToken()) {
       showCaptcha = true;
       return;
     }
-
     doCreateSplit();
   }
 
@@ -124,21 +84,7 @@
         showCaptcha = true;
         return;
       }
-
-      // Step 1: Create the split (with CAPTCHA token header)
       const split = await createSplit({ name: splitName.trim() }, { [CAPTCHA_TOKEN_HEADER]: token });
-
-      // Step 2: Add the first participant
-      await addParticipant(split.id, {
-        name: participantName.trim(),
-        nights,
-        share,
-      });
-
-      // Step 3: Persist the nights value so the next participant form defaults to it
-      saveNightsDefault(nights);
-
-      // Step 4: Go to participants page with form pre-opened to add next participant
       navigate('/splits/:splitId/participants', { params: { splitId: split.id }, search: { addParticipant: 'true' } });
     } catch (err) {
       const apiError = err as ApiError;
@@ -166,31 +112,6 @@
     <p class="text-muted-foreground mt-2">Split expenses fairly with friends</p>
   </header>
 
-  <!-- Resume Last Split -->
-  {#if resumeSplit}
-    <div class="w-full max-w-[520px]">
-      <Card.Root class="border-teal-300 bg-teal-50">
-        <Card.Header class="pb-2">
-          <Card.Title class="text-base">Resume your split</Card.Title>
-        </Card.Header>
-        <Card.Content class="space-y-3">
-          <p class="text-sm text-muted-foreground">You were working on <span class="font-medium text-foreground">{resumeSplit.name}</span>.</p>
-          <div class="flex items-center gap-3">
-            <Button onclick={handleResume} class="min-h-[44px]">
-              Resume
-            </Button>
-            <button
-              onclick={handleDismiss}
-              class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-            >
-              Dismiss
-            </button>
-          </div>
-        </Card.Content>
-      </Card.Root>
-    </div>
-  {/if}
-
   <!-- Create Split Form -->
   <div class="w-full max-w-[520px]">
     <Card.Root>
@@ -199,7 +120,6 @@
       </Card.Header>
       <Card.Content>
         <form onsubmit={(e) => { e.preventDefault(); handleCreateSplit(); }} class="space-y-4">
-          <!-- Split Name -->
           <div class="space-y-2">
             <Label for="splitName">Split Name</Label>
             <Input
@@ -221,80 +141,6 @@
             {/if}
           </div>
 
-          <!-- First Participant Section -->
-          <div class="rounded-lg border border-teal-300 bg-teal-50 p-4 space-y-3">
-            <p class="text-sm font-medium text-teal-700">First Participant</p>
-
-            <div class="space-y-2">
-              <Label for="participantName">Name</Label>
-              <Input
-                type="text"
-                id="participantName"
-                bind:value={participantName}
-                onblur={() => { participantNameTouched = true; }}
-                oninput={() => { participantNameTouched = true; }}
-                placeholder="Your name"
-                disabled={isLoading}
-                class="min-h-[44px]"
-                aria-invalid={participantNameError ? 'true' : undefined}
-                aria-describedby={participantNameError ? 'participantName-error' : undefined}
-              />
-              {#if participantNameError}
-                <p id="participantName-error" class="text-sm text-destructive">
-                  {participantNameError}
-                </p>
-              {/if}
-            </div>
-
-            <div class="flex gap-3">
-              <div class="space-y-2 flex-1">
-                <Label for="nights">Nights</Label>
-                <Input
-                  type="number"
-                  id="nights"
-                  bind:value={nights}
-                  onblur={() => { nightsTouched = true; }}
-                  oninput={() => { nightsTouched = true; }}
-                  step={1}
-                  min={1}
-                  max={365}
-                  disabled={isLoading}
-                  class="min-h-[44px]"
-                  aria-invalid={nightsError ? 'true' : undefined}
-                  aria-describedby={nightsError ? 'nights-error' : undefined}
-                />
-                {#if nightsError}
-                  <p id="nights-error" class="text-sm text-destructive">
-                    {nightsError}
-                  </p>
-                {/if}
-              </div>
-
-              <div class="space-y-2 flex-1">
-                <Label for="share">Share</Label>
-                <Input
-                  type="number"
-                  id="share"
-                  bind:value={share}
-                  onblur={() => { shareTouched = true; }}
-                  oninput={() => { shareTouched = true; }}
-                  step={0.5}
-                  min={0.5}
-                  max={50}
-                  disabled={isLoading}
-                  class="min-h-[44px]"
-                  aria-invalid={shareError ? 'true' : undefined}
-                  aria-describedby={shareError ? 'share-error' : undefined}
-                />
-                {#if shareError}
-                  <p id="share-error" class="text-sm text-destructive">
-                    {shareError}
-                  </p>
-                {/if}
-              </div>
-            </div>
-          </div>
-
           <Button
             type="submit"
             disabled={isLoading}
@@ -314,6 +160,33 @@
       </Card.Content>
     </Card.Root>
   </div>
+
+  <!-- Recent Splits -->
+  {#if recentSplits.length > 0}
+    <div class="w-full max-w-[520px]">
+      <Card.Root class="border-teal-300 bg-teal-50">
+        <Card.Header class="pb-2">
+          <Card.Title class="text-base">Recent splits</Card.Title>
+        </Card.Header>
+        <Card.Content class="space-y-2">
+          {#each recentSplits as split (split.id)}
+            <div class="flex items-center gap-3 min-h-[44px]">
+              <span class="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{split.name}</span>
+              <Button size="sm" onclick={() => handleResume(split.id)} class="shrink-0 min-h-[36px]">
+                Resume
+              </Button>
+              <button
+                onclick={() => handleDismiss(split.id)}
+                class="shrink-0 text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Dismiss
+              </button>
+            </div>
+          {/each}
+        </Card.Content>
+      </Card.Root>
+    </div>
+  {/if}
 
   <!-- Info Section -->
   <section class="text-center text-muted-foreground text-sm max-w-[520px]">

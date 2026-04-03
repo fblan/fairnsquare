@@ -159,7 +159,7 @@
       untrack(() => resetForm());
       setTimeout(() => {
         if (typeof document !== 'undefined') {
-          document.getElementById('expense-amount-modal')?.focus();
+          document.getElementById('expense-description-modal')?.focus();
         }
       }, 50);
     }
@@ -491,6 +491,24 @@
 
       <!-- Form -->
       <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="p-4 space-y-4 overflow-y-auto flex-1">
+        <!-- Description Field -->
+        <div class="space-y-2">
+          <Label for="expense-description-modal">Description</Label>
+          <Input
+            id="expense-description-modal"
+            type="text"
+            placeholder="e.g., Groceries"
+            bind:value={description}
+            onblur={handleDescriptionBlur}
+            class="min-h-[44px]"
+            aria-invalid={descriptionTouched && !!validationErrors.description}
+            disabled={isLoading || isDeleting}
+          />
+          {#if descriptionTouched && validationErrors.description}
+            <p class="text-sm text-destructive">{validationErrors.description}</p>
+          {/if}
+        </div>
+
         <!-- Amount Field -->
         <div class="space-y-2">
           <Label for="expense-amount-modal">Amount (€)</Label>
@@ -508,24 +526,6 @@
           />
           {#if amountTouched && validationErrors.amount}
             <p class="text-sm text-destructive">{validationErrors.amount}</p>
-          {/if}
-        </div>
-
-        <!-- Description Field -->
-        <div class="space-y-2">
-          <Label for="expense-description-modal">Description</Label>
-          <Input
-            id="expense-description-modal"
-            type="text"
-            placeholder="e.g., Groceries"
-            bind:value={description}
-            onblur={handleDescriptionBlur}
-            class="min-h-[44px]"
-            aria-invalid={descriptionTouched && !!validationErrors.description}
-            disabled={isLoading || isDeleting}
-          />
-          {#if descriptionTouched && validationErrors.description}
-            <p class="text-sm text-destructive">{validationErrors.description}</p>
           {/if}
         </div>
 
