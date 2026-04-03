@@ -44,6 +44,7 @@
 - Non-exported implementation details must be placed in a `<module>.internal` sub-package. Only classes that are intentionally part of the module's public API should remain in the root module package.
 - `ModularArchitectureTest` (plain JUnit, no `@QuarkusTest`) must scan `org.asymetrik.web.fairnsquare` and fail the build on any export violation or nested module violation.
 - When moving a class to an `internal` sub-package, Java package-private access is broken. Any fields or constants that test code or sibling classes need must be explicitly made `public`.
+- Domain packages (`*.domain`) must never be listed in a module's `@Module(exports = {...})`. Domain objects are internal implementation details. Only packages that form an explicit cross-module contract (e.g. annotations, shared interfaces) may be exported — typically the `api` package.
 
 ## Test-Only Code Must Not Live in Production Sources
 
