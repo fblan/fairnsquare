@@ -1,4 +1,5 @@
-const LAST_SPLIT_KEY = 'fairnsquare_lastSplit';
+const LAST_SPLITS_KEY = 'fairnsquare_lastSplits';
+const MAX_SPLITS = 10;
 
 export interface LastSplit {
   id: string;
@@ -6,19 +7,23 @@ export interface LastSplit {
 }
 
 export function saveLastSplit(split: LastSplit): void {
-  localStorage.setItem(LAST_SPLIT_KEY, JSON.stringify(split));
+  const current = loadLastSplits().filter((s) => s.id !== split.id);
+  const updated = [split, ...current].slice(0, MAX_SPLITS);
+  localStorage.setItem(LAST_SPLITS_KEY, JSON.stringify(updated));
 }
 
-export function loadLastSplit(): LastSplit | null {
-  const stored = localStorage.getItem(LAST_SPLIT_KEY);
-  if (!stored) return null;
+export function loadLastSplits(): LastSplit[] {
+  const stored = localStorage.getItem(LAST_SPLITS_KEY);
+  if (!stored) return [];
   try {
-    return JSON.parse(stored) as LastSplit;
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-export function clearLastSplit(): void {
-  localStorage.removeItem(LAST_SPLIT_KEY);
+export function removeLastSplit(id: string): void {
+  const updated = loadLastSplits().filter((s) => s.id !== id);
+  localStorage.setItem(LAST_SPLITS_KEY, JSON.stringify(updated));
 }

@@ -103,12 +103,12 @@ describe('ExpenseEditModal', () => {
       expect(screen.getByText('Bob')).toBeInTheDocument();
     });
 
-    it('has auto-focus on amount field', async () => {
+    it('has auto-focus on description field', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
       await waitFor(() => {
-        const amountInput = screen.getByLabelText(/amount/i);
-        expect(document.activeElement).toBe(amountInput);
+        const descriptionInput = screen.getByLabelText(/description/i);
+        expect(document.activeElement).toBe(descriptionInput);
       });
     });
 

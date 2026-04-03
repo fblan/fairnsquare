@@ -1,3 +1,16 @@
+/**
+ * Home page tests
+ * Issue #94: Rework welcome page
+ *
+ * AC1: Only split name field is shown (no participant form)
+ * AC2: Split name validation
+ * AC3: Create split calls only createSplit then navigates to participants page
+ * AC4: Recent splits list — verified splits shown, stale ones removed
+ * AC5: Individual dismiss per split
+ * AC6: Error handling
+ * AC7: CAPTCHA integration
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import Home from './Home.svelte';
@@ -13,7 +26,6 @@ vi.mock('$lib/router', () => ({
 // Mock the API
 vi.mock('$lib/api/splits', () => ({
   createSplit: vi.fn(),
-  addParticipant: vi.fn(),
   getSplit: vi.fn(),
 }));
 
@@ -24,15 +36,9 @@ vi.mock('$lib/stores/toastStore.svelte', () => ({
 
 // Mock the lastSplitStore
 vi.mock('$lib/stores/lastSplitStore', () => ({
-  loadLastSplit: vi.fn(),
-  clearLastSplit: vi.fn(),
+  loadLastSplits: vi.fn(),
+  removeLastSplit: vi.fn(),
   saveLastSplit: vi.fn(),
-}));
-
-// Mock the nights default store
-vi.mock('$lib/stores/nightsDefaultStore', () => ({
-  saveNightsDefault: vi.fn(),
-  loadNightsDefault: vi.fn(() => 1),
 }));
 
 // Mock the captcha store — default: token is valid so modal is suppressed
@@ -50,575 +56,297 @@ vi.mock('$lib/api/captcha', () => ({
   verifyChallenge: vi.fn(),
 }));
 
-import { createSplit, addParticipant, getSplit } from '$lib/api/splits';
+import { createSplit, getSplit } from '$lib/api/splits';
 import { navigate } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
-import { loadLastSplit, clearLastSplit } from '$lib/stores/lastSplitStore';
-import { saveNightsDefault } from '$lib/stores/nightsDefaultStore';
+import { loadLastSplits, removeLastSplit } from '$lib/stores/lastSplitStore';
 import { hasValidToken, loadToken, clearToken } from '$lib/stores/captchaStore';
+
+const mockSplit = {
+  id: 'abc123',
+  name: 'Weekend Trip',
+  createdAt: '2026-02-04T12:00:00Z',
+  participants: [],
+  expenses: [],
+  settlement: null,
+};
 
 describe('Home', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(loadLastSplit).mockReturnValue(null);
+    vi.mocked(loadLastSplits).mockReturnValue([]);
   });
 
-  // --- Task 1: Form renders all fields (AC: 1) ---
+  // --- AC1: Form renders only split name field ---
 
-  it('renders all form fields: split name, participant name, nights, share', () => {
-    render(Home);
+  describe('Form rendering (AC1)', () => {
+    it('renders the split name field and Create Split button', () => {
+      render(Home);
 
-    expect(screen.getByText('FairNSquare')).toBeInTheDocument();
-    expect(screen.getByText('Create a New Split')).toBeInTheDocument();
-    expect(screen.getByLabelText('Split Name')).toBeInTheDocument();
-    expect(screen.getByText('First Participant')).toBeInTheDocument();
-    expect(screen.getByLabelText('Name')).toBeInTheDocument();
-    expect(screen.getByLabelText('Nights')).toBeInTheDocument();
-    expect(screen.getByLabelText('Share')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create Split' })).toBeInTheDocument();
-  });
-
-  it('defaults nights to 1', () => {
-    render(Home);
-
-    const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
-    expect(nightsInput.value).toBe('1');
-  });
-
-  it('defaults share to 1', () => {
-    render(Home);
-
-    const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
-    expect(shareInput.value).toBe('1');
-  });
-
-  // --- Task 2: Validation (AC: 2, 3, 4, 5) ---
-
-  it('shows validation errors when submitting with empty fields', async () => {
-    render(Home);
-
-    const submitButton = screen.getByRole('button', { name: 'Create Split' });
-    expect(submitButton).not.toBeDisabled();
-
-    await fireEvent.click(submitButton);
-
-    expect(screen.getByText('Split name is required')).toBeInTheDocument();
-    expect(screen.getByText('Participant name is required')).toBeInTheDocument();
-  });
-
-  it('enables submit button when all fields are valid', async () => {
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
+      expect(screen.getByText('FairNSquare')).toBeInTheDocument();
+      expect(screen.getByText('Create a New Split')).toBeInTheDocument();
+      expect(screen.getByLabelText('Split Name')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create Split' })).toBeInTheDocument();
     });
 
-    const submitButton = screen.getByRole('button', { name: 'Create Split' });
-    expect(submitButton).not.toBeDisabled();
-  });
+    it('does not render participant form fields', () => {
+      render(Home);
 
-  it('shows validation error for split name exceeding 100 characters', async () => {
-    render(Home);
-
-    const longName = 'a'.repeat(101);
-    const input = screen.getByLabelText('Split Name');
-    await fireEvent.input(input, { target: { value: longName } });
-
-    expect(
-      screen.getByText('Split name cannot exceed 100 characters')
-    ).toBeInTheDocument();
-  });
-
-  it('shows validation error for participant name exceeding 50 characters', async () => {
-    render(Home);
-
-    const longName = 'a'.repeat(51);
-    const input = screen.getByLabelText('Name');
-    await fireEvent.input(input, { target: { value: longName } });
-
-    expect(
-      screen.getByText('Participant name cannot exceed 50 characters')
-    ).toBeInTheDocument();
-  });
-
-  it('shows validation error for nights less than 1', async () => {
-    render(Home);
-
-    const nightsInput = screen.getByLabelText('Nights');
-    await fireEvent.input(nightsInput, { target: { value: 0 } });
-
-    expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
-  });
-
-  it('shows validation error for nights greater than 365', async () => {
-    render(Home);
-
-    const nightsInput = screen.getByLabelText('Nights');
-    await fireEvent.input(nightsInput, { target: { value: 366 } });
-
-    expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
-  });
-
-  it('shows validation error for share less than 0.5', async () => {
-    render(Home);
-
-    const shareInput = screen.getByLabelText('Share');
-    await fireEvent.input(shareInput, { target: { value: 0 } });
-
-    expect(screen.getByText('Share must be at least 0.5')).toBeInTheDocument();
-  });
-
-  it('shows validation error for share greater than 50', async () => {
-    render(Home);
-
-    const shareInput = screen.getByLabelText('Share');
-    await fireEvent.input(shareInput, { target: { value: 51 } });
-
-    expect(screen.getByText('Share cannot exceed 50')).toBeInTheDocument();
-  });
-
-  // --- Task 3: Create flow & redirect (AC: 6) ---
-
-  it('creates split, adds participant, and navigates to split page', async () => {
-    const mockSplit = {
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-02-04T12:00:00Z',
-      participants: [],
-      expenses: [],
-    };
-    const mockParticipant = {
-      id: 'p1',
-      name: 'Alice',
-      nights: 3,
-      share: 1,
-    };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockResolvedValue(mockParticipant);
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
+      expect(screen.queryByText('First Participant')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Nights')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Share')).not.toBeInTheDocument();
     });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-    await fireEvent.input(screen.getByLabelText('Nights'), {
-      target: { value: 3 },
+  });
+
+  // --- AC2: Validation ---
+
+  describe('Validation (AC2)', () => {
+    it('shows split name required error when submitting empty form', async () => {
+      render(Home);
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+      expect(screen.getByText('Split name is required')).toBeInTheDocument();
     });
 
-    const submitButton = screen.getByRole('button', { name: 'Create Split' });
-    await fireEvent.click(submitButton);
+    it('shows error when split name exceeds 100 characters', async () => {
+      render(Home);
 
-    await waitFor(() => {
-      expect(createSplit).toHaveBeenCalledWith(
-        { name: 'Weekend Trip' },
-        { 'X-Captcha-Token': 'mock-captcha-token' }
-      );
-      expect(addParticipant).toHaveBeenCalledWith('abc123', {
-        name: 'Alice',
-        nights: 3,
-        share: 1,
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'a'.repeat(101) },
       });
-      expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
-        params: { splitId: 'abc123' },
-        search: { addParticipant: 'true' },
+
+      expect(screen.getByText('Split name cannot exceed 100 characters')).toBeInTheDocument();
+    });
+
+    it('does not call createSplit when form is invalid', async () => {
+      render(Home);
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+      expect(createSplit).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- AC3: Create flow ---
+
+  describe('Create flow (AC3)', () => {
+    it('calls createSplit with split name and navigates to participants page', async () => {
+      vi.mocked(createSplit).mockResolvedValue(mockSplit);
+
+      render(Home);
+
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'Weekend Trip' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+      await waitFor(() => {
+        expect(createSplit).toHaveBeenCalledWith(
+          { name: 'Weekend Trip' },
+          { 'X-Captcha-Token': 'mock-captcha-token' }
+        );
+        expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
+          params: { splitId: 'abc123' },
+          search: { addParticipant: 'true' },
+        });
       });
     });
-  });
 
-  it('saves nights default after creating split so next participant form defaults to it', async () => {
-    const mockSplit = {
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-02-04T12:00:00Z',
-      participants: [],
-      expenses: [],
-    };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockResolvedValue({ id: 'p1', name: 'Alice', nights: 7, share: 1 });
+    it('does not call addParticipant during split creation', async () => {
+      vi.mocked(createSplit).mockResolvedValue(mockSplit);
 
-    render(Home);
+      render(Home);
 
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Weekend Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: 7 } });
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'Weekend Trip' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+      await waitFor(() => expect(navigate).toHaveBeenCalled());
 
-    await waitFor(() => {
-      expect(saveNightsDefault).toHaveBeenCalledWith(7);
+      // addParticipant is not in the mock — createSplit is the only API call
+      expect(createSplit).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('does not save nights default when API call fails', async () => {
-    vi.mocked(createSplit).mockRejectedValue({ detail: 'Server error' });
+  // --- AC4: Recent splits list ---
 
-    render(Home);
+  describe('Recent splits list (AC4)', () => {
+    it('does not show recent splits section when list is empty', async () => {
+      vi.mocked(loadLastSplits).mockReturnValue([]);
 
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Weekend Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
+      render(Home);
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(addToast).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.queryByText('Recent splits')).not.toBeInTheDocument();
+      });
     });
 
-    expect(saveNightsDefault).not.toHaveBeenCalled();
+    it('shows verified splits from the store', async () => {
+      vi.mocked(loadLastSplits).mockReturnValue([
+        { id: 's1', name: 'Beach House' },
+        { id: 's2', name: 'Road Trip' },
+      ]);
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce({ ...mockSplit, id: 's1', name: 'Beach House' })
+        .mockResolvedValueOnce({ ...mockSplit, id: 's2', name: 'Road Trip' });
+
+      render(Home);
+
+      await waitFor(() => {
+        expect(screen.getByText('Recent splits')).toBeInTheDocument();
+        expect(screen.getByText('Beach House')).toBeInTheDocument();
+        expect(screen.getByText('Road Trip')).toBeInTheDocument();
+      });
+    });
+
+    it('removes stale splits (not found on server) from storage and list', async () => {
+      vi.mocked(loadLastSplits).mockReturnValue([
+        { id: 'gone', name: 'Old Split' },
+        { id: 's2', name: 'Active Split' },
+      ]);
+      vi.mocked(getSplit)
+        .mockRejectedValueOnce({ status: 404 })
+        .mockResolvedValueOnce({ ...mockSplit, id: 's2', name: 'Active Split' });
+
+      render(Home);
+
+      await waitFor(() => {
+        expect(removeLastSplit).toHaveBeenCalledWith('gone');
+        expect(screen.queryByText('Old Split')).not.toBeInTheDocument();
+        expect(screen.getByText('Active Split')).toBeInTheDocument();
+      });
+    });
+
+    it('navigates to split when Resume is clicked', async () => {
+      vi.mocked(loadLastSplits).mockReturnValue([{ id: 's1', name: 'Beach House' }]);
+      vi.mocked(getSplit).mockResolvedValue({ ...mockSplit, id: 's1', name: 'Beach House' });
+
+      render(Home);
+
+      await waitFor(() => expect(screen.getByText('Beach House')).toBeInTheDocument());
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+
+      expect(navigate).toHaveBeenCalledWith('/splits/:splitId', { params: { splitId: 's1' } });
+    });
   });
 
-  it('sends share in API call', async () => {
-    const mockSplit = {
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-02-04T12:00:00Z',
-      participants: [],
-      expenses: [],
-    };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockResolvedValue({
-      id: 'p1',
-      name: 'Alice',
-      nights: 2,
-      share: 3,
-    });
+  // --- AC5: Individual dismiss ---
 
-    render(Home);
+  describe('Individual dismiss (AC5)', () => {
+    it('removes a dismissed split from the list and calls removeLastSplit', async () => {
+      vi.mocked(loadLastSplits).mockReturnValue([
+        { id: 's1', name: 'Beach House' },
+        { id: 's2', name: 'Road Trip' },
+      ]);
+      vi.mocked(getSplit)
+        .mockResolvedValueOnce({ ...mockSplit, id: 's1', name: 'Beach House' })
+        .mockResolvedValueOnce({ ...mockSplit, id: 's2', name: 'Road Trip' });
 
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-    await fireEvent.input(screen.getByLabelText('Nights'), {
-      target: { value: 2 },
-    });
-    await fireEvent.input(screen.getByLabelText('Share'), {
-      target: { value: 3 },
-    });
+      render(Home);
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+      await waitFor(() => expect(screen.getAllByText('Dismiss')).toHaveLength(2));
 
-    await waitFor(() => {
-      expect(addParticipant).toHaveBeenCalledWith('abc123', {
-        name: 'Alice',
-        nights: 2,
-        share: 3,
+      await fireEvent.click(screen.getAllByText('Dismiss')[0]);
+
+      await waitFor(() => {
+        expect(removeLastSplit).toHaveBeenCalledWith('s1');
+        expect(screen.queryByText('Beach House')).not.toBeInTheDocument();
+        expect(screen.getByText('Road Trip')).toBeInTheDocument();
       });
     });
   });
 
-  // --- Task 4: No intermediate share-link screen (AC: 6) ---
+  // --- AC6: Error handling ---
 
-  it('does not show share-link screen after creation', async () => {
-    const mockSplit = {
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-02-04T12:00:00Z',
-      participants: [],
-      expenses: [],
-    };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockResolvedValue({
-      id: 'p1',
-      name: 'Alice',
-      nights: 1,
-      share: 1,
-    });
+  describe('Error handling (AC6)', () => {
+    it('shows toast on createSplit API error and preserves form data', async () => {
+      vi.mocked(createSplit).mockRejectedValue({ detail: 'Server error' });
 
-    render(Home);
+      render(Home);
 
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(navigate).toHaveBeenCalled();
-    });
-
-    // These elements from the old share-link screen must NOT appear
-    expect(screen.queryByText('Split Created!')).not.toBeInTheDocument();
-    expect(screen.queryByText('Go to Split')).not.toBeInTheDocument();
-    expect(screen.queryByText('Create Another Split')).not.toBeInTheDocument();
-    expect(screen.queryByText('Copy Link')).not.toBeInTheDocument();
-  });
-
-  // --- Task 5: Error handling (AC: 7) ---
-
-  it('shows toast on createSplit API error and preserves form data', async () => {
-    vi.mocked(createSplit).mockRejectedValue({
-      type: 'error',
-      title: 'Error',
-      status: 500,
-      detail: 'Server error',
-    });
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Server error',
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'Weekend Trip' },
       });
-    });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
 
-    // Form data preserved
-    expect((screen.getByLabelText('Split Name') as HTMLInputElement).value).toBe(
-      'Weekend Trip'
-    );
-    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Alice');
-    expect(navigate).not.toHaveBeenCalled();
-  });
-
-  it('shows toast on addParticipant API error and preserves form data', async () => {
-    const mockSplit = {
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-02-04T12:00:00Z',
-      participants: [],
-      expenses: [],
-    };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockRejectedValue({
-      type: 'error',
-      title: 'Error',
-      status: 400,
-      detail: 'Invalid participant',
-    });
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Invalid participant',
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Server error' });
       });
+
+      expect((screen.getByLabelText('Split Name') as HTMLInputElement).value).toBe('Weekend Trip');
+      expect(navigate).not.toHaveBeenCalled();
     });
 
-    expect(navigate).not.toHaveBeenCalled();
-  });
+    it('shows default error message when API error has no detail', async () => {
+      vi.mocked(createSplit).mockRejectedValue({});
 
-  it('shows default error message when API error has no detail', async () => {
-    vi.mocked(createSplit).mockRejectedValue({});
+      render(Home);
 
-    render(Home);
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'Weekend Trip' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
 
-    await fireEvent.input(screen.getByLabelText('Split Name'), {
-      target: { value: 'Weekend Trip' },
-    });
-    await fireEvent.input(screen.getByLabelText('Name'), {
-      target: { value: 'Alice' },
-    });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Failed to create split',
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith({ type: 'error', message: 'Failed to create split' });
       });
     });
   });
 
-  // --- Resume last split ---
+  // --- AC7: CAPTCHA integration ---
 
-  it('does not show resume card when no split is stored', async () => {
-    vi.mocked(loadLastSplit).mockReturnValue(null);
+  describe('CAPTCHA integration (AC7)', () => {
+    it('shows captcha modal when no valid token and form is valid', async () => {
+      vi.mocked(hasValidToken).mockReturnValue(false);
 
-    render(Home);
+      render(Home);
 
-    await waitFor(() => {
-      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
-    });
-  });
+      await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
 
-  it('shows resume card with split name when stored split exists and is verified', async () => {
-    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
-    vi.mocked(getSplit).mockResolvedValue({
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-01-01T00:00:00Z',
-      participants: [],
-      expenses: [],
-      settlement: null,
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Human Verification')).toBeInTheDocument();
+      });
+      expect(createSplit).not.toHaveBeenCalled();
     });
 
-    render(Home);
+    it('does not show captcha modal when valid token exists', async () => {
+      vi.mocked(hasValidToken).mockReturnValue(true);
+      vi.mocked(createSplit).mockResolvedValue(mockSplit);
 
-    await waitFor(() => {
-      expect(screen.getByText('Resume your split')).toBeInTheDocument();
-      expect(screen.getByText('Weekend Trip')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
-      expect(screen.getByText('Dismiss')).toBeInTheDocument();
-    });
-  });
+      render(Home);
 
-  it('does not show resume card when stored split is not found on server', async () => {
-    vi.mocked(loadLastSplit).mockReturnValue({ id: 'gone', name: 'Old Split' });
-    vi.mocked(getSplit).mockRejectedValue({ status: 404, detail: 'Not found' });
+      await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
 
-    render(Home);
-
-    await waitFor(() => {
-      expect(clearLastSplit).toHaveBeenCalled();
-      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
-    });
-  });
-
-  it('navigates to split when Resume is clicked', async () => {
-    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
-    vi.mocked(getSplit).mockResolvedValue({
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-01-01T00:00:00Z',
-      participants: [],
-      expenses: [],
-      settlement: null,
+      await waitFor(() => expect(createSplit).toHaveBeenCalled());
+      expect(screen.queryByText('Human Verification')).not.toBeInTheDocument();
     });
 
-    render(Home);
+    it('clears token and shows captcha modal when createSplit returns 401', async () => {
+      vi.mocked(createSplit).mockRejectedValue({ status: 401 });
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Resume' })).toBeInTheDocument();
+      render(Home);
+
+      await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+      await waitFor(() => {
+        expect(clearToken).toHaveBeenCalled();
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+      expect(addToast).not.toHaveBeenCalled();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
-
-    expect(navigate).toHaveBeenCalledWith('/splits/:splitId', { params: { splitId: 'abc123' } });
-  });
-
-  // --- CAPTCHA integration ---
-
-  it('shows captcha modal when Create Split is clicked and no valid token is stored', async () => {
-    vi.mocked(hasValidToken).mockReturnValue(false);
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('Human Verification')).toBeInTheDocument();
-    });
-    expect(createSplit).not.toHaveBeenCalled();
-  });
-
-  it('does not show captcha modal when Create Split is clicked and a valid token is stored', async () => {
-    vi.mocked(hasValidToken).mockReturnValue(true);
-    vi.mocked(createSplit).mockResolvedValue({ id: 'abc', name: 'Trip', createdAt: '', participants: [], expenses: [] });
-    vi.mocked(addParticipant).mockResolvedValue({ id: 'p1', name: 'Alice', nights: 1, share: 1 });
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(createSplit).toHaveBeenCalled();
-    });
-    expect(screen.queryByText('Human Verification')).not.toBeInTheDocument();
-  });
-
-  it('does not show captcha modal on page load even when no token is stored', () => {
-    vi.mocked(hasValidToken).mockReturnValue(false);
-
-    render(Home);
-
-    expect(screen.queryByText('Human Verification')).not.toBeInTheDocument();
-  });
-
-  it('auto-proceeds with split creation after captcha is solved', async () => {
-    vi.mocked(hasValidToken).mockReturnValueOnce(false).mockReturnValue(true);
-    const mockSplit = { id: 'abc', name: 'Trip', createdAt: '', participants: [], expenses: [] };
-    vi.mocked(createSplit).mockResolvedValue(mockSplit);
-    vi.mocked(addParticipant).mockResolvedValue({ id: 'p1', name: 'Alice', nights: 1, share: 1 });
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    // Modal should appear
-    await waitFor(() => expect(screen.getByText('Human Verification')).toBeInTheDocument());
-
-    // Simulate captcha solved — find and click the success path via the store mock
-    // The CaptchaModal is mocked via captcha API mocks; simulate onSuccess by directly
-    // triggering the internal state. We verify that once hasValidToken returns true,
-    // the creation call proceeds.
-    expect(createSplit).not.toHaveBeenCalled();
-  });
-
-  it('clears token and shows captcha modal when createSplit returns 401', async () => {
-    vi.mocked(createSplit).mockRejectedValue({ status: 401, detail: 'CAPTCHA required' });
-
-    render(Home);
-
-    await fireEvent.input(screen.getByLabelText('Split Name'), { target: { value: 'Trip' } });
-    await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
-
-    await waitFor(() => {
-      expect(clearToken).toHaveBeenCalled();
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-    });
-    expect(addToast).not.toHaveBeenCalled();
-  });
-
-  it('hides resume card and clears storage when Dismiss is clicked', async () => {
-    vi.mocked(loadLastSplit).mockReturnValue({ id: 'abc123', name: 'Weekend Trip' });
-    vi.mocked(getSplit).mockResolvedValue({
-      id: 'abc123',
-      name: 'Weekend Trip',
-      createdAt: '2026-01-01T00:00:00Z',
-      participants: [],
-      expenses: [],
-      settlement: null,
-    });
-
-    render(Home);
-
-    await waitFor(() => {
-      expect(screen.getByText('Dismiss')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByText('Dismiss'));
-
-    await waitFor(() => {
-      expect(clearLastSplit).toHaveBeenCalled();
-      expect(screen.queryByText('Resume your split')).not.toBeInTheDocument();
+    it('does not show captcha modal on page load', () => {
+      vi.mocked(hasValidToken).mockReturnValue(false);
+      render(Home);
+      expect(screen.queryByText('Human Verification')).not.toBeInTheDocument();
     });
   });
 });
