@@ -13,7 +13,8 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
  * calculation strategy.
  */
-public sealed abstract class Expense permits ExpenseByNight, ExpenseByNightCustom, ExpenseByShare, ExpenseEqual, ExpenseFree {
+public sealed abstract class Expense
+        permits ExpenseByNight, ExpenseByNightCustom, ExpenseByShare, ExpenseEqual, ExpenseFree {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 

@@ -268,6 +268,8 @@ public class SplitUseCases {
                     addExpenseEqual(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use addExpenseFree() with AddFreeExpenseRequest");
+            case BY_NIGHT_CUSTOM -> throw new UnsupportedOperationException(
+                    "BY_NIGHT_CUSTOM mode requires participant IDs - use addExpenseByNightCustom() with AddByNightCustomExpenseRequest");
         };
     }
 
@@ -381,13 +383,11 @@ public class SplitUseCases {
                 try {
                     split.getParticipant(Participant.Id.of(participantId));
                 } catch (ParticipantNotFoundError e) {
-                    throw new InvalidSharesError(
-                            "Participant with ID '" + participantId + "' not found in split.");
+                    throw new InvalidSharesError("Participant with ID '" + participantId + "' not found in split.");
                 }
             }
 
-            List<Participant.Id> includedIds = request.participantIds().stream()
-                    .map(Participant.Id::of).toList();
+            List<Participant.Id> includedIds = request.participantIds().stream().map(Participant.Id::of).toList();
 
             ExpenseByNightCustom expense = ExpenseByNightCustom.create(request.amount(), request.description(), payer,
                     includedIds);

@@ -6,8 +6,8 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Persistence DTO for ExpenseByNightCustom domain object.
- * Stores the list of included participant IDs alongside standard expense fields.
+ * Persistence DTO for ExpenseByNightCustom domain object. Stores the list of included participant IDs alongside
+ * standard expense fields.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ExpenseByNightCustomPersistenceDTO(String id, BigDecimal amount, String description, String payerId,

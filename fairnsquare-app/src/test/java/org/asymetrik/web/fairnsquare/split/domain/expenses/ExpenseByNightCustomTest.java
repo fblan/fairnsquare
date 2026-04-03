@@ -47,8 +47,8 @@ class ExpenseByNightCustomTest {
 
         // Only alice and bob are included: 4/6 * 180 = 120, 2/6 * 180 = 60
         assertThat(shares).hasSize(2);
-        assertThat(shares.stream().map(s -> s.participantId()).toList())
-                .containsExactlyInAnyOrder(alice.id(), bob.id());
+        assertThat(shares.stream().map(s -> s.participantId()).toList()).containsExactlyInAnyOrder(alice.id(),
+                bob.id());
         assertThat(shares.get(0).amount()).isEqualByComparingTo("120.00");
         assertThat(shares.get(1).amount()).isEqualByComparingTo("60.00");
     }
@@ -100,8 +100,7 @@ class ExpenseByNightCustomTest {
         Participant.Id payerId = Participant.Id.generate();
 
         assertThatThrownBy(() -> ExpenseByNightCustom.create(new BigDecimal("100.00"), "Test", payerId, List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("at least one participant");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at least one participant");
     }
 
     @Test

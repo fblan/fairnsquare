@@ -34,8 +34,8 @@ public class ExpensePersistenceMapper {
             case ExpenseByNight _ -> new ExpenseByNightPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
             case ExpenseByNightCustom custom -> {
-                var participantIdStrings = custom.getIncludedParticipantIds().stream()
-                        .map(Participant.Id::value).toList();
+                var participantIdStrings = custom.getIncludedParticipantIds().stream().map(Participant.Id::value)
+                        .toList();
                 yield new ExpenseByNightCustomPersistenceDTO(id, expense.getAmount(), expense.getDescription(), payerId,
                         createdAt, participantIdStrings);
             }

@@ -9,10 +9,10 @@ import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 /**
- * Expense split proportionally based on nights stayed, but only among a custom subset of participants.
- * Useful when some participants (e.g. van guests) should be excluded from certain by-night expenses.
- *
- * <p>Share calculation: same as {@link ExpenseByNight}, applied only to the included participants.
+ * Expense split proportionally based on nights stayed, but only among a custom subset of participants. Useful when some
+ * participants (e.g. van guests) should be excluded from certain by-night expenses.
+ * <p>
+ * Share calculation: same as {@link ExpenseByNight}, applied only to the included participants.
  */
 public final class ExpenseByNightCustom extends Expense {
 
@@ -65,8 +65,8 @@ public final class ExpenseByNightCustom extends Expense {
     }
 
     /**
-     * Returns the IDs of participants included in this expense.
-     * Used by the persistence layer to store which participants participate.
+     * Returns the IDs of participants included in this expense. Used by the persistence layer to store which
+     * participants participate.
      */
     public List<Participant.Id> getIncludedParticipantIds() {
         return Collections.unmodifiableList(includedParticipantIds);
@@ -75,8 +75,7 @@ public final class ExpenseByNightCustom extends Expense {
     @Override
     public List<Share> getShares(Split split) {
         List<Participant> included = split.getParticipants().stream()
-                .filter(p -> includedParticipantIds.contains(p.id()))
-                .toList();
+                .filter(p -> includedParticipantIds.contains(p.id())).toList();
         if (included.isEmpty()) {
             return Collections.emptyList();
         }
