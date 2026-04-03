@@ -192,15 +192,15 @@ describe('ExpenseList', () => {
       });
     });
 
-    it('navigates back to dashboard when back button clicked (AC 8)', async () => {
+    it('navigates to dashboard when Dashboard tab is clicked (AC 8)', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithExpenses);
       render(ExpenseList);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }));
+      await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
       expect(navigate).toHaveBeenCalledWith('/splits/test-split-id-00001');
     });
 

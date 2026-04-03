@@ -1,12 +1,25 @@
+/**
+ * SplitPageHeader tests
+ * Issue #93: Add navigation menu to switch between split views
+ *
+ * AC1: All 4 navigation tabs are rendered
+ * AC2: Clicking a tab navigates to the correct route
+ * AC3: Active tab reflects the current pathname
+ * AC4: Share button works
+ * AC5: Split name is rendered
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SplitPageHeader from './SplitPageHeader.svelte';
+
+const mockRoute = vi.hoisted(() => ({ params: {}, pathname: '/splits/split-abc' }));
 
 vi.mock('$lib/router', () => ({
   p: vi.fn((path: string) => path),
   navigate: vi.fn(),
   isActive: vi.fn(),
-  route: { params: {}, pathname: '/' },
+  route: mockRoute,
 }));
 
 vi.mock('$lib/stores/toastStore.svelte', () => ({
@@ -19,75 +32,144 @@ import { addToast } from '$lib/stores/toastStore.svelte';
 const SPLIT_ID = 'split-abc';
 const SPLIT_NAME = 'Weekend in Paris';
 
+const defaultProps = { splitName: SPLIT_NAME, splitId: SPLIT_ID };
+
 describe('SplitPageHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRoute.pathname = `/splits/${SPLIT_ID}`;
   });
 
-  // --- Split name ---
+  // --- AC5: Split name ---
 
   it('renders the split name', () => {
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
-
+    render(SplitPageHeader, { props: defaultProps });
     expect(screen.getByText(SPLIT_NAME)).toBeInTheDocument();
   });
 
-  // --- Share button ---
+  // --- AC1: Navigation tabs rendered ---
 
-  it('renders a Share button', () => {
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
+  describe('Navigation tabs (AC1)', () => {
+    it('renders all 4 navigation tabs', () => {
+      render(SplitPageHeader, { props: defaultProps });
 
-    expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
-  });
+      expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /participants/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /expenses/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /settlement/i })).toBeInTheDocument();
+    });
 
-  it('copies URL to clipboard and shows success toast when Share is clicked', async () => {
-    const mockWriteText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText: mockWriteText } });
-
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
-
-    await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
-
-    await waitFor(() => {
-      expect(mockWriteText).toHaveBeenCalled();
-      expect(addToast).toHaveBeenCalledWith({ type: 'success', message: 'Link copied!' });
+    it('renders a nav landmark with aria-label', () => {
+      render(SplitPageHeader, { props: defaultProps });
+      expect(screen.getByRole('navigation', { name: 'Split navigation' })).toBeInTheDocument();
     });
   });
 
-  it('shows URL in toast when clipboard API fails', async () => {
-    const mockWriteText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
-    Object.assign(navigator, { clipboard: { writeText: mockWriteText } });
+  // --- AC2: Tab navigation ---
 
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
+  describe('Tab navigation (AC2)', () => {
+    it('navigates to the dashboard when Dashboard tab is clicked', async () => {
+      render(SplitPageHeader, { props: defaultProps });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
+      await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
 
-    await waitFor(() => {
-      expect(addToast).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining('Share link:') }),
-      );
+      expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}`);
+    });
+
+    it('navigates to participants when Participants tab is clicked', async () => {
+      render(SplitPageHeader, { props: defaultProps });
+
+      await fireEvent.click(screen.getByRole('button', { name: /participants/i }));
+
+      expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}/participants`);
+    });
+
+    it('navigates to expenses when Expenses tab is clicked', async () => {
+      render(SplitPageHeader, { props: defaultProps });
+
+      await fireEvent.click(screen.getByRole('button', { name: /expenses/i }));
+
+      expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}/expenses`);
+    });
+
+    it('navigates to settlement when Settlement tab is clicked', async () => {
+      render(SplitPageHeader, { props: defaultProps });
+
+      await fireEvent.click(screen.getByRole('button', { name: /settlement/i }));
+
+      expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}/settlement`);
     });
   });
 
-  // --- Back button ---
+  // --- AC3: Active tab ---
 
-  it('does not render a back button by default', () => {
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID } });
+  describe('Active tab (AC3)', () => {
+    it('marks Dashboard tab as active on the split dashboard route', () => {
+      mockRoute.pathname = `/splits/${SPLIT_ID}`;
+      render(SplitPageHeader, { props: defaultProps });
 
-    expect(screen.queryByRole('button', { name: 'Back to dashboard' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /dashboard/i })).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByRole('button', { name: /participants/i })).not.toHaveAttribute('aria-current');
+    });
+
+    it('marks Participants tab as active on the participants route', () => {
+      mockRoute.pathname = `/splits/${SPLIT_ID}/participants`;
+      render(SplitPageHeader, { props: defaultProps });
+
+      expect(screen.getByRole('button', { name: /participants/i })).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByRole('button', { name: /dashboard/i })).not.toHaveAttribute('aria-current');
+    });
+
+    it('marks Expenses tab as active on the expenses route', () => {
+      mockRoute.pathname = `/splits/${SPLIT_ID}/expenses`;
+      render(SplitPageHeader, { props: defaultProps });
+
+      expect(screen.getByRole('button', { name: /expenses/i })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('marks Settlement tab as active on the settlement route', () => {
+      mockRoute.pathname = `/splits/${SPLIT_ID}/settlement`;
+      render(SplitPageHeader, { props: defaultProps });
+
+      expect(screen.getByRole('button', { name: /settlement/i })).toHaveAttribute('aria-current', 'page');
+    });
   });
 
-  it('renders a back button when showBackButton is true', () => {
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID, showBackButton: true } });
+  // --- AC4: Share button ---
 
-    expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
-  });
+  describe('Share button (AC4)', () => {
+    it('renders a Share button', () => {
+      render(SplitPageHeader, { props: defaultProps });
+      expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
+    });
 
-  it('navigates to the split dashboard when back button is clicked', async () => {
-    render(SplitPageHeader, { props: { splitName: SPLIT_NAME, splitId: SPLIT_ID, showBackButton: true } });
+    it('copies URL to clipboard and shows success toast when Share is clicked', async () => {
+      const mockWriteText = vi.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText: mockWriteText } });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }));
+      render(SplitPageHeader, { props: defaultProps });
 
-    expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}`);
+      await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
+
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalled();
+        expect(addToast).toHaveBeenCalledWith({ type: 'success', message: 'Link copied!' });
+      });
+    });
+
+    it('shows URL in toast when clipboard API fails', async () => {
+      const mockWriteText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+      Object.assign(navigator, { clipboard: { writeText: mockWriteText } });
+
+      render(SplitPageHeader, { props: defaultProps });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
+
+      await waitFor(() => {
+        expect(addToast).toHaveBeenCalledWith(
+          expect.objectContaining({ message: expect.stringContaining('Share link:') }),
+        );
+      });
+    });
   });
 });
