@@ -124,24 +124,24 @@ describe('Settlement', () => {
 
   // --- Header ---
 
-  it('displays header with back button and split name after load', async () => {
+  it('displays header with split name and nav tabs after load', async () => {
     render(Settlement);
 
     await waitFor(() => {
       expect(screen.getByText('Test Split')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
   });
 
-  it('navigates back to dashboard when back button is clicked', async () => {
+  it('navigates to dashboard when Dashboard tab is clicked', async () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Back to dashboard' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }));
+    await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
     expect(navigate).toHaveBeenCalledWith('/splits/test-split-id');
   });
 

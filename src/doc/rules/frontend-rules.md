@@ -75,6 +75,10 @@
 
 - When a component function resets state and then awaits an async call (e.g., `loadChallenge` after a wrong answer), do not clear `errorMessage` at the top of the function. Clear it only in the success branch, after the await resolves. Clearing it synchronously at the top batches the reset with the other state changes before the first `await`, so the DOM never shows the error — breaking both UX (error flashes invisibly) and `waitFor` assertions in tests. Always pattern: set error → call `loadFn` → inside `loadFn`, clear error on success.
 
+## Mutable Mock Objects in `vi.mock` Factories
+
+- When a `vi.mock` factory needs to reference a variable that is mutated between tests (e.g. `route.pathname` set in `beforeEach`), define it with `vi.hoisted(() => ({ ... }))` rather than a top-level `const`. Top-level variables are not yet initialized when `vi.mock` is hoisted, causing a `ReferenceError` at runtime.
+
 ## Scoping Queries When Multiple Elements Share the Same Label
 
 - When a component renders multiple buttons or elements with the same accessible name (e.g. two "Cancel" buttons — one in the modal footer, one inside a sub-banner), always scope `getByRole` queries using `within(container)` to avoid ambiguity errors. Use `within(screen.getByRole('alert'))`, `within(screen.getByRole('dialog'))`, or any distinct ARIA landmark to narrow the query to the relevant region.
