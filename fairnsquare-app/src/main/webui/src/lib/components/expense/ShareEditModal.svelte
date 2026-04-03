@@ -11,7 +11,7 @@
   import Input from '$lib/components/ui/input/input.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import { Checkbox } from '$lib/components/ui/checkbox';
-  import { X } from 'lucide-svelte';
+  import { X, Moon, AlertTriangle } from 'lucide-svelte';
 
   interface ShareData {
     shareParts: Record<string, number | ''>;
@@ -83,6 +83,26 @@
     });
   }
 
+  let showNightsWarning = $state(false);
+
+  function copyNightsShares() {
+    showNightsWarning = true;
+  }
+
+  function applyNightsShares() {
+    for (const participant of participants) {
+      const value = participant.nights * participant.share;
+      localParts[participant.id] = value;
+      localChecked[participant.id] = true;
+      localPreviousValues[participant.id] = value;
+    }
+    showNightsWarning = false;
+  }
+
+  function cancelNightsWarning() {
+    showNightsWarning = false;
+  }
+
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       onCancel();
@@ -140,6 +160,37 @@
             {localTotalParts.toFixed(2)} parts {isLocalPartsValid ? '✓' : '⚠'}
           </span>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={copyNightsShares}
+          class="w-full min-h-[44px] gap-2"
+        >
+          <Moon class="h-4 w-4" />
+          Copy nights shares
+        </Button>
+
+        {#if showNightsWarning}
+          <div class="rounded-md border border-amber-300 bg-amber-50 p-3 space-y-2" role="alert">
+            <div class="flex items-start gap-2">
+              <AlertTriangle class="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p class="text-xs text-amber-800">
+                This will overwrite all current values with each participant's
+                <strong>nights × share</strong>. These values are a static snapshot — future
+                changes to nights or share will not be reflected here automatically.
+              </p>
+            </div>
+            <div class="flex gap-2">
+              <Button size="sm" onclick={applyNightsShares} class="flex-1 min-h-[36px]">
+                Apply
+              </Button>
+              <Button variant="outline" size="sm" onclick={cancelNightsWarning} class="flex-1 min-h-[36px]">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        {/if}
 
         <!-- Scrollable participant list -->
         <div class="max-h-[300px] overflow-y-auto space-y-2" role="list" aria-label="Participant shares">
