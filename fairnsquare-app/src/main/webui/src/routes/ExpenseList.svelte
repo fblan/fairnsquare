@@ -282,7 +282,7 @@
     </div>
   {:else if split}
     <!-- Header -->
-    <SplitPageHeader splitName={split.name} {splitId} showBackButton />
+    <SplitPageHeader splitName={split.name} {splitId} />
 
     <!-- Settled Banner -->
     {#if isSettled}

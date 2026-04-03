@@ -391,7 +391,7 @@
     </div>
   {:else if split}
     <!-- Header -->
-    <SplitPageHeader splitName={splitName} {splitId} showBackButton />
+    <SplitPageHeader splitName={splitName} {splitId} />
 
     {#if settlement}
       {#if displayBalances.length === 0}

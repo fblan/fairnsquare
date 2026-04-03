@@ -1,18 +1,32 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { ArrowLeft, Share2 } from 'lucide-svelte';
+  import { Share2, LayoutDashboard, Users, Receipt, ArrowLeftRight } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { addToast } from '$lib/stores/toastStore.svelte';
-  import { navigate } from '$lib/router';
+  import { navigate, route } from '$lib/router';
 
   interface Props {
     splitName: string;
     splitId: string;
-    showBackButton?: boolean;
     children?: Snippet;
   }
 
-  const { splitName, splitId, showBackButton = false, children }: Props = $props();
+  const { splitName, splitId, children }: Props = $props();
+
+  const activeTab = $derived.by(() => {
+    const path = route.pathname;
+    if (path.endsWith('/participants')) return 'participants';
+    if (path.endsWith('/expenses')) return 'expenses';
+    if (path.endsWith('/settlement')) return 'settlement';
+    return 'dashboard';
+  });
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: () => `/splits/${splitId}` },
+    { id: 'participants', label: 'Participants', icon: Users, path: () => `/splits/${splitId}/participants` },
+    { id: 'expenses', label: 'Expenses', icon: Receipt, path: () => `/splits/${splitId}/expenses` },
+    { id: 'settlement', label: 'Settlement', icon: ArrowLeftRight, path: () => `/splits/${splitId}/settlement` },
+  ] as const;
 
   async function handleShare() {
     if (typeof window === 'undefined') return;
@@ -33,34 +47,43 @@
   }
 </script>
 
-<header class="w-full flex items-center justify-between">
-  <div class="flex items-center gap-2 min-w-0">
-    {#if showBackButton}
+<div class="w-full space-y-3">
+  <!-- Title row -->
+  <header class="w-full flex items-center justify-between">
+    <h1 class="text-lg font-bold text-primary break-words min-w-0">{splitName}</h1>
+    <div class="flex items-center gap-1 shrink-0">
+      {#if children}
+        {@render children()}
+      {/if}
       <Button
-        variant="ghost"
+        onclick={handleShare}
+        variant="outline"
         size="sm"
-        onclick={() => navigate(`/splits/${splitId}`)}
-        class="min-h-[44px] min-w-[44px] shrink-0"
-        aria-label="Back to dashboard"
+        class="min-h-[44px]"
+        aria-label="Share link"
       >
-        <ArrowLeft class="h-5 w-5" />
+        <Share2 class="h-4 w-4 mr-1" />
+        Share
       </Button>
-    {/if}
-    <h1 class="text-lg font-bold text-primary break-words">{splitName}</h1>
-  </div>
-  <div class="flex items-center gap-1 shrink-0">
-    {#if children}
-      {@render children()}
-    {/if}
-    <Button
-      onclick={handleShare}
-      variant="outline"
-      size="sm"
-      class="min-h-[44px]"
-      aria-label="Share link"
-    >
-      <Share2 class="h-4 w-4 mr-1" />
-      Share
-    </Button>
-  </div>
-</header>
+    </div>
+  </header>
+
+  <!-- Navigation tabs -->
+  <nav aria-label="Split navigation" class="flex border-b border-border">
+    {#each tabs as tab}
+      {@const isActive = activeTab === tab.id}
+      {@const Icon = tab.icon}
+      <button
+        onclick={() => navigate(tab.path())}
+        aria-current={isActive ? 'page' : undefined}
+        class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]
+          {isActive
+            ? 'border-b-2 border-primary text-primary -mb-px'
+            : 'text-muted-foreground hover:text-foreground'}"
+      >
+        <Icon class="h-4 w-4 shrink-0" />
+        {tab.label}
+      </button>
+    {/each}
+  </nav>
+</div>
