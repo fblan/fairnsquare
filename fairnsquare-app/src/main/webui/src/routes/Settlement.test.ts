@@ -115,11 +115,17 @@ describe('Settlement', () => {
 
   // --- Loading State ---
 
-  it('shows loading state initially', () => {
+  it('shows loading spinner after 500ms delay', async () => {
+    vi.useFakeTimers();
     vi.mocked(getSplit).mockImplementation(() => new Promise(() => {}));
     render(Settlement);
 
+    expect(screen.queryByText('Loading settlement...')).not.toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(500);
+
     expect(screen.getByText('Loading settlement...')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   // --- Header ---

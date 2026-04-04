@@ -30,17 +30,21 @@
     },
   };
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
+  import { getCachedSplitName, setCachedSplitName } from '$lib/stores/splitTitleCache';
   import { tick } from 'svelte';
 
   const splitId = $derived(route.params.splitId || '');
 
   // State
   let split = $state<Split | null>(null);
+  let splitDisplayName = $state(getCachedSplitName(route.params.splitId || ''));
   const sortedParticipants = $derived(
     split?.participants.slice().sort((a, b) => a.name.localeCompare(b.name)) ?? []
   );
   const isSettled = $derived(split?.settlement != null);
   let isLoading = $state(true);
+  let showLoading = $state(false);
+  let loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Add Participant form state
   let showAddForm = $state(false);
@@ -86,10 +90,15 @@
 
   async function loadSplit(id: string) {
     isLoading = true;
-    split = null;
+    showLoading = false;
+
+    if (loadingTimer) clearTimeout(loadingTimer);
+    loadingTimer = setTimeout(() => { showLoading = true; }, 500);
 
     try {
       split = await getSplit(id);
+      splitDisplayName = split.name;
+      setCachedSplitName(id, split.name);
     } catch (err) {
       const apiError = err as ApiError;
       if (apiError.status === 404 || apiError.status === 400) {
@@ -103,6 +112,8 @@
       }
     } finally {
       isLoading = false;
+      showLoading = false;
+      if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
     }
   }
 
@@ -374,7 +385,12 @@
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
-  {#if isLoading}
+  <!-- Header always visible once splitId is known -->
+  {#if splitId}
+    <SplitPageHeader splitName={splitDisplayName} {splitId} />
+  {/if}
+
+  {#if showLoading}
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
       <svg
         class="animate-spin h-8 w-8 text-primary"
@@ -392,9 +408,7 @@
       </svg>
       <p class="text-muted-foreground">Loading participants...</p>
     </div>
-  {:else if split}
-    <!-- Header -->
-    <SplitPageHeader splitName={split.name} {splitId} />
+  {:else if !isLoading && split}
 
     <!-- Settled Banner -->
     {#if isSettled}

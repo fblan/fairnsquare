@@ -8,14 +8,17 @@
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
+  import { getCachedSplitName, setCachedSplitName } from '$lib/stores/splitTitleCache';
 
   const splitId = $derived(route.params.splitId || '');
 
   // State
   let settlement = $state<Settlement | null>(null);
   let split = $state<Split | null>(null);
-  let splitName = $state('');
+  let splitName = $state(getCachedSplitName(route.params.splitId || ''));
   let isLoading = $state(true);
+  let showLoading = $state(false);
+  let loadingTimer: ReturnType<typeof setTimeout> | null = null;
   let showReimbursements = $state(false);
   let isUnsettling = $state(false);
   let isUpdatingGroup = $state(false);
@@ -120,13 +123,18 @@
 
   async function loadSettlement(id: string) {
     isLoading = true;
+    showLoading = false;
     settlement = null;
     showReimbursements = false;
+
+    if (loadingTimer) clearTimeout(loadingTimer);
+    loadingTimer = setTimeout(() => { showLoading = true; }, 500);
 
     try {
       const splitData = await getSplit(id);
       split = splitData;
       splitName = splitData.name;
+      setCachedSplitName(id, splitData.name);
 
       // Derive balances from participant computed fields (always available, no POST needed).
       const balances = splitData.participants.map(p => ({
@@ -153,6 +161,8 @@
       });
     } finally {
       isLoading = false;
+      showLoading = false;
+      if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
     }
   }
 
@@ -371,7 +381,12 @@
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
-  {#if isLoading}
+  <!-- Header always visible once splitId is known -->
+  {#if splitId}
+    <SplitPageHeader {splitName} {splitId} />
+  {/if}
+
+  {#if showLoading}
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
       <svg
         class="animate-spin h-8 w-8 text-primary"
@@ -389,9 +404,7 @@
       </svg>
       <p class="text-muted-foreground">Loading settlement...</p>
     </div>
-  {:else if split}
-    <!-- Header -->
-    <SplitPageHeader splitName={splitName} {splitId} />
+  {:else if !isLoading && split}
 
     {#if settlement}
       {#if displayBalances.length === 0}
