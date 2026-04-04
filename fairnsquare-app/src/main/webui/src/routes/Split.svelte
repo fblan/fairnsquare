@@ -9,6 +9,7 @@
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import { saveLastSplit } from '$lib/stores/lastSplitStore';
+  import { getCachedSplitName, setCachedSplitName } from '$lib/stores/splitTitleCache';
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
 
@@ -17,7 +18,10 @@
 
   // State
   let split = $state<Split | null>(null);
+  let splitDisplayName = $state(getCachedSplitName(route.params.splitId || ''));
   let isLoading = $state(true);
+  let showLoading = $state(false);
+  let loadingTimer: ReturnType<typeof setTimeout> | null = null;
   let error = $state<string | null>(null);
 
   // Expense summary stats
@@ -41,11 +45,16 @@
 
   async function loadSplit(id: string) {
     isLoading = true;
+    showLoading = false;
     error = null;
-    split = null;
+
+    if (loadingTimer) clearTimeout(loadingTimer);
+    loadingTimer = setTimeout(() => { showLoading = true; }, 500);
 
     try {
       split = await getSplit(id);
+      splitDisplayName = split.name;
+      setCachedSplitName(id, split.name);
       saveLastSplit({ id: split.id, name: split.name });
     } catch (err) {
       const apiError = err as ApiError;
@@ -57,6 +66,8 @@
       }
     } finally {
       isLoading = false;
+      showLoading = false;
+      if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
     }
   }
 
@@ -71,8 +82,13 @@
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
-  {#if isLoading}
-    <!-- Loading State -->
+  <!-- Header always visible once splitId is known -->
+  {#if splitId}
+    <SplitPageHeader splitName={splitDisplayName} {splitId} />
+  {/if}
+
+  {#if showLoading}
+    <!-- Loading State (deferred 500ms to avoid flash) -->
     <div class="flex flex-col items-center justify-center py-12 space-y-4">
       <svg class="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -95,10 +111,7 @@
       </Card.Content>
     </Card.Root>
 
-  {:else if split}
-    <!-- Dashboard Header -->
-    <SplitPageHeader splitName={split.name} {splitId} />
-
+  {:else if !isLoading && split}
     <!-- Expense Summary Card (clickable → navigates to expense list) -->
     <section class="w-full">
       <button

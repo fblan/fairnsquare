@@ -227,11 +227,17 @@ describe('ExpenseList', () => {
       expect(screen.getByText(/€150\.00/)).toBeInTheDocument();
     });
 
-    it('shows loading state initially', () => {
+    it('shows loading spinner after 500ms delay', async () => {
+      vi.useFakeTimers();
       vi.mocked(getSplit).mockImplementation(() => new Promise(() => {}));
       render(ExpenseList);
 
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+
+      await vi.advanceTimersByTimeAsync(500);
+
       expect(screen.getByText('Loading expenses...')).toBeInTheDocument();
+      vi.useRealTimers();
     });
   });
 
