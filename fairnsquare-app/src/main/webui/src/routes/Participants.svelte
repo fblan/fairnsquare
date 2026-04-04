@@ -17,7 +17,7 @@
   import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users } from 'lucide-svelte';
 
   // Field info modal state (add form)
-  let activeFieldInfo = $state<'nights' | 'share' | null>(null);
+  let activeFieldInfo = $state<'nights' | 'share' | 'members' | null>(null);
 
   const fieldInfo = {
     nights: {
@@ -27,6 +27,10 @@
     share: {
       title: 'Share',
       description: `The number of persons this participant represents.\n\nA solo traveller has a share of 1. A couple sharing costs would have a share of 2, a family of 3 would use 3, etc.\n\nUsed in "By Night" mode (nights × share) and "By Share" mode (share only) to calculate each participant's proportional contribution.\n\nExample: a couple (share 2) staying 3 nights counts as 6 night-shares, compared to 3 night-shares for a solo person staying the same time.`,
+    },
+    members: {
+      title: 'Members',
+      description: `The number of people in this family group.\n\nAdults count as 1 each. Children can count for 0.5 to reflect their lower consumption.\n\nExample: a family of 2 adults and 2 children staying 7 nights → 3 members (2 × 1 + 2 × 0.5).\n\nIf one parent leaves early (e.g. stays only 3 nights), add them as a separate single participant with 3 nights and a share of 1. The rest of the family can then be entered with fewer members.`,
     },
   };
   import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
@@ -47,12 +51,13 @@
   let loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Add Participant form state
-  let showAddForm = $state(false);
+  let addMode = $state<'single' | 'family' | null>(null);
   let nameInputEl = $state<HTMLInputElement | null>(null);
   let formName = $state('');
   let formNights = $state(1);
   let formShare = $state(1);
-  let validationErrors = $state<{name?: string; nights?: string; share?: string}>({});
+  let formMembers = $state(1);
+  let validationErrors = $state<{name?: string; nights?: string; share?: string; members?: string}>({});
   let isSubmitting = $state(false);
 
   // Edit Participant state
@@ -74,17 +79,6 @@
   $effect(() => {
     if (splitId) {
       loadSplit(splitId);
-    }
-  });
-
-  // Auto-open add form when navigated from the Home creation flow
-  $effect(() => {
-    if (route.search?.addParticipant) {
-      handleShowAddForm();
-      // Remove the param from the URL without triggering re-navigation
-      const url = new URL(window.location.href);
-      url.searchParams.delete('addParticipant');
-      window.history.replaceState(null, '', url.toString());
     }
   });
 
@@ -175,8 +169,8 @@
   }
 
   // Add Participant handlers
-  async function handleShowAddForm() {
-    showAddForm = true;
+  async function handleShowSingleForm() {
+    addMode = 'single';
     formName = '';
     formNights = loadNightsDefault();
     formShare = 1;
@@ -185,11 +179,22 @@
     nameInputEl?.focus();
   }
 
+  async function handleShowFamilyForm() {
+    addMode = 'family';
+    formName = '';
+    formNights = loadNightsDefault();
+    formMembers = 1;
+    validationErrors = {};
+    await tick();
+    nameInputEl?.focus();
+  }
+
   function handleCancelAddForm() {
-    showAddForm = false;
+    addMode = null;
     formName = '';
     formNights = 1;
     formShare = 1;
+    formMembers = 1;
     validationErrors = {};
   }
 
@@ -227,8 +232,18 @@
     validationErrors = { ...validationErrors, share: error };
   }
 
+  function validateMembersOnInput() {
+    let error: string | undefined;
+    if (formMembers < 0.5) {
+      error = 'Must be at least 0.5';
+    } else if (formMembers > 50) {
+      error = 'Cannot exceed 50';
+    }
+    validationErrors = { ...validationErrors, members: error };
+  }
+
   function validateAddForm(): boolean {
-    const errors: {name?: string; nights?: string; share?: string} = {};
+    const errors: {name?: string; nights?: string; share?: string; members?: string} = {};
 
     if (!formName.trim()) {
       errors.name = 'Name is required';
@@ -244,10 +259,18 @@
       errors.nights = 'Nights cannot exceed 365';
     }
 
-    if (formShare < 0.5) {
-      errors.share = 'Must be at least 0.5';
-    } else if (formShare > 50) {
-      errors.share = 'Cannot exceed 50';
+    if (addMode === 'family') {
+      if (formMembers < 0.5) {
+        errors.members = 'Must be at least 0.5';
+      } else if (formMembers > 50) {
+        errors.members = 'Cannot exceed 50';
+      }
+    } else {
+      if (formShare < 0.5) {
+        errors.share = 'Must be at least 0.5';
+      } else if (formShare > 50) {
+        errors.share = 'Cannot exceed 50';
+      }
     }
 
     validationErrors = errors;
@@ -262,18 +285,19 @@
     try {
       const addedName = formName.trim();
       const addedNights = formNights;
-      const addedShare = formShare;
+      const addedShare = addMode === 'family' ? formMembers : formShare;
       await addParticipant(splitId, {
         name: addedName,
-        nights: formNights,
-        share: formShare,
+        nights: addedNights,
+        share: addedShare,
       });
 
-      saveNightsDefault(formNights);
-      showAddForm = false;
+      saveNightsDefault(addedNights);
+      addMode = null;
       formName = '';
       formNights = 1;
       formShare = 1;
+      formMembers = 1;
       validationErrors = {};
       await loadSplit(splitId);
 
@@ -426,12 +450,14 @@
     <!-- Participants Summary Card -->
     <ParticipantSummaryCard participants={split.participants} showTitle={false} />
 
-    <!-- Add Participant Form / Button (hidden when settled) -->
-    {#if !isSettled && showAddForm}
+    <!-- Add Participant Form / Buttons (hidden when settled) -->
+    {#if !isSettled && addMode !== null}
       <Card.Root class="w-full">
         <Card.Content class="py-4">
           <form onsubmit={(e) => { e.preventDefault(); handleAddParticipant(); }} class="space-y-3">
-            <p class="text-sm font-medium text-teal-700">New Participant</p>
+            <p class="text-sm font-medium text-teal-700">
+              {addMode === 'family' ? 'New Family' : 'New Participant'}
+            </p>
 
             <div class="space-y-2">
               <Label for="participant-name">Name</Label>
@@ -473,28 +499,53 @@
                 {/if}
               </div>
 
-              <div class="space-y-2 flex-1">
-                <div class="flex items-center gap-1">
-                  <Label for="participant-share">Share</Label>
-                  <button type="button" onclick={() => { activeFieldInfo = 'share'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Share">
-                    <Info class="h-3.5 w-3.5" />
-                  </button>
+              {#if addMode === 'family'}
+                <div class="space-y-2 flex-1">
+                  <div class="flex items-center gap-1">
+                    <Label for="participant-members">Members</Label>
+                    <button type="button" onclick={() => { activeFieldInfo = 'members'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Members">
+                      <Info class="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Input
+                    id="participant-members"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="50"
+                    bind:value={formMembers}
+                    oninput={validateMembersOnInput}
+                    class="min-h-[44px]"
+                    disabled={isSubmitting}
+                  />
+                  {#if validationErrors.members}
+                    <p class="text-sm text-destructive">{validationErrors.members}</p>
+                  {/if}
                 </div>
-                <Input
-                  id="participant-share"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  max="50"
-                  bind:value={formShare}
-                  oninput={validateShareOnInput}
-                  class="min-h-[44px]"
-                  disabled={isSubmitting}
-                />
-                {#if validationErrors.share}
-                  <p class="text-sm text-destructive">{validationErrors.share}</p>
-                {/if}
-              </div>
+              {:else}
+                <div class="space-y-2 flex-1">
+                  <div class="flex items-center gap-1">
+                    <Label for="participant-share">Share</Label>
+                    <button type="button" onclick={() => { activeFieldInfo = 'share'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Share">
+                      <Info class="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Input
+                    id="participant-share"
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="50"
+                    bind:value={formShare}
+                    oninput={validateShareOnInput}
+                    class="min-h-[44px]"
+                    disabled={isSubmitting}
+                  />
+                  {#if validationErrors.share}
+                    <p class="text-sm text-destructive">{validationErrors.share}</p>
+                  {/if}
+                </div>
+              {/if}
             </div>
 
             <div class="flex gap-2">
@@ -509,19 +560,27 @@
         </Card.Content>
       </Card.Root>
     {:else if !isSettled}
-      <Button
-        onclick={handleShowAddForm}
-        variant="outline"
-        class="w-full min-h-[44px]"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-        </svg>
-        Add Participant
-      </Button>
+      <div class="flex gap-2 w-full">
+        <Button
+          onclick={handleShowSingleForm}
+          variant="outline"
+          class="flex-1 min-h-[44px]"
+        >
+          <Plus class="h-4 w-4 mr-1" />
+          Single
+        </Button>
+        <Button
+          onclick={handleShowFamilyForm}
+          variant="outline"
+          class="flex-1 min-h-[44px]"
+        >
+          <Users class="h-4 w-4 mr-1" />
+          Family
+        </Button>
+      </div>
     {/if}
 
-    {#if sortedParticipants.length === 0 && !showAddForm}
+    {#if sortedParticipants.length === 0 && addMode === null}
       <p class="text-muted-foreground text-center py-4">No participants yet</p>
     {/if}
 

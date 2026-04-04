@@ -85,7 +85,7 @@
         return;
       }
       const split = await createSplit({ name: splitName.trim() }, { [CAPTCHA_TOKEN_HEADER]: token });
-      navigate('/splits/:splitId/participants', { params: { splitId: split.id }, search: { addParticipant: 'true' } });
+      navigate('/splits/:splitId/participants', { params: { splitId: split.id } });
     } catch (err) {
       const apiError = err as ApiError;
       if (apiError.status === 401) {
