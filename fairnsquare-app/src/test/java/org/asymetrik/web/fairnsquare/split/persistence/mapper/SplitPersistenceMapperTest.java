@@ -46,7 +46,7 @@ class SplitPersistenceMapperTest {
     @Test
     void shouldMapPersistenceDTOToDomain() {
         SplitPersistenceDTO dto = new SplitPersistenceDTO(Split.Id.generate().value(), "Beach House",
-                "2026-01-30T10:00:00Z",
+                "2026-01-30T10:00:00Z", null,
                 List.of(new ParticipantPersistenceDTO(Participant.Id.generate().value(), "Bob", 5, 1.0, null)),
                 List.of(), null);
 
@@ -122,7 +122,7 @@ class SplitPersistenceMapperTest {
     @Test
     void shouldMapDTOWithNullCollections() {
         SplitPersistenceDTO dto = new SplitPersistenceDTO(Split.Id.generate().value(), "Null Collections",
-                "2026-01-30T10:00:00Z", null, null, null);
+                "2026-01-30T10:00:00Z", null, null, null, null);
 
         Split split = mapper.toDomain(dto);
 

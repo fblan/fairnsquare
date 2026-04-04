@@ -44,11 +44,13 @@ public class SplitPersistenceMapper {
         SettlementPersistenceDTO settlementDTO = settlementToPersistenceDTO(split.getSettlement());
 
         return new SplitPersistenceDTO(split.getId().value(), split.getName().value(), split.getCreatedAt().toString(),
-                participants, expenses, settlementDTO);
+                split.getUpdatedAt().toString(), participants, expenses, settlementDTO);
     }
 
     public Split toDomain(SplitPersistenceDTO dto) {
-        Split split = new Split(Split.Id.of(dto.id()), new Split.Name(dto.name()), Instant.parse(dto.createdAt()));
+        Instant createdAt = Instant.parse(dto.createdAt());
+        Instant updatedAt = dto.updatedAt() != null ? Instant.parse(dto.updatedAt()) : createdAt;
+        Split split = new Split(Split.Id.of(dto.id()), new Split.Name(dto.name()), createdAt, updatedAt);
 
         if (dto.participants() != null) {
             dto.participants().forEach(p -> split.addParticipant(participantMapper.toDomain(p)));
@@ -61,6 +63,9 @@ public class SplitPersistenceMapper {
         if (dto.settlement() != null) {
             split.settle(settlementToDomain(dto.settlement()));
         }
+
+        // Restore the persisted updatedAt — addParticipant/addExpense/settle call touch() during loading
+        split.restoreUpdatedAt(updatedAt);
 
         return split;
     }

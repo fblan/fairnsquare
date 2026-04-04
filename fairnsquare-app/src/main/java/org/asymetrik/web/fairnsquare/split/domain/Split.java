@@ -49,6 +49,7 @@ public class Split {
     private final Id id;
     private Name name;
     private final Instant createdAt;
+    private Instant updatedAt;
     private final List<Participant> participants;
     private final List<Expense> expenses;
     private Settlement settlement;
@@ -61,12 +62,20 @@ public class Split {
     }
 
     /**
-     * Constructor for creating Split with all fields.
+     * Constructor for creating Split with all fields. updatedAt defaults to createdAt.
      */
     public Split(Id id, Name name, Instant createdAt) {
+        this(id, name, createdAt, createdAt);
+    }
+
+    /**
+     * Constructor for creating Split with all fields including updatedAt (used by persistence layer).
+     */
+    public Split(Id id, Name name, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.name = name;
         this.createdAt = createdAt;
+        this.updatedAt = updatedAt != null ? updatedAt : createdAt;
         this.participants = new ArrayList<>();
         this.expenses = new ArrayList<>();
         validate();
@@ -106,6 +115,10 @@ public class Split {
         }
     }
 
+    private void touch() {
+        this.updatedAt = Instant.now();
+    }
+
     /**
      * Add a participant to the split.
      */
@@ -114,6 +127,7 @@ public class Split {
             throw new IllegalArgumentException("Participant cannot be null");
         }
         this.participants.add(participant);
+        touch();
         clearSettlement();
         recalculateBalances();
         validate();
@@ -127,6 +141,7 @@ public class Split {
             throw new IllegalArgumentException("Expense cannot be null");
         }
         this.expenses.add(expense);
+        touch();
         clearSettlement();
         recalculateBalances();
         validate();
@@ -159,6 +174,7 @@ public class Split {
                         new Participant.Nights(newNights), new Participant.Share(newShare), newSharedAccountId,
                         BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
                 participants.set(i, updated);
+                touch();
                 clearSettlement();
                 recalculateBalances();
                 validate();
@@ -215,6 +231,7 @@ public class Split {
         if (!removed) {
             throw new ParticipantNotFoundError(participantId.value(), id.value());
         }
+        touch();
         clearSettlement();
         recalculateBalances();
         validate();
@@ -254,6 +271,7 @@ public class Split {
                 Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
                         existing.getCreatedAt());
                 expenses.set(i, updated);
+                touch();
                 clearSettlement();
                 recalculateBalances();
                 validate();
@@ -277,6 +295,7 @@ public class Split {
         if (!removed) {
             throw new ExpenseNotFoundError(expenseId.value(), id.value());
         }
+        touch();
         clearSettlement();
         recalculateBalances();
         validate();
@@ -356,6 +375,18 @@ public class Split {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * Restores the updatedAt timestamp from a persisted value. Only intended for use by the persistence layer when
+     * reconstructing a Split from storage.
+     */
+    public void restoreUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt != null ? updatedAt : this.createdAt;
     }
 
     public List<Participant> getParticipants() {

@@ -9,6 +9,7 @@ import Split from '../routes/Split.svelte';
 import ExpenseList from '../routes/ExpenseList.svelte';
 import Participants from '../routes/Participants.svelte';
 import SettlementPage from '../routes/Settlement.svelte';
+import Admin from '../routes/Admin.svelte';
 
 export const { p, navigate, isActive, route } = createRouter({
   '/': Home,
@@ -16,4 +17,5 @@ export const { p, navigate, isActive, route } = createRouter({
   '/splits/:splitId/expenses': ExpenseList,
   '/splits/:splitId/participants': Participants,
   '/splits/:splitId/settlement': SettlementPage,
+  '/admin': Admin,
 });

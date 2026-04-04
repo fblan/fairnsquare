@@ -2,6 +2,8 @@ package org.asymetrik.web.fairnsquare.split.persistence;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -52,6 +54,21 @@ public class SplitRepository {
         byte[] data = serialize(splitMapper.toPersistenceDTO(split));
         byte[] zipBytes = zipSerializer.toZip(data);
         fileSystemService.saveFile(toFilename(split.getId().value()), zipBytes);
+    }
+
+    /**
+     * Loads all splits currently stored. Splits that cannot be deserialized are silently skipped.
+     *
+     * @return list of all valid splits
+     */
+    public List<Split> loadAll() {
+        return fileSystemService.listAllSplitIds().stream().map(id -> {
+            try {
+                return load(id).orElse(null);
+            } catch (Exception e) {
+                return null;
+            }
+        }).filter(Objects::nonNull).toList();
     }
 
     public Optional<Split> load(String splitId) {
