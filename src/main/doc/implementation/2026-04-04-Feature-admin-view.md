@@ -62,11 +62,23 @@ The admin view provides:
 
 **`src/lib/router.ts`** — added `/admin` route (not linked from SplitPageHeader or any navigation)
 
+### Module boundaries
+
+**`split/package-info.java`** — `split` module now exports `"."` (its root package only), making `SplitAdminQuery` and `SplitSummary` accessible to other modules while keeping `split.domain`, `split.domain.expenses`, and `split.persistence` private.
+
+**`split/SplitSummary.java`** (new) — read-only projection record: `id`, `createdAt`, `updatedAt`, `participantCount`, `expenseCount`, `expenseTypes`. This is the only split data type that crosses the module boundary.
+
+**`split/SplitAdminQuery.java`** (new) — `@ApplicationScoped` service that loads all splits internally and returns `List<SplitSummary>`. `AdminService` depends on this, never on `Split`, `SplitRepository`, or any split internal.
+
+**`admin/package-info.java`** (new) — declares the `admin` module (`exports = {}`). Required by `ModularArchitectureTest` (ArchUnit-based verifier) so the module is recognized and its import boundaries are enforced.
+
 ### Files modified (tests)
 
 **`SplitPersistenceMapperTest.java`** — updated two `new SplitPersistenceDTO(...)` calls for the new `updatedAt` parameter (passing `null` to test backward compat)
 
 **`src/routes/Admin.test.ts`** (new) — 15 tests covering all 7 ACs
+
+**`application.properties`** — added `%test.admin.password-hash=<hash>` so the admin endpoint is usable under the Quarkus test profile without requiring the `ADMIN_PASSWORD_HASH` env var in CI.
 
 ## Tests
 

@@ -7,50 +7,44 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.admin.api.dto.AdminSplitSummaryDTO;
 import org.asymetrik.web.fairnsquare.admin.api.dto.AdminStatsResponse;
-import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
-import org.asymetrik.web.fairnsquare.split.persistence.SplitRepository;
+import org.asymetrik.web.fairnsquare.split.SplitAdminQuery;
+import org.asymetrik.web.fairnsquare.split.SplitSummary;
 
 /**
- * Computes admin statistics from all stored splits. Loads all splits from the repository on each call — intended for
- * infrequent admin access only.
+ * Computes admin statistics from all stored splits via the split module's exported query API. Intended for infrequent
+ * admin access only.
  */
 @ApplicationScoped
 public class AdminService {
 
-    private final SplitRepository splitRepository;
+    private final SplitAdminQuery splitAdminQuery;
 
     @Inject
-    public AdminService(SplitRepository splitRepository) {
-        this.splitRepository = splitRepository;
+    public AdminService(SplitAdminQuery splitAdminQuery) {
+        this.splitAdminQuery = splitAdminQuery;
     }
 
     public AdminStatsResponse getStats() {
-        List<Split> splits = splitRepository.loadAll();
+        List<SplitSummary> summaries = splitAdminQuery.getAllSummaries();
 
-        Instant lastUpdated = splits.stream().map(Split::getUpdatedAt).max(Comparator.naturalOrder()).orElse(null);
+        Instant lastUpdated = summaries.stream().map(SplitSummary::updatedAt).max(Comparator.naturalOrder())
+                .orElse(null);
 
-        List<AdminSplitSummaryDTO> summaries = splits.stream().map(this::toSummary)
+        List<AdminSplitSummaryDTO> dtos = summaries.stream().map(this::toDTO)
                 .sorted(Comparator.comparing(AdminSplitSummaryDTO::createdAt)).toList();
 
-        return new AdminStatsResponse(splits.size(), lastUpdated != null ? lastUpdated.toString() : null, summaries);
+        return new AdminStatsResponse(summaries.size(), lastUpdated != null ? lastUpdated.toString() : null, dtos);
     }
 
-    private AdminSplitSummaryDTO toSummary(Split split) {
-        List<String> expenseTypes = split.getExpenses().stream().map(Expense::getSplitMode).map(SplitMode::name)
-                .distinct().sorted().collect(Collectors.toList());
-
-        return new AdminSplitSummaryDTO(hashId(split.getId().value()), split.getCreatedAt().toString(),
-                split.getUpdatedAt().toString(), split.getParticipants().size(), split.getExpenses().size(),
-                expenseTypes);
+    private AdminSplitSummaryDTO toDTO(SplitSummary s) {
+        return new AdminSplitSummaryDTO(hashId(s.id()), s.createdAt().toString(), s.updatedAt().toString(),
+                s.participantCount(), s.expenseCount(), s.expenseTypes());
     }
 
     private static String hashId(String id) {
