@@ -131,17 +131,17 @@ describe('Settlement', () => {
       expect(screen.getByText('Test Split')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^home$/i })).toBeInTheDocument();
   });
 
-  it('navigates to dashboard when Dashboard tab is clicked', async () => {
+  it('navigates to dashboard when Home tab is clicked', async () => {
     render(Settlement);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^home$/i })).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
     expect(navigate).toHaveBeenCalledWith('/splits/test-split-id');
   });
 

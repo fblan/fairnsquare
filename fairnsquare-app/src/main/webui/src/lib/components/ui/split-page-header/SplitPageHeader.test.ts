@@ -53,10 +53,15 @@ describe('SplitPageHeader', () => {
     it('renders all 4 navigation tabs', () => {
       render(SplitPageHeader, { props: defaultProps });
 
-      expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /home/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /participants/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /expenses/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /settlement/i })).toBeInTheDocument();
+    });
+
+    it('renders a close button', () => {
+      render(SplitPageHeader, { props: defaultProps });
+      expect(screen.getByRole('button', { name: 'Close split' })).toBeInTheDocument();
     });
 
     it('renders a nav landmark with aria-label', () => {
@@ -68,12 +73,20 @@ describe('SplitPageHeader', () => {
   // --- AC2: Tab navigation ---
 
   describe('Tab navigation (AC2)', () => {
-    it('navigates to the dashboard when Dashboard tab is clicked', async () => {
+    it('navigates to the dashboard when Home tab is clicked', async () => {
       render(SplitPageHeader, { props: defaultProps });
 
-      await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
 
       expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}`);
+    });
+
+    it('navigates to home page when Close split button is clicked', async () => {
+      render(SplitPageHeader, { props: defaultProps });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Close split' }));
+
+      expect(navigate).toHaveBeenCalledWith('/');
     });
 
     it('navigates to participants when Participants tab is clicked', async () => {
@@ -104,11 +117,11 @@ describe('SplitPageHeader', () => {
   // --- AC3: Active tab ---
 
   describe('Active tab (AC3)', () => {
-    it('marks Dashboard tab as active on the split dashboard route', () => {
+    it('marks Home tab as active on the split dashboard route', () => {
       mockRoute.pathname = `/splits/${SPLIT_ID}`;
       render(SplitPageHeader, { props: defaultProps });
 
-      expect(screen.getByRole('button', { name: /dashboard/i })).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByRole('button', { name: /^home$/i })).toHaveAttribute('aria-current', 'page');
       expect(screen.getByRole('button', { name: /participants/i })).not.toHaveAttribute('aria-current');
     });
 
@@ -117,7 +130,7 @@ describe('SplitPageHeader', () => {
       render(SplitPageHeader, { props: defaultProps });
 
       expect(screen.getByRole('button', { name: /participants/i })).toHaveAttribute('aria-current', 'page');
-      expect(screen.getByRole('button', { name: /dashboard/i })).not.toHaveAttribute('aria-current');
+      expect(screen.getByRole('button', { name: /^home$/i })).not.toHaveAttribute('aria-current');
     });
 
     it('marks Expenses tab as active on the expenses route', () => {
