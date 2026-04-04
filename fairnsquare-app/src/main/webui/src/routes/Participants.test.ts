@@ -917,8 +917,8 @@ describe('Participants', () => {
 
   // --- Share / Members ---
 
-  describe('Share field (single mode)', () => {
-    it('shows Share input field in single add form', async () => {
+  describe('Single form', () => {
+    it('does not show Share input field in single add form', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
       render(Participants);
@@ -929,28 +929,13 @@ describe('Participants', () => {
 
       await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
 
-      expect(screen.getByLabelText('Share')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Share')).not.toBeInTheDocument();
     });
 
-    it('defaults Share to 1 in single add form', async () => {
-      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
-
-      render(Participants);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
-      });
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
-
-      const personsInput = screen.getByLabelText('Share') as HTMLInputElement;
-      expect(personsInput.value).toBe('1');
-    });
-
-    it('sends share in API call', async () => {
+    it('sends share=1 in API call for single participant', async () => {
       const mockSplitWithParticipant: SplitType = {
         ...mockSplitEmpty,
-        participants: [{ id: 'p1', name: 'Alice', nights: 2, share: 2 }],
+        participants: [{ id: 'p1', name: 'Alice', nights: 2, share: 1 }],
       };
 
       vi.mocked(getSplit)
@@ -961,7 +946,7 @@ describe('Participants', () => {
         id: 'p1',
         name: 'Alice',
         nights: 2,
-        share: 2,
+        share: 1,
       });
 
       render(Participants);
@@ -974,14 +959,13 @@ describe('Participants', () => {
 
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '2' } });
-      await fireEvent.input(screen.getByLabelText('Share'), { target: { value: '2' } });
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       await waitFor(() => {
         expect(addParticipant).toHaveBeenCalledWith('test-split-id', {
           name: 'Alice',
           nights: 2,
-          share: 2,
+          share: 1,
         });
       });
     });
@@ -1027,35 +1011,6 @@ describe('Participants', () => {
       });
     });
 
-    it('shows share too low error while typing', async () => {
-      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
-
-      render(Participants);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
-      });
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
-      await fireEvent.input(screen.getByLabelText('Share'), { target: { value: '0' } });
-
-      expect(screen.getByText('Must be at least 0.5')).toBeInTheDocument();
-    });
-
-    it('shows share too high error while typing', async () => {
-      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
-
-      render(Participants);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
-      });
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
-      await fireEvent.input(screen.getByLabelText('Share'), { target: { value: '51' } });
-
-      expect(screen.getByText('Cannot exceed 50')).toBeInTheDocument();
-    });
   });
 
   // --- Add Family ---

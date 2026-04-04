@@ -17,16 +17,12 @@
   import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users } from 'lucide-svelte';
 
   // Field info modal state (add form)
-  let activeFieldInfo = $state<'nights' | 'share' | 'members' | null>(null);
+  let activeFieldInfo = $state<'nights' | 'members' | null>(null);
 
   const fieldInfo = {
     nights: {
       title: 'Nights',
       description: `The number of nights this participant stays during the trip.\n\nUsed in the "By Night" split mode: costs are divided proportionally based on each participant's nights × share weight.\n\nExample: a participant staying 3 nights out of a 7-night trip pays for 3/7 of the night-based expenses (adjusted by their share).`,
-    },
-    share: {
-      title: 'Share',
-      description: `The number of persons this participant represents.\n\nA solo traveller has a share of 1. A couple sharing costs would have a share of 2, a family of 3 would use 3, etc.\n\nUsed in "By Night" mode (nights × share) and "By Share" mode (share only) to calculate each participant's proportional contribution.\n\nExample: a couple (share 2) staying 3 nights counts as 6 night-shares, compared to 3 night-shares for a solo person staying the same time.`,
     },
     members: {
       title: 'Members',
@@ -55,9 +51,8 @@
   let nameInputEl = $state<HTMLInputElement | null>(null);
   let formName = $state('');
   let formNights = $state(1);
-  let formShare = $state(1);
   let formMembers = $state(1);
-  let validationErrors = $state<{name?: string; nights?: string; share?: string; members?: string}>({});
+  let validationErrors = $state<{name?: string; nights?: string; members?: string}>({});
   let isSubmitting = $state(false);
 
   // Edit Participant state
@@ -173,7 +168,6 @@
     addMode = 'single';
     formName = '';
     formNights = loadNightsDefault();
-    formShare = 1;
     validationErrors = {};
     await tick();
     nameInputEl?.focus();
@@ -193,7 +187,6 @@
     addMode = null;
     formName = '';
     formNights = 1;
-    formShare = 1;
     formMembers = 1;
     validationErrors = {};
   }
@@ -222,16 +215,6 @@
     validationErrors = { ...validationErrors, nights: nightsError };
   }
 
-  function validateShareOnInput() {
-    let error: string | undefined;
-    if (formShare < 0.5) {
-      error = 'Must be at least 0.5';
-    } else if (formShare > 50) {
-      error = 'Cannot exceed 50';
-    }
-    validationErrors = { ...validationErrors, share: error };
-  }
-
   function validateMembersOnInput() {
     let error: string | undefined;
     if (formMembers < 0.5) {
@@ -243,7 +226,7 @@
   }
 
   function validateAddForm(): boolean {
-    const errors: {name?: string; nights?: string; share?: string; members?: string} = {};
+    const errors: {name?: string; nights?: string; members?: string} = {};
 
     if (!formName.trim()) {
       errors.name = 'Name is required';
@@ -265,12 +248,6 @@
       } else if (formMembers > 50) {
         errors.members = 'Cannot exceed 50';
       }
-    } else {
-      if (formShare < 0.5) {
-        errors.share = 'Must be at least 0.5';
-      } else if (formShare > 50) {
-        errors.share = 'Cannot exceed 50';
-      }
     }
 
     validationErrors = errors;
@@ -285,7 +262,7 @@
     try {
       const addedName = formName.trim();
       const addedNights = formNights;
-      const addedShare = addMode === 'family' ? formMembers : formShare;
+      const addedShare = addMode === 'family' ? formMembers : 1;
       await addParticipant(splitId, {
         name: addedName,
         nights: addedNights,
@@ -296,7 +273,6 @@
       addMode = null;
       formName = '';
       formNights = 1;
-      formShare = 1;
       formMembers = 1;
       validationErrors = {};
       await loadSplit(splitId);
@@ -520,29 +496,6 @@
                   />
                   {#if validationErrors.members}
                     <p class="text-sm text-destructive">{validationErrors.members}</p>
-                  {/if}
-                </div>
-              {:else}
-                <div class="space-y-2 flex-1">
-                  <div class="flex items-center gap-1">
-                    <Label for="participant-share">Share</Label>
-                    <button type="button" onclick={() => { activeFieldInfo = 'share'; }} class="p-0.5 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Share">
-                      <Info class="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <Input
-                    id="participant-share"
-                    type="number"
-                    step="0.5"
-                    min="0.5"
-                    max="50"
-                    bind:value={formShare}
-                    oninput={validateShareOnInput}
-                    class="min-h-[44px]"
-                    disabled={isSubmitting}
-                  />
-                  {#if validationErrors.share}
-                    <p class="text-sm text-destructive">{validationErrors.share}</p>
                   {/if}
                 </div>
               {/if}
