@@ -149,7 +149,6 @@ describe('Home', () => {
         );
         expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
           params: { splitId: 'abc123' },
-          search: { addParticipant: 'true' },
         });
       });
     });
