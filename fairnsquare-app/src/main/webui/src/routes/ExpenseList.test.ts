@@ -192,15 +192,15 @@ describe('ExpenseList', () => {
       });
     });
 
-    it('navigates to dashboard when Dashboard tab is clicked (AC 8)', async () => {
+    it('navigates to dashboard when Home tab is clicked (AC 8)', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithExpenses);
       render(ExpenseList);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /dashboard/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^home$/i })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: /dashboard/i }));
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
       expect(navigate).toHaveBeenCalledWith('/splits/test-split-id-00001');
     });
 

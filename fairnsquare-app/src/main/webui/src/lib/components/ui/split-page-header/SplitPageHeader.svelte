@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { Share2, LayoutDashboard, Users, Receipt, ArrowLeftRight } from 'lucide-svelte';
+  import { Share2, Home, Users, Receipt, ArrowLeftRight, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { navigate, route } from '$lib/router';
@@ -22,7 +22,7 @@
   });
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: () => `/splits/${splitId}` },
+    { id: 'dashboard', label: 'Home', icon: Home, path: () => `/splits/${splitId}` },
     { id: 'participants', label: 'Participants', icon: Users, path: () => `/splits/${splitId}/participants` },
     { id: 'expenses', label: 'Expenses', icon: Receipt, path: () => `/splits/${splitId}/expenses` },
     { id: 'settlement', label: 'Settlement', icon: ArrowLeftRight, path: () => `/splits/${splitId}/settlement` },
@@ -76,14 +76,24 @@
       <button
         onclick={() => navigate(tab.path())}
         aria-current={isActive ? 'page' : undefined}
+        aria-label={tab.label}
         class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]
           {isActive
             ? 'border-b-2 border-primary text-primary -mb-px'
             : 'text-muted-foreground hover:text-foreground'}"
       >
         <Icon class="h-4 w-4 shrink-0" />
-        {tab.label}
+        <span class="hidden sm:inline">{tab.label}</span>
       </button>
     {/each}
+
+    <!-- Close button — navigates to home, icon only -->
+    <button
+      onclick={() => navigate('/')}
+      aria-label="Close split"
+      class="ml-auto flex items-center px-3 py-2 text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
+    >
+      <X class="h-4 w-4 shrink-0" />
+    </button>
   </nav>
 </div>
