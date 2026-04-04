@@ -38,11 +38,17 @@ describe('Split', () => {
 
   // --- Loading / Error / 404 States ---
 
-  it('shows loading state initially', () => {
+  it('shows loading spinner after 500ms delay', async () => {
+    vi.useFakeTimers();
     vi.mocked(getSplit).mockImplementation(() => new Promise(() => {}));
     render(Split);
 
+    expect(screen.queryByText('Loading split...')).not.toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(500);
+
     expect(screen.getByText('Loading split...')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('automatically redirects to home when split not found (404)', async () => {

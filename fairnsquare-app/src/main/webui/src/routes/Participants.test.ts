@@ -98,11 +98,17 @@ describe('Participants', () => {
 
   // --- Loading State ---
 
-  it('shows loading state initially', () => {
+  it('shows loading spinner after 500ms delay', async () => {
+    vi.useFakeTimers();
     vi.mocked(getSplit).mockImplementation(() => new Promise(() => {}));
     render(Participants);
 
+    expect(screen.queryByText('Loading participants...')).not.toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(500);
+
     expect(screen.getByText('Loading participants...')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   // --- Page Header ---
