@@ -212,6 +212,30 @@ public class FileSystemService {
     }
 
     /**
+     * Lists all split IDs currently stored. Scans the storage directory for {@code .zip} files and returns the file
+     * stem (filename without the {@code .zip} extension).
+     *
+     * @return list of split IDs, empty if the directory does not exist or contains no files
+     */
+    public java.util.List<String> listAllSplitIds() {
+        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
+        if (!Files.exists(rootDir)) {
+            return java.util.List.of();
+        }
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        try {
+            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
+                    .forEach(path -> {
+                        String filename = path.getFileName().toString();
+                        ids.add(filename.substring(0, filename.length() - 4));
+                    });
+        } catch (IOException e) {
+            LOG.warnf("Could not list split IDs from %s: %s", rootDir, e.getMessage());
+        }
+        return ids;
+    }
+
+    /**
      * Computes a snapshot of current storage usage.
      *
      * @return a {@link StorageStats} with used bytes, max bytes, and file count

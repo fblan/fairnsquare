@@ -83,6 +83,12 @@
 
 - When a component renders multiple buttons or elements with the same accessible name (e.g. two "Cancel" buttons — one in the modal footer, one inside a sub-banner), always scope `getByRole` queries using `within(container)` to avoid ambiguity errors. Use `within(screen.getByRole('alert'))`, `within(screen.getByRole('dialog'))`, or any distinct ARIA landmark to narrow the query to the relevant region.
 
+## sessionStorage for Short-Lived Auth Tokens
+
+- When storing a short-lived authentication credential (e.g. an admin token, a session token) in browser storage, prefer `sessionStorage` over `localStorage`. `sessionStorage` is cleared automatically when the browser tab is closed, limiting exposure on shared machines.
+- The storage key must be a module-level constant (or defined in the component that owns it).
+- In tests, call `sessionStorage.clear()` in `beforeEach` to prevent token bleed between tests.
+
 ## `getByText` Ambiguity from `<select>` Options
 
 - When entity names appear both as rendered text nodes AND as `<option>` values in a `<select>`, `getByText('Name')` will throw due to multiple matches. Use `getAllByText` when only testing presence, or use more specific queries (`getByRole('heading', { name: '...' })`, `getByRole('combobox', { name: '...' })`).
