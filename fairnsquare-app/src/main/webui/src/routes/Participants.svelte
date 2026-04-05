@@ -524,31 +524,33 @@
         </Card.Content>
       </Card.Root>
     {:else if !isSettled}
-      <div class="flex gap-2 w-full">
+      <div class="flex flex-col sm:flex-row gap-2 w-full">
         <Button
           onclick={handleShowSingleForm}
           variant="outline"
-          class="flex-1 min-h-[44px]"
+          class="sm:flex-1 min-h-[44px]"
         >
           <User class="h-4 w-4 mr-1" />
           Add Single Participant
         </Button>
-        <Button
-          onclick={handleShowFamilyForm}
-          variant="outline"
-          class="flex-1 min-h-[44px]"
-        >
-          <Users class="h-4 w-4 mr-1" />
-          Add Family Participant
-        </Button>
-        <Button
-          onclick={() => { showHelp = true; }}
-          variant="ghost"
-          class="min-h-[44px] min-w-[44px] px-2"
-          aria-label="Help"
-        >
-          <HelpCircle class="h-5 w-5 text-muted-foreground" />
-        </Button>
+        <div class="flex gap-2 sm:contents">
+          <Button
+            onclick={handleShowFamilyForm}
+            variant="outline"
+            class="flex-1 sm:flex-1 min-h-[44px]"
+          >
+            <Users class="h-4 w-4 mr-1" />
+            Add Family Participant
+          </Button>
+          <Button
+            onclick={() => { showHelp = true; }}
+            variant="ghost"
+            class="min-h-[44px] min-w-[44px] shrink-0 px-2"
+            aria-label="Help"
+          >
+            <HelpCircle class="h-5 w-5 text-muted-foreground" />
+          </Button>
+        </div>
       </div>
     {/if}
 
