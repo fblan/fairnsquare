@@ -406,11 +406,15 @@
             <Input
               id="edit-participant-share-modal"
               type="number"
-              step="0.5"
+              step="any"
               min="0.5"
               max="50"
               bind:value={editShare}
               onblur={handleShareBlur}
+              onkeydown={(e: KeyboardEvent) => {
+                if (e.key === 'ArrowUp') { e.preventDefault(); editShare = Math.min(50, Math.round((editShare + 0.5) * 100) / 100); }
+                else if (e.key === 'ArrowDown') { e.preventDefault(); editShare = Math.max(0.5, Math.round((editShare - 0.5) * 100) / 100); }
+              }}
               class="min-h-[44px]"
               aria-invalid={shareTouched && !!validationErrors.share}
               disabled={isLoading}

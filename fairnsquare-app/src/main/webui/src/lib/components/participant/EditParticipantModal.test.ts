@@ -800,4 +800,51 @@ describe('EditParticipantModal', () => {
       });
     });
   });
+
+  // --- Share input arrow-key step ---
+
+  describe('Share input arrow-key step', () => {
+    it('increments Share by 0.5 on ArrowUp', async () => {
+      render(EditParticipantModal, {
+        props: {
+          ...defaultProps,
+          participant: { ...defaultProps.participant!, share: 1 },
+        },
+      });
+      const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
+      await fireEvent.keyDown(shareInput, { key: 'ArrowUp' });
+      expect(shareInput.value).toBe('1.5');
+    });
+
+    it('decrements Share by 0.5 on ArrowDown', async () => {
+      render(EditParticipantModal, {
+        props: {
+          ...defaultProps,
+          participant: { ...defaultProps.participant!, share: 2 },
+        },
+      });
+      const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
+      await fireEvent.keyDown(shareInput, { key: 'ArrowDown' });
+      expect(shareInput.value).toBe('1.5');
+    });
+
+    it('does not go below 0.5 on ArrowDown', async () => {
+      render(EditParticipantModal, {
+        props: {
+          ...defaultProps,
+          participant: { ...defaultProps.participant!, share: 0.5 },
+        },
+      });
+      const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
+      await fireEvent.keyDown(shareInput, { key: 'ArrowDown' });
+      expect(shareInput.value).toBe('0.5');
+    });
+
+    it('allows typing values with two decimal places', async () => {
+      render(EditParticipantModal, { props: defaultProps });
+      const shareInput = screen.getByLabelText('Share') as HTMLInputElement;
+      await fireEvent.input(shareInput, { target: { value: '2.30' } });
+      expect(shareInput.value).toBe('2.30');
+    });
+  });
 });
