@@ -762,6 +762,16 @@ describe('EditParticipantModal', () => {
         expect(screen.getByText(/cannot exceed 50/i)).toBeInTheDocument();
       });
     });
+
+    it('should allow any decimal value including non-multiples of 0.5', async () => {
+      render(EditParticipantModal, { props: defaultProps });
+
+      const shareInput = screen.getByLabelText('Share');
+      await fireEvent.input(shareInput, { target: { value: '1.7' } });
+      await fireEvent.blur(shareInput);
+
+      expect(screen.queryByText(/must be/i)).not.toBeInTheDocument();
+    });
   });
 
   // Shared account editing is handled in the Settlement page, not here.
