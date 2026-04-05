@@ -59,7 +59,7 @@ vi.mock('$lib/api/captcha', () => ({
 import { createSplit, getSplit } from '$lib/api/splits';
 import { navigate } from '$lib/router';
 import { addToast } from '$lib/stores/toastStore.svelte';
-import { loadLastSplits, removeLastSplit } from '$lib/stores/lastSplitStore';
+import { loadLastSplits, removeLastSplit, saveLastSplit } from '$lib/stores/lastSplitStore';
 import { hasValidToken, loadToken, clearToken } from '$lib/stores/captchaStore';
 
 const mockSplit = {
@@ -150,6 +150,21 @@ describe('Home', () => {
         expect(navigate).toHaveBeenCalledWith('/splits/:splitId/participants', {
           params: { splitId: 'abc123' },
         });
+      });
+    });
+
+    it('saves the new split to lastSplitStore after creation', async () => {
+      vi.mocked(createSplit).mockResolvedValue(mockSplit);
+
+      render(Home);
+
+      await fireEvent.input(screen.getByLabelText('Split Name'), {
+        target: { value: 'Weekend Trip' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Create Split' }));
+
+      await waitFor(() => {
+        expect(saveLastSplit).toHaveBeenCalledWith({ id: 'abc123', name: 'Weekend Trip' });
       });
     });
 

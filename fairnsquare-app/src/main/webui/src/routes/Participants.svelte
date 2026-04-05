@@ -14,10 +14,13 @@
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import { loadNightsDefault, saveNightsDefault } from '$lib/stores/nightsDefaultStore';
-  import { Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users } from 'lucide-svelte';
+  import { User, Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users, HelpCircle } from 'lucide-svelte';
 
   // Field info modal state (add form)
   let activeFieldInfo = $state<'nights' | 'members' | null>(null);
+
+  // Help modal state
+  let showHelp = $state(false);
 
   const fieldInfo = {
     nights: {
@@ -387,7 +390,11 @@
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   <!-- Header always visible once splitId is known -->
   {#if splitId}
-    <SplitPageHeader splitName={splitDisplayName} {splitId} />
+    <SplitPageHeader
+      splitName={splitDisplayName}
+      {splitId}
+      navigateGuard={split && split.participants.length === 0 ? () => 'no-participants' : undefined}
+    />
   {/if}
 
   {#if showLoading}
@@ -486,11 +493,15 @@
                   <Input
                     id="participant-members"
                     type="number"
-                    step="0.5"
+                    step="any"
                     min="0.5"
                     max="50"
                     bind:value={formMembers}
                     oninput={validateMembersOnInput}
+                    onkeydown={(e: KeyboardEvent) => {
+                      if (e.key === 'ArrowUp') { e.preventDefault(); formMembers = Math.min(50, Math.round((formMembers + 0.5) * 100) / 100); validateMembersOnInput(); }
+                      else if (e.key === 'ArrowDown') { e.preventDefault(); formMembers = Math.max(0.5, Math.round((formMembers - 0.5) * 100) / 100); validateMembersOnInput(); }
+                    }}
                     class="min-h-[44px]"
                     disabled={isSubmitting}
                   />
@@ -519,8 +530,8 @@
           variant="outline"
           class="flex-1 min-h-[44px]"
         >
-          <Plus class="h-4 w-4 mr-1" />
-          Single
+          <User class="h-4 w-4 mr-1" />
+          Add Single Participant
         </Button>
         <Button
           onclick={handleShowFamilyForm}
@@ -528,13 +539,24 @@
           class="flex-1 min-h-[44px]"
         >
           <Users class="h-4 w-4 mr-1" />
-          Family
+          Add Family Participant
+        </Button>
+        <Button
+          onclick={() => { showHelp = true; }}
+          variant="ghost"
+          class="min-h-[44px] min-w-[44px] px-2"
+          aria-label="Help"
+        >
+          <HelpCircle class="h-5 w-5 text-muted-foreground" />
         </Button>
       </div>
     {/if}
 
     {#if sortedParticipants.length === 0 && addMode === null}
-      <p class="text-muted-foreground text-center py-4">No participants yet</p>
+      <div class="w-full rounded-lg border border-dashed border-teal-300 bg-teal-50 px-6 py-8 text-center space-y-2">
+        <p class="font-semibold text-teal-800">Add your first participant to get started</p>
+        <p class="text-sm text-teal-700">Use the buttons above to add a single person or a family group. You need at least one participant before adding expenses.</p>
+      </div>
     {/if}
 
     <!-- Participant Cards -->
@@ -704,4 +726,51 @@
     onClose={handleEditModalClose}
     onSuccess={handleEditSuccess}
   />
+{/if}
+
+<!-- Help Modal -->
+{#if showHelp}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div
+    class="fixed inset-0 z-[70] bg-black/50 flex items-end justify-center sm:items-center sm:p-4"
+    onclick={() => { showHelp = false; }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="help-modal-title"
+    tabindex="-1"
+  >
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      role="presentation"
+      class="bg-background w-full sm:max-w-[480px] rounded-t-xl sm:rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="flex items-center justify-between p-4 border-b">
+        <h2 id="help-modal-title" class="text-base font-semibold">How to add participants</h2>
+        <Button variant="ghost" size="sm" onclick={() => { showHelp = false; }} class="min-h-[44px] min-w-[44px]" aria-label="Close">
+          <X class="h-4 w-4" />
+        </Button>
+      </div>
+      <div class="p-4 space-y-4 text-sm text-muted-foreground">
+        <div class="space-y-1">
+          <p class="font-semibold text-foreground flex items-center gap-1.5"><User class="h-4 w-4 text-teal-600" /> Single Participant</p>
+          <p>One person attending the trip on their own. Use this for individuals who travel solo or whose costs should not be shared with anyone else.</p>
+          <p class="text-xs bg-muted rounded px-2 py-1.5">Example: Alice stays for 4 nights → add Alice as a single participant with 4 nights.</p>
+        </div>
+        <div class="space-y-1">
+          <p class="font-semibold text-foreground flex items-center gap-1.5"><Users class="h-4 w-4 text-blue-600" /> Family Participant</p>
+          <p>A group (couple, family) whose costs are pooled together. Set <strong>Members</strong> to the total head-count — adults count as 1, children can count as 0.5.</p>
+          <p class="text-xs bg-muted rounded px-2 py-1.5">Example: The Smiths (2 adults + 2 kids) stay 7 nights → add them as a family with 7 nights and 3 members (2 × 1 + 2 × 0.5).</p>
+        </div>
+        <div class="space-y-1">
+          <p class="font-semibold text-foreground">Mixed scenario</p>
+          <p>If one parent leaves early, add them separately as a single participant with fewer nights. The rest of the family keeps the full stay.</p>
+          <p class="text-xs bg-muted rounded px-2 py-1.5">Example: Dad leaves after 3 nights → add Dad (single, 3 nights) + the rest of the family (family, 7 nights, 2.5 members).</p>
+        </div>
+      </div>
+      <div class="p-4 border-t">
+        <Button onclick={() => { showHelp = false; }} class="w-full min-h-[44px]">Got it</Button>
+      </div>
+    </div>
+  </div>
 {/if}

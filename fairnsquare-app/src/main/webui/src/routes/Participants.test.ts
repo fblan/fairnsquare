@@ -162,7 +162,7 @@ describe('Participants', () => {
   });
 
   it('navigates to dashboard when Home tab is clicked', async () => {
-    vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+    vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
 
     render(Participants);
 
@@ -341,7 +341,7 @@ describe('Participants', () => {
     render(Participants);
 
     await waitFor(() => {
-      expect(screen.getByText('No participants yet')).toBeInTheDocument();
+      expect(screen.getByText('Add your first participant to get started')).toBeInTheDocument();
     });
   });
 
@@ -427,14 +427,14 @@ describe('Participants', () => {
   // --- Add Participant ---
 
   describe('Add Participant', () => {
-    it('shows Single and Family buttons', async () => {
+    it('shows Add Single Participant and Add Family Participant buttons', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
 
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
     });
 
@@ -444,10 +444,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       expect(screen.getByLabelText('Name')).toBeInTheDocument();
       expect(screen.getByLabelText('Nights')).toBeInTheDocument();
@@ -461,10 +461,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
       expect(nightsInput.value).toBe('1');
@@ -477,10 +477,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       const nightsInput = screen.getByLabelText('Nights') as HTMLInputElement;
       expect(nightsInput.value).toBe('3');
@@ -492,10 +492,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       expect(screen.getByText('Name is required')).toBeInTheDocument();
@@ -511,7 +511,7 @@ describe('Participants', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
 
       expect(screen.getByText('A participant with this name already exists')).toBeInTheDocument();
@@ -527,7 +527,7 @@ describe('Participants', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'A'.repeat(51) } });
 
       expect(screen.getByText('Name cannot exceed 50 characters')).toBeInTheDocument();
@@ -543,7 +543,7 @@ describe('Participants', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: '' } });
 
       expect(screen.queryByText('Name is required')).not.toBeInTheDocument();
@@ -558,7 +558,7 @@ describe('Participants', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -575,7 +575,7 @@ describe('Participants', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'aLiCe' } });
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -589,10 +589,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '0' } });
 
       expect(screen.getByText('Nights must be at least 1')).toBeInTheDocument();
@@ -605,10 +605,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '400' } });
 
       expect(screen.getByText('Nights cannot exceed 365')).toBeInTheDocument();
@@ -621,10 +621,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '0' } });
@@ -642,10 +642,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '366' } });
@@ -675,10 +675,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '2' } });
@@ -714,10 +714,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -738,10 +738,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
       expect(screen.getByLabelText('Name')).toBeInTheDocument();
 
       await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -749,8 +749,8 @@ describe('Participants', () => {
       await waitFor(() => {
         expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
       });
-      expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
     });
   });
 
@@ -924,10 +924,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       expect(screen.queryByLabelText('Share')).not.toBeInTheDocument();
     });
@@ -952,10 +952,10 @@ describe('Participants', () => {
       render(Participants);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Single' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Single Participant' }));
 
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '2' } });
@@ -1016,11 +1016,11 @@ describe('Participants', () => {
   // --- Add Family ---
 
   describe('Add Family', () => {
-    it('shows Family button', async () => {
+    it('shows Add Family Participant button', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
     });
 
@@ -1028,9 +1028,9 @@ describe('Participants', () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       expect(screen.getByLabelText('Members')).toBeInTheDocument();
       expect(screen.queryByLabelText('Share')).not.toBeInTheDocument();
     });
@@ -1039,9 +1039,9 @@ describe('Participants', () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       expect(screen.getByText('New Family')).toBeInTheDocument();
     });
 
@@ -1049,9 +1049,9 @@ describe('Participants', () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       const membersInput = screen.getByLabelText('Members') as HTMLInputElement;
       expect(membersInput.value).toBe('1');
     });
@@ -1068,9 +1068,9 @@ describe('Participants', () => {
 
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Smith family' } });
       await fireEvent.input(screen.getByLabelText('Nights'), { target: { value: '3' } });
       await fireEvent.input(screen.getByLabelText('Members'), { target: { value: '2.5' } });
@@ -1089,9 +1089,9 @@ describe('Participants', () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       await fireEvent.input(screen.getByLabelText('Members'), { target: { value: '0' } });
       expect(screen.getByText('Must be at least 0.5')).toBeInTheDocument();
     });
@@ -1100,9 +1100,9 @@ describe('Participants', () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
       render(Participants);
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'Family' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
       });
-      await fireEvent.click(screen.getByRole('button', { name: 'Family' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
       await fireEvent.input(screen.getByLabelText('Members'), { target: { value: '51' } });
       expect(screen.getByText('Cannot exceed 50')).toBeInTheDocument();
     });
@@ -1207,6 +1207,169 @@ describe('Participants', () => {
       });
 
       expect(screen.queryByText(/This split is settled/)).not.toBeInTheDocument();
+    });
+  });
+
+  // --- Help Modal ---
+
+  describe('Help Modal', () => {
+    it('shows Help button when no participants and add form is not open', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      });
+    });
+
+    it('opens help modal when Help button is clicked', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'How to add participants' })).toBeInTheDocument();
+      });
+      expect(screen.getByText('Single Participant')).toBeInTheDocument();
+      expect(screen.getByText('Family Participant')).toBeInTheDocument();
+    });
+
+    it('closes help modal when Got it button is clicked', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'How to add participants' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'How to add participants' })).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes help modal when close button is clicked', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'How to add participants' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'How to add participants' })).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  // --- Navigation Guard ---
+
+  describe('Navigation Guard', () => {
+    it('shows info modal and blocks navigation when clicking Home tab with no participants', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('A participant is required')).toBeInTheDocument();
+      });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('dismisses info modal when Got it is clicked without navigating', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Single Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('A participant is required')).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+      await waitFor(() => {
+        expect(screen.queryByText('A participant is required')).not.toBeInTheDocument();
+      });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('does not show navigation guard when split has participants', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitWithData);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(navigate).toHaveBeenCalledWith('/splits/test-split-id');
+      });
+      expect(screen.queryByText('A participant is required')).not.toBeInTheDocument();
+    });
+  });
+
+  // --- Members arrow-key step ---
+
+  describe('Members input arrow-key step', () => {
+    it('increments Members by 0.5 on ArrowUp', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
+      const membersInput = screen.getByLabelText('Members') as HTMLInputElement;
+      await fireEvent.keyDown(membersInput, { key: 'ArrowUp' });
+      expect(membersInput.value).toBe('1.5');
+    });
+
+    it('decrements Members by 0.5 on ArrowDown', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
+      const membersInput = screen.getByLabelText('Members') as HTMLInputElement;
+      // Default is 1; go to 1.5 first then back to 1
+      await fireEvent.keyDown(membersInput, { key: 'ArrowUp' });
+      await fireEvent.keyDown(membersInput, { key: 'ArrowDown' });
+      expect(membersInput.value).toBe('1');
+    });
+
+    it('does not go below 0.5 on ArrowDown', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
+      const membersInput = screen.getByLabelText('Members') as HTMLInputElement;
+      // Default 1 → 0.5 → still 0.5
+      await fireEvent.keyDown(membersInput, { key: 'ArrowDown' });
+      await fireEvent.keyDown(membersInput, { key: 'ArrowDown' });
+      expect(membersInput.value).toBe('0.5');
+    });
+
+    it('allows typing values with two decimal places', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
+      const membersInput = screen.getByLabelText('Members') as HTMLInputElement;
+      await fireEvent.input(membersInput, { target: { value: '2.30' } });
+      expect(membersInput.value).toBe('2.30');
+      expect(screen.queryByText('Cannot exceed 50')).not.toBeInTheDocument();
+      expect(screen.queryByText('Must be at least 0.5')).not.toBeInTheDocument();
     });
   });
 
