@@ -185,4 +185,50 @@ describe('SplitPageHeader', () => {
       });
     });
   });
+
+  // --- Navigation Guard ---
+
+  describe('Navigation Guard', () => {
+    it('navigates immediately when no guard is provided', async () => {
+      render(SplitPageHeader, { props: defaultProps });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}`);
+      });
+    });
+
+    it('shows info modal and blocks navigation when guard returns a warning string', async () => {
+      const navigateGuard = vi.fn(() => 'warning');
+      render(SplitPageHeader, { props: { ...defaultProps, navigateGuard } });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('A participant is required')).toBeInTheDocument();
+      });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('dismisses the info modal when Got it is clicked without navigating', async () => {
+      const navigateGuard = vi.fn(() => 'warning');
+      render(SplitPageHeader, { props: { ...defaultProps, navigateGuard } });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(screen.getByText('A participant is required')).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+      await waitFor(() => {
+        expect(screen.queryByText('A participant is required')).not.toBeInTheDocument();
+      });
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('navigates immediately when guard returns null', async () => {
+      const navigateGuard = vi.fn(() => null);
+      render(SplitPageHeader, { props: { ...defaultProps, navigateGuard } });
+      await fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+      await waitFor(() => {
+        expect(navigate).toHaveBeenCalledWith(`/splits/${SPLIT_ID}`);
+      });
+      expect(screen.queryByText('A participant is required')).not.toBeInTheDocument();
+    });
+  });
 });

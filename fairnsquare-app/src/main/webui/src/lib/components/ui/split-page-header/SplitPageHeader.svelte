@@ -4,14 +4,29 @@
   import { Button } from '$lib/components/ui/button';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { navigate, route } from '$lib/router';
-
   interface Props {
     splitName: string;
     splitId: string;
     children?: Snippet;
+    /** Optional guard called before any navigation. Return a warning string to block navigation with an info modal, or null to allow navigation. */
+    navigateGuard?: () => string | null;
   }
 
-  const { splitName, splitId, children }: Props = $props();
+  const { splitName, splitId, children, navigateGuard }: Props = $props();
+
+  // Navigation guard state
+  let showNavBlocked = $state(false);
+
+  function handleNavigate(target: string) {
+    if (navigateGuard) {
+      const warning = navigateGuard();
+      if (warning) {
+        showNavBlocked = true;
+        return;
+      }
+    }
+    navigate(target);
+  }
 
   const activeTab = $derived.by(() => {
     const path = route.pathname;
@@ -74,7 +89,7 @@
       {@const isActive = activeTab === tab.id}
       {@const Icon = tab.icon}
       <button
-        onclick={() => navigate(tab.path())}
+        onclick={() => handleNavigate(tab.path())}
         aria-current={isActive ? 'page' : undefined}
         aria-label={tab.label}
         class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors min-h-[44px]
@@ -89,7 +104,7 @@
 
     <!-- Close button — navigates to home, icon only -->
     <button
-      onclick={() => navigate('/')}
+      onclick={() => handleNavigate('/')}
       aria-label="Close split"
       class="ml-auto flex items-center px-3 py-2 text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
     >
@@ -97,3 +112,30 @@
     </button>
   </nav>
 </div>
+
+{#if showNavBlocked}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div
+    class="fixed inset-0 z-50 bg-black/50 flex items-end justify-center sm:items-center sm:p-4"
+    onclick={() => { showNavBlocked = false; }}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="nav-blocked-title"
+    tabindex="-1"
+  >
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      role="presentation"
+      class="bg-background w-full sm:max-w-[420px] rounded-t-xl sm:rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95"
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="p-6 space-y-3 text-center">
+        <h2 id="nav-blocked-title" class="text-base font-semibold">A participant is required</h2>
+        <p class="text-sm text-muted-foreground">Please add at least one participant before navigating away from this page.</p>
+      </div>
+      <div class="p-4 border-t">
+        <Button onclick={() => { showNavBlocked = false; }} class="w-full min-h-[44px]">Got it</Button>
+      </div>
+    </div>
+  </div>
+{/if}
