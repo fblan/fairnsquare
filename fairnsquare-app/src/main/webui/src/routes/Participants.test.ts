@@ -1106,6 +1106,17 @@ describe('Participants', () => {
       await fireEvent.input(screen.getByLabelText('Members'), { target: { value: '51' } });
       expect(screen.getByText('Cannot exceed 50')).toBeInTheDocument();
     });
+
+    it('allows any decimal value including non-multiples of 0.5', async () => {
+      vi.mocked(getSplit).mockResolvedValue(mockSplitEmpty);
+      render(Participants);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Add Family Participant' })).toBeInTheDocument();
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Family Participant' }));
+      await fireEvent.input(screen.getByLabelText('Members'), { target: { value: '1.7' } });
+      expect(screen.queryByText(/must be/i)).not.toBeInTheDocument();
+    });
   });
 
   // --- Settled read-only mode ---

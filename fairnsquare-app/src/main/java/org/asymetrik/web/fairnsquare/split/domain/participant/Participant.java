@@ -168,7 +168,6 @@ public record Participant(Id id, Name name, Nights nights, Share share, SharedAc
 
         private static final double MIN_SHARE = 0.5;
         private static final double MAX_SHARE = 50;
-        private static final double STEP = 0.5;
 
         public Share {
             if (value < MIN_SHARE) {
@@ -176,9 +175,6 @@ public record Participant(Id id, Name name, Nights nights, Share share, SharedAc
             }
             if (value > MAX_SHARE) {
                 throw new IllegalArgumentException("Share cannot exceed " + (int) MAX_SHARE);
-            }
-            if (value % STEP != 0) {
-                throw new IllegalArgumentException("Share must be a multiple of " + STEP);
             }
         }
 
