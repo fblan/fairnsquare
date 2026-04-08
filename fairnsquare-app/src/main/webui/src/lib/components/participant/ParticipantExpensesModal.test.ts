@@ -47,6 +47,20 @@ describe('ParticipantExpensesModal', () => {
     shares: [{ participantId: 'p-bob', amount: 50 }],
   };
 
+  // Bob paid €80, Alice has a zero-amount share (e.g. BY_NIGHT with 0 nights)
+  const expenseAliceZeroShare: Expense = {
+    id: 'e-4',
+    description: 'Zero share expense',
+    amount: 80,
+    payerId: 'p-bob',
+    splitMode: 'BY_NIGHT',
+    createdAt: '2026-01-04T00:00:00Z',
+    shares: [
+      { participantId: 'p-alice', amount: 0 },
+      { participantId: 'p-bob', amount: 80 },
+    ],
+  };
+
   const defaultProps = {
     open: true,
     participant: alice,
@@ -93,6 +107,14 @@ describe('ParticipantExpensesModal', () => {
         props: { ...defaultProps, expenses: [expenseAliceNotInvolved] },
       });
       expect(screen.getByText(/no expenses found/i)).toBeInTheDocument();
+    });
+
+    it('hides expenses where participant has a zero-amount share and is not payer', () => {
+      render(ParticipantExpensesModal, {
+        props: { ...defaultProps, expenses: [expenseAlicePaid, expenseAliceZeroShare] },
+      });
+      expect(screen.getByText('Groceries')).toBeInTheDocument();
+      expect(screen.queryByText('Zero share expense')).not.toBeInTheDocument();
     });
   });
 

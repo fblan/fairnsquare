@@ -22,7 +22,7 @@
     expenses.filter(
       (e) =>
         e.payerId === participant.id ||
-        e.shares.some((s) => s.participantId === participant.id)
+        e.shares.some((s) => s.participantId === participant.id && s.amount > 0)
     )
   );
 
