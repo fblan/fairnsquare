@@ -85,6 +85,16 @@ public final class ExpenseFree extends Expense {
             return Collections.emptyList();
         }
 
+        // Find the last participant with positive parts so the rounding remainder
+        // always goes to an actual beneficiary, never to a zero-parts participant.
+        int lastPositiveIndex = -1;
+        for (int i = shares.size() - 1; i >= 0; i--) {
+            if (shares.get(i).parts().compareTo(BigDecimal.ZERO) > 0) {
+                lastPositiveIndex = i;
+                break;
+            }
+        }
+
         List<Share> calculatedShares = new ArrayList<>();
         BigDecimal totalAssigned = BigDecimal.ZERO;
 
@@ -92,8 +102,11 @@ public final class ExpenseFree extends Expense {
             Share partShare = shares.get(i);
             BigDecimal amount;
 
-            if (i == shares.size() - 1) {
-                // Last participant gets remainder to ensure sum equals expense amount
+            if (partShare.parts().compareTo(BigDecimal.ZERO) == 0) {
+                // Non-beneficiary: always zero, never absorbs rounding remainder
+                amount = BigDecimal.ZERO;
+            } else if (i == lastPositiveIndex) {
+                // Last beneficiary absorbs rounding remainder to ensure sum = expense amount
                 amount = getAmount().subtract(totalAssigned);
             } else {
                 // Calculate: amount = expenseTotal × (parts / totalParts)
