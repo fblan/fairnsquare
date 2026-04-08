@@ -10,11 +10,12 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import EditParticipantModal from '$lib/components/participant/EditParticipantModal.svelte';
+  import ParticipantExpensesModal from '$lib/components/participant/ParticipantExpensesModal.svelte';
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
   import { loadNightsDefault, saveNightsDefault } from '$lib/stores/nightsDefaultStore';
-  import { User, Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users, HelpCircle } from 'lucide-svelte';
+  import { User, Plus, Wallet, Receipt, TrendingUp, TrendingDown, Minus, Info, X, Users, HelpCircle, List } from 'lucide-svelte';
 
   // Field info modal state (add form)
   let activeFieldInfo = $state<'nights' | 'members' | null>(null);
@@ -71,6 +72,10 @@
   // Add Expense Modal state
   let showAddExpenseModal = $state(false);
   let selectedPayerId = $state<string | null>(null);
+
+  // Participant Expenses Modal state
+  let showExpensesModal = $state(false);
+  let selectedParticipantForExpenses = $state<Participant | null>(null);
 
 
   // Load split data
@@ -385,6 +390,17 @@
   async function handleAddExpenseSuccess() {
     await loadSplit(splitId);
   }
+
+  function handleDetailsClick(event: MouseEvent, participant: Participant) {
+    event.stopPropagation();
+    selectedParticipantForExpenses = participant;
+    showExpensesModal = true;
+  }
+
+  function handleExpensesModalClose() {
+    showExpensesModal = false;
+    selectedParticipantForExpenses = null;
+  }
 </script>
 
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
@@ -571,9 +587,18 @@
             <!-- Row 1: name + action buttons -->
             <div class="flex items-center justify-between gap-2">
               <span class="font-semibold text-lg truncate min-w-0 flex-1">{formatName(participant.name)}</span>
-              <!-- Action Buttons (hidden when settled) -->
-              {#if !isSettled}
-                <div class="flex-none flex items-center gap-1">
+              <div class="flex-none flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={(e) => handleDetailsClick(e, participant)}
+                  class="min-h-[44px] min-w-[44px]"
+                  aria-label={`View expenses for ${participant.name}`}
+                >
+                  <List class="h-4 w-4" />
+                </Button>
+                <!-- Action Buttons (hidden when settled) -->
+                {#if !isSettled}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -605,8 +630,8 @@
                       <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
                   </Button>
-                </div>
-              {/if}
+                {/if}
+              </div>
             </div>
             <!-- Row 2: badges -->
             <div class="flex flex-wrap items-center gap-1">
@@ -727,6 +752,17 @@
     {split}
     onClose={handleEditModalClose}
     onSuccess={handleEditSuccess}
+  />
+{/if}
+
+<!-- Participant Expenses Modal -->
+{#if split && selectedParticipantForExpenses}
+  <ParticipantExpensesModal
+    open={showExpensesModal}
+    participant={selectedParticipantForExpenses}
+    expenses={split.expenses}
+    participants={split.participants}
+    onClose={handleExpensesModalClose}
   />
 {/if}
 
