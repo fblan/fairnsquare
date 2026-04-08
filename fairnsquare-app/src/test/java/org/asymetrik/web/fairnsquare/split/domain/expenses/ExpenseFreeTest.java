@@ -119,6 +119,49 @@ class ExpenseFreeTest {
     }
 
     @Test
+    void getShares_zeroPartsParticipantLast_getsExactlyZeroNotRoundingRemainder() {
+        // Regression test for #118: with HALF_UP rounding, Alice and Bob each round up to 0.51,
+        // leaving a remainder of -0.01 that must NOT go to Charlie (parts=0).
+        // Charlie must always get exactly 0; Bob (last positive) absorbs the remainder.
+        List<Expense.Share> shares = List.of(Expense.Share.withParts(ALICE_ID, new BigDecimal("1")),
+                Expense.Share.withParts(BOB_ID, new BigDecimal("1")),
+                Expense.Share.withParts(CHARLIE_ID, BigDecimal.ZERO));
+        ExpenseFree expense = ExpenseFree.create(new BigDecimal("1.01"), "Dinner", ALICE_ID, shares);
+
+        List<Expense.Share> result = expense.getShares(null);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).participantId()).isEqualTo(ALICE_ID);
+        assertThat(result.get(0).amount()).isEqualByComparingTo("0.51");
+        assertThat(result.get(1).participantId()).isEqualTo(BOB_ID);
+        assertThat(result.get(1).amount()).isEqualByComparingTo("0.50"); // absorbs remainder
+        assertThat(result.get(2).participantId()).isEqualTo(CHARLIE_ID);
+        assertThat(result.get(2).amount()).isEqualByComparingTo("0.00"); // never negative
+
+        BigDecimal total = result.stream().map(Expense.Share::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo("1.01");
+    }
+
+    @Test
+    void getShares_zeroPartsParticipantInMiddle_getsExactlyZero() {
+        // Zero-parts participant in the middle (not last) must also get exactly 0
+        List<Expense.Share> shares = List.of(Expense.Share.withParts(ALICE_ID, new BigDecimal("2")),
+                Expense.Share.withParts(CHARLIE_ID, BigDecimal.ZERO),
+                Expense.Share.withParts(BOB_ID, new BigDecimal("1")));
+        ExpenseFree expense = ExpenseFree.create(new BigDecimal("100.00"), "Groceries", ALICE_ID, shares);
+
+        List<Expense.Share> result = expense.getShares(null);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).amount()).isEqualByComparingTo("66.67"); // Alice: 2/3
+        assertThat(result.get(1).amount()).isEqualByComparingTo("0.00"); // Charlie: 0 parts
+        assertThat(result.get(2).amount()).isEqualByComparingTo("33.33"); // Bob: remainder
+
+        BigDecimal total = result.stream().map(Expense.Share::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(total).isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void create_nullAmount_throwsException() {
         // Arrange
         List<Expense.Share> shares = List.of(Expense.Share.withParts(ALICE_ID, new BigDecimal("50.00")));
