@@ -92,3 +92,8 @@
 ## `getByText` Ambiguity from `<select>` Options
 
 - When entity names appear both as rendered text nodes AND as `<option>` values in a `<select>`, `getByText('Name')` will throw due to multiple matches. Use `getAllByText` when only testing presence, or use more specific queries (`getByRole('heading', { name: '...' })`, `getByRole('combobox', { name: '...' })`).
+
+## Browser Testing Before Proposing
+
+- Before marking any UI feature as complete, verify it visually in the browser on **both mobile and desktop** viewports using Playwright. Use `mcp__playwright__browser_resize` to switch between viewports (e.g. 390×844 for mobile, 1280×800 for desktop). Do not rely solely on automated tests — layout issues (overflow, clipping, modal sizing, truncation) are only caught by visual inspection.
+- When a new component uses Tailwind utility classes that do not exist in any other file, verify at runtime that those classes are actually compiled and applied (check `window.getComputedStyle`). If a class is missing from the compiled CSS, use an already-compiled equivalent or restructure to avoid relying on uncompiled classes.
