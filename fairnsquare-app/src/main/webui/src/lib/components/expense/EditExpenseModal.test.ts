@@ -624,24 +624,24 @@ describe('ExpenseEditModal', () => {
   // --- BY_SHARE Split Mode ---
 
   describe('BY_SHARE Split Mode', () => {
-    it('renders By Share radio button option', () => {
+    it('renders By Participant members radio button option', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      expect(screen.getByRole('radio', { name: /by share/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /by participant members/i })).toBeInTheDocument();
     });
 
     it('pre-selects BY_SHARE when expense uses BY_SHARE', () => {
       const byShareExpense = { ...mockExpense, splitMode: 'BY_SHARE' as const };
       render(ExpenseEditModal, { props: { ...defaultProps, expense: byShareExpense } });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       expect(byShareRadio).toBeChecked();
     });
 
     it('enables Save Changes when split mode is changed to BY_SHARE', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       await fireEvent.click(byShareRadio);
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
@@ -656,7 +656,7 @@ describe('ExpenseEditModal', () => {
 
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       await fireEvent.click(byShareRadio);
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });

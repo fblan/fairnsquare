@@ -68,8 +68,8 @@
       description: `The cost is divided equally among all participants, regardless of their nights, share weight, or any other factor.\n\nExample: 3 participants share a €90 expense → each pays €30.`,
     },
     BY_SHARE: {
-      title: 'By Share',
-      description: `The cost is split proportionally to each participant's share weight, which represents their number of persons.\n\nExample: Alice (1 share) and a couple Bob & Carol (2 shares) share a €90 expense. Total = 3 shares. Alice pays €30 (1/3), Bob & Carol pay €60 (2/3).`,
+      title: 'By Participant members',
+      description: `The cost is split proportionally to each participant's share weight, which represents their number of persons.\n\nThis is ideal for shared expenses where everyone was present, like a restaurant meal.\n\nExample: Alice (1 person) and a couple Bob & Carol (2 persons) share a €90 restaurant bill. Total = 3 shares. Alice pays €30 (1/3), Bob & Carol pay €60 (2/3).`,
     },
     FREE: {
       title: 'Manual',
@@ -582,9 +582,9 @@
               <RadioGroup.Item value="BY_SHARE" id="modal-mode-by-share" />
               <Label for="modal-mode-by-share" class="flex items-center gap-2 cursor-pointer flex-1">
                 <Users class="h-4 w-4" aria-hidden="true" />
-                <span>By Share</span>
+                <span>By Participant members</span>
               </Label>
-              <button type="button" onclick={(e) => openInfo('BY_SHARE', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Share">
+              <button type="button" onclick={(e) => openInfo('BY_SHARE', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Participant members">
                 <Info class="h-4 w-4" />
               </button>
             </div>
