@@ -918,16 +918,16 @@ describe('ExpenseEditModal', () => {
   // --- BY_SHARE Split Mode ---
 
   describe('BY_SHARE Split Mode', () => {
-    it('renders By Share radio button option', () => {
+    it('renders By Participant members radio button option', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      expect(screen.getByRole('radio', { name: /by share/i })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /by participant members/i })).toBeInTheDocument();
     });
 
-    it('allows selecting By Share split mode', async () => {
+    it('allows selecting By Participant members split mode', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       await fireEvent.click(byShareRadio);
 
       expect(byShareRadio).toBeChecked();
@@ -946,7 +946,7 @@ describe('ExpenseEditModal', () => {
 
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       await fireEvent.click(byShareRadio);
 
       const amountInput = screen.getByLabelText(/amount/i);
@@ -962,10 +962,10 @@ describe('ExpenseEditModal', () => {
       });
     });
 
-    it('does not show FREE mode share inputs when By Share is selected', async () => {
+    it('does not show FREE mode share inputs when By Participant members is selected', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const byShareRadio = screen.getByRole('radio', { name: /by share/i });
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
       await fireEvent.click(byShareRadio);
 
       expect(screen.queryByText(/share parts/i)).not.toBeInTheDocument();

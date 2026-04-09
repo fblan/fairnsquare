@@ -26,11 +26,13 @@
   function formatSplitMode(mode: string): string {
     switch (mode) {
       case 'BY_NIGHT': return 'By Night';
+      case 'BY_SHARE': return 'By Members';
       case 'EQUAL': return 'Equal';
       case 'FREE': return 'Free';
       default: return mode;
     }
   }
+
 
   function getPayerName(): string {
     return split.participants.find(p => p.id === expense.payerId)?.name || 'Unknown';
