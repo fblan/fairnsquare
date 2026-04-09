@@ -147,7 +147,7 @@
       case 'EQUAL':
         return 'Equal';
       case 'BY_SHARE':
-        return 'By Share';
+        return 'By Members';
       case 'FREE':
         return 'Manual';
     }
@@ -157,17 +157,15 @@
     return split?.participants.find((p) => p.id === payerId)?.name || 'Unknown';
   }
 
-  function getParticipantNames(expense: Expense): string {
+  function getParticipantSharesText(expense: Expense): string {
     if (!split) return '';
-    // For FREE mode, only show participants with positive parts
-    const activeShares = expense.splitMode === 'FREE'
-      ? expense.shares.filter((s) => s.parts != null && s.parts > 0)
-      : expense.shares;
-    const participantIds = activeShares.map((s) => s.participantId);
-    if (participantIds.length === split.participants.length) return 'Everyone';
-    return participantIds
-      .map((id) => split!.participants.find((p) => p.id === id)?.name || 'Unknown')
-      .join(', ');
+    const activeShares = expense.shares.filter((s) => s.amount > 0);
+    return activeShares
+      .map((s) => {
+        const name = split!.participants.find((p) => p.id === s.participantId)?.name || 'Unknown';
+        return `${name}: ${formatCurrency(s.amount)}`;
+      })
+      .join(' · ');
   }
 
   function updateFilterUrl(payer: string, beneficiary: string) {
@@ -418,14 +416,20 @@
                 <span class="text-xs text-muted-foreground">{formatDate(expense.createdAt)}</span>
               </div>
 
-              <!-- Row 3: Split Mode + Participants -->
-              <div class="flex items-center justify-between mb-2">
+              <!-- Row 3: Split Mode -->
+              <div class="flex items-center mb-1">
                 <span class="text-xs text-muted-foreground">
                   {splitModeIcon(expense.splitMode)}
                   {splitModeText(expense.splitMode)}
                 </span>
-                <span class="text-xs text-muted-foreground">{getParticipantNames(expense)}</span>
               </div>
+
+              <!-- Row 4: Participant amounts -->
+              {#if getParticipantSharesText(expense)}
+                <p class="text-xs text-muted-foreground mb-2 leading-relaxed">
+                  {getParticipantSharesText(expense)}
+                </p>
+              {/if}
 
               <!-- Row 4: Actions -->
               {#if !isSettled}

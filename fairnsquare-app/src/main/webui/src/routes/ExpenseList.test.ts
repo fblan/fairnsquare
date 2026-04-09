@@ -288,13 +288,66 @@ describe('ExpenseList', () => {
       expect(screen.getByText(/Equal/)).toBeInTheDocument();
     });
 
-    it('shows participants as Everyone when all participate (AC 4)', async () => {
+    it('shows participant amounts on expense cards (AC 4)', async () => {
       vi.mocked(getSplit).mockResolvedValue(mockSplitWithExpenses);
       render(ExpenseList);
 
       await waitFor(() => {
-        const everyoneLabels = screen.getAllByText('Everyone');
-        expect(everyoneLabels.length).toBeGreaterThanOrEqual(1);
+        // Groceries: Alice €60, Bob €30
+        expect(screen.getByText('Alice: €60.00 · Bob: €30.00')).toBeInTheDocument();
+        // Dinner: Alice €30, Bob €30
+        expect(screen.getByText('Alice: €30.00 · Bob: €30.00')).toBeInTheDocument();
+      });
+    });
+
+    it('filters out zero-amount participants from card display', async () => {
+      const splitWithZeroShare: SplitType = {
+        ...mockSplitWithExpenses,
+        expenses: [{
+          id: 'e3',
+          description: 'Free Split',
+          amount: 100.0,
+          payerId: 'p1',
+          splitMode: 'FREE' as const,
+          createdAt: '2026-01-27T10:00:00Z',
+          shares: [
+            { participantId: 'p1', amount: 100.0, parts: 1 },
+            { participantId: 'p2', amount: 0.0, parts: 0 },
+          ],
+        }],
+      };
+      vi.mocked(getSplit).mockResolvedValue(splitWithZeroShare);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText('Free Split')).toBeInTheDocument();
+      });
+      // Only Alice should appear in participant amounts (Bob has €0)
+      expect(screen.getByText('Alice: €100.00')).toBeInTheDocument();
+      expect(screen.queryByText(/Bob:/)).not.toBeInTheDocument();
+    });
+
+    it('shows By Members badge for BY_SHARE expenses', async () => {
+      const splitWithByShare: SplitType = {
+        ...mockSplitWithExpenses,
+        expenses: [{
+          id: 'e3',
+          description: 'Restaurant',
+          amount: 90.0,
+          payerId: 'p1',
+          splitMode: 'BY_SHARE' as const,
+          createdAt: '2026-01-27T10:00:00Z',
+          shares: [
+            { participantId: 'p1', amount: 30.0 },
+            { participantId: 'p2', amount: 60.0 },
+          ],
+        }],
+      };
+      vi.mocked(getSplit).mockResolvedValue(splitWithByShare);
+      render(ExpenseList);
+
+      await waitFor(() => {
+        expect(screen.getByText(/By Members/)).toBeInTheDocument();
       });
     });
 
