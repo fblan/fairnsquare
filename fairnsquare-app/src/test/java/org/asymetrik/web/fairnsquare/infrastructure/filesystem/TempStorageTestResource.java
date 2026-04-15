@@ -20,19 +20,19 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
  * files.
  * <p>
  * Use {@code restrictToAnnotatedClass = true} only when the class requires a custom {@code initArgs} (e.g.
- * {@code maxStorageBytes}) that would conflict with other classes.
+ * {@code maxFileCount}) that would conflict with other classes.
  * <p>
- * Optional init parameter {@code maxStorageBytes}: when set, overrides {@code fairnsquare.storage.max-total-size-bytes}
- * for the annotated class. Useful for classes that test storage-limit behaviour with specific byte thresholds.
+ * Optional init parameter {@code maxFileCount}: when set, overrides {@code fairnsquare.storage.max-file-count} for the
+ * annotated class. Useful for classes that test file-count limit behaviour with a small threshold.
  */
 public class TempStorageTestResource implements QuarkusTestResourceLifecycleManager {
 
     private Path tempDir;
-    private String maxStorageBytes;
+    private String maxFileCount;
 
     @Override
     public void init(Map<String, String> initArgs) {
-        maxStorageBytes = initArgs.get("maxStorageBytes");
+        maxFileCount = initArgs.get("maxFileCount");
     }
 
     @Override
@@ -41,8 +41,8 @@ public class TempStorageTestResource implements QuarkusTestResourceLifecycleMana
             tempDir = Files.createTempDirectory("fairnsquare-test-");
             Map<String, String> config = new HashMap<>();
             config.put("fairnsquare.data.path", tempDir.toString());
-            if (maxStorageBytes != null) {
-                config.put("fairnsquare.storage.max-total-size-bytes", maxStorageBytes);
+            if (maxFileCount != null) {
+                config.put("fairnsquare.storage.max-file-count", maxFileCount);
             }
             return config;
         } catch (IOException e) {

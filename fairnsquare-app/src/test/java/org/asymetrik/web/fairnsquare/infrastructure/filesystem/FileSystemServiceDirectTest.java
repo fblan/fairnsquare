@@ -8,8 +8,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileCountLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileSizeLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.StorageStats;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,8 +22,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class FileSystemServiceDirectTest {
 
-    // Max 1024 bytes / 30-day age limit, matching the @QuarkusTest profile values
-    private static final long MAX_SIZE = 1024;
+    private static final int MAX_FILE_COUNT = 3;
+    private static final long MAX_FILE_SIZE_BYTES = 1024;
     private static final int MAX_AGE_DAYS = 30;
 
     @TempDir
@@ -35,7 +36,7 @@ class FileSystemServiceDirectTest {
     void setUp() {
         resolver = new TenantPathResolver();
         resolver.dataPath = tempDir.toString();
-        service = new FileSystemService(resolver, MAX_SIZE, MAX_AGE_DAYS);
+        service = new FileSystemService(resolver, MAX_FILE_COUNT, MAX_FILE_SIZE_BYTES, MAX_AGE_DAYS);
     }
 
     // -------------------------------------------------------------------------
@@ -46,21 +47,25 @@ class FileSystemServiceDirectTest {
     void computeStorageStats_returnsZerosWhenDirectoryIsEmpty() {
         StorageStats stats = service.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(0);
         assertThat(stats.fileCount()).isEqualTo(0);
-        assertThat(stats.remainingPercent()).isEqualTo(100.0);
+        assertThat(stats.usedBytes()).isEqualTo(0);
+        assertThat(stats.maxFileCount()).isEqualTo(MAX_FILE_COUNT);
+        assertThat(stats.maxTotalBytes()).isEqualTo((long) MAX_FILE_COUNT * MAX_FILE_SIZE_BYTES);
+        assertThat(stats.remainingFileCount()).isEqualTo(MAX_FILE_COUNT);
     }
 
     @Test
     void computeStorageStats_returnsZerosWhenDirectoryDoesNotExist() {
         TenantPathResolver nonExistentResolver = new TenantPathResolver();
         nonExistentResolver.dataPath = tempDir.resolve("nonexistent").toString();
-        FileSystemService svc = new FileSystemService(nonExistentResolver, MAX_SIZE, MAX_AGE_DAYS);
+        FileSystemService svc = new FileSystemService(nonExistentResolver, MAX_FILE_COUNT, MAX_FILE_SIZE_BYTES,
+                MAX_AGE_DAYS);
 
         StorageStats stats = svc.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(0);
         assertThat(stats.fileCount()).isEqualTo(0);
+        assertThat(stats.usedBytes()).isEqualTo(0);
+        assertThat(stats.maxFileCount()).isEqualTo(MAX_FILE_COUNT);
     }
 
     // -------------------------------------------------------------------------
@@ -74,9 +79,9 @@ class FileSystemServiceDirectTest {
 
         StorageStats stats = service.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(500);
         assertThat(stats.fileCount()).isEqualTo(2);
-        assertThat(stats.maxBytes()).isEqualTo(MAX_SIZE);
+        assertThat(stats.usedBytes()).isEqualTo(500);
+        assertThat(stats.maxFileCount()).isEqualTo(MAX_FILE_COUNT);
     }
 
     @Test
@@ -86,32 +91,69 @@ class FileSystemServiceDirectTest {
 
         StorageStats stats = service.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(400);
         assertThat(stats.fileCount()).isEqualTo(1);
+        assertThat(stats.usedBytes()).isEqualTo(400);
     }
 
     // -------------------------------------------------------------------------
-    // Size limit enforcement (via saveFile)
+    // File size limit enforcement
     // -------------------------------------------------------------------------
 
     @Test
-    void saveFile_allowsWhenUnderLimit() {
-        service.saveFile(new Filename("existing.zip"), new byte[500]);
-
-        assertThatCode(() -> service.saveFile(new Filename("new.zip"), new byte[200])).doesNotThrowAnyException();
+    void saveFile_allowsWhenUnderSizeLimit() {
+        assertThatCode(() -> service.saveFile(new Filename("new.zip"), new byte[(int) MAX_FILE_SIZE_BYTES]))
+                .doesNotThrowAnyException();
     }
 
     @Test
-    void saveFile_rejectsWhenOverLimit() {
-        service.saveFile(new Filename("existing.zip"), new byte[900]);
+    void saveFile_rejectsWhenExceedsSizeLimit() {
+        assertThatThrownBy(() -> service.saveFile(new Filename("new.zip"), new byte[(int) MAX_FILE_SIZE_BYTES + 1]))
+                .isInstanceOf(StorageFileSizeLimitExceededError.class);
+    }
 
-        assertThatThrownBy(() -> service.saveFile(new Filename("new.zip"), new byte[200]))
-                .isInstanceOf(StorageLimitExceededError.class);
+    @Test
+    void saveFile_allowsUpdateExceedingCountWhenFileSizeIsWithinLimit() {
+        // An update to an existing file is never rejected for size as long as payload <= limit
+        service.saveFile(new Filename("existing.zip"), new byte[100]);
+        assertThatCode(() -> service.saveFile(new Filename("existing.zip"), new byte[(int) MAX_FILE_SIZE_BYTES]))
+                .doesNotThrowAnyException();
+    }
+
+    // -------------------------------------------------------------------------
+    // File count limit enforcement
+    // -------------------------------------------------------------------------
+
+    @Test
+    void saveFile_allowsWhenUnderCountLimit() {
+        service.saveFile(new Filename("a.zip"), new byte[10]);
+        service.saveFile(new Filename("b.zip"), new byte[10]);
+
+        assertThatCode(() -> service.saveFile(new Filename("c.zip"), new byte[10])).doesNotThrowAnyException();
+    }
+
+    @Test
+    void saveFile_rejectsNewFileWhenCountLimitReached() {
+        service.saveFile(new Filename("a.zip"), new byte[10]);
+        service.saveFile(new Filename("b.zip"), new byte[10]);
+        service.saveFile(new Filename("c.zip"), new byte[10]);
+
+        assertThatThrownBy(() -> service.saveFile(new Filename("d.zip"), new byte[10]))
+                .isInstanceOf(StorageFileCountLimitExceededError.class);
+    }
+
+    @Test
+    void saveFile_allowsUpdateWhenCountLimitReached() {
+        service.saveFile(new Filename("a.zip"), new byte[10]);
+        service.saveFile(new Filename("b.zip"), new byte[10]);
+        service.saveFile(new Filename("c.zip"), new byte[10]);
+
+        // Updating an existing file must succeed even when at the limit
+        assertThatCode(() -> service.saveFile(new Filename("a.zip"), new byte[20])).doesNotThrowAnyException();
     }
 
     @Test
     void saveFile_allowsWhenDirectoryDoesNotExist() {
-        assertThatCode(() -> service.saveFile(new Filename("new.zip"), new byte[200])).doesNotThrowAnyException();
+        assertThatCode(() -> service.saveFile(new Filename("new.zip"), new byte[10])).doesNotThrowAnyException();
     }
 
     // -------------------------------------------------------------------------
