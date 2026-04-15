@@ -6,17 +6,18 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.PathId;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileCountLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileSizeLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.StorageStats;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -26,7 +27,8 @@ import org.jboss.logging.Logger;
  * Technical domain service for raw file system operations. Provides file read/write primitives and enforces storage
  * constraints:
  * <ul>
- * <li>Total size limit: rejects saves that would exceed the configured maximum.</li>
+ * <li>File count limit: rejects saves of new files when the count has reached the configured maximum.</li>
+ * <li>Single file size limit: rejects saves whose payload exceeds the configured maximum.</li>
  * <li>File age limit: removes files older than the configured number of days.</li>
  * </ul>
  */
@@ -36,29 +38,34 @@ public class FileSystemService {
     private static final Logger LOG = Logger.getLogger(FileSystemService.class);
 
     private final TenantPathResolver pathResolver;
-    private final long maxTotalSizeBytes;
+    private final int maxFileCount;
+    private final long maxFileSizeBytes;
     private final int maxFileAgeDays;
 
     @Inject
     public FileSystemService(TenantPathResolver pathResolver,
-            @ConfigProperty(name = "fairnsquare.storage.max-total-size-bytes", defaultValue = "524288000") long maxTotalSizeBytes,
+            @ConfigProperty(name = "fairnsquare.storage.max-file-count", defaultValue = "5000") int maxFileCount,
+            @ConfigProperty(name = "fairnsquare.storage.max-file-size-bytes", defaultValue = "524288") long maxFileSizeBytes,
             @ConfigProperty(name = "fairnsquare.storage.max-file-age-days", defaultValue = "90") int maxFileAgeDays) {
         this.pathResolver = pathResolver;
-        this.maxTotalSizeBytes = maxTotalSizeBytes;
+        this.maxFileCount = maxFileCount;
+        this.maxFileSizeBytes = maxFileSizeBytes;
         this.maxFileAgeDays = maxFileAgeDays;
     }
 
     /**
-     * Saves raw bytes to a file under the default tenant directory. Checks the storage size limit before writing and
-     * logs storage stats after a successful save.
+     * Saves raw bytes to a file under the default tenant directory. Enforces single-file size limit and, for new files,
+     * the file count limit.
      *
      * @param filename
      *            the file name
      * @param data
      *            the bytes to write
      *
-     * @throws StorageLimitExceededError
-     *             if saving would exceed the configured limit
+     * @throws StorageFileSizeLimitExceededError
+     *             if the payload exceeds the configured single-file size limit
+     * @throws StorageFileCountLimitExceededError
+     *             if saving a new file would exceed the configured file count limit
      * @throws FileSystemException
      *             if the write operation fails
      */
@@ -67,8 +74,7 @@ public class FileSystemService {
     }
 
     /**
-     * Saves raw bytes to a file. Checks the storage size limit before writing and logs storage stats after a successful
-     * save.
+     * Saves raw bytes to a file. Enforces single-file size limit and, for new files, the file count limit.
      *
      * @param pathId
      *            the directory path segment (e.g. tenant identifier)
@@ -77,8 +83,10 @@ public class FileSystemService {
      * @param data
      *            the bytes to write
      *
-     * @throws StorageLimitExceededError
-     *             if saving would exceed the configured limit
+     * @throws StorageFileSizeLimitExceededError
+     *             if the payload exceeds the configured single-file size limit
+     * @throws StorageFileCountLimitExceededError
+     *             if saving a new file would exceed the configured file count limit
      * @throws FileSystemException
      *             if the write operation fails
      */
@@ -89,10 +97,9 @@ public class FileSystemService {
             if (parentDir != null && !Files.exists(parentDir)) {
                 Files.createDirectories(parentDir);
             }
-            checkSizeLimitBeforeSave(filePath, data.length);
+            checkFileSizeLimit(data.length);
+            checkFileCountLimit(filePath);
             Files.write(filePath, data);
-        } catch (StorageLimitExceededError e) {
-            throw e;
         } catch (IOException e) {
             throw new FileSystemException("Failed to save file to " + filePath, e);
         }
@@ -223,12 +230,11 @@ public class FileSystemService {
             return java.util.List.of();
         }
         java.util.List<String> ids = new java.util.ArrayList<>();
-        try {
-            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
-                    .forEach(path -> {
-                        String filename = path.getFileName().toString();
-                        ids.add(filename.substring(0, filename.length() - 4));
-                    });
+        try (Stream<Path> stream = Files.walk(rootDir)) {
+            stream.filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile).forEach(path -> {
+                String filename = path.getFileName().toString();
+                ids.add(filename.substring(0, filename.length() - 4));
+            });
         } catch (IOException e) {
             LOG.warnf("Could not list split IDs from %s: %s", rootDir, e.getMessage());
         }
@@ -236,33 +242,52 @@ public class FileSystemService {
     }
 
     /**
-     * Computes a snapshot of current storage usage.
+     * Returns the configured maximum number of files allowed.
      *
-     * @return a {@link StorageStats} with used bytes, max bytes, and file count
+     * @return the file count limit
+     */
+    public int getMaxFileCount() {
+        return maxFileCount;
+    }
+
+    /**
+     * Returns the configured maximum size in bytes for a single file.
+     *
+     * @return the per-file size limit in bytes
+     */
+    public long getMaxFileSizeBytes() {
+        return maxFileSizeBytes;
+    }
+
+    /**
+     * Computes a snapshot of current storage usage. Sums the size of all ZIP files and counts them. This scan is
+     * intended for infrequent admin use only — it is not called on every save.
+     *
+     * @return a {@link StorageStats} with the current file count, used bytes, and configured limits
      */
     @Log
     public StorageStats computeStorageStats() {
         Path rootDir = pathResolver.resolveDefaultTenantDirectory();
+        long maxTotalBytes = (long) maxFileCount * maxFileSizeBytes;
         if (!Files.exists(rootDir)) {
-            return new StorageStats(0, maxTotalSizeBytes, 0);
+            return new StorageStats(0, maxFileCount, 0, maxTotalBytes);
         }
 
-        AtomicLong totalSize = new AtomicLong(0);
         AtomicInteger fileCount = new AtomicInteger(0);
-        try {
-            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
-                    .forEach(path -> {
-                        try {
-                            totalSize.addAndGet(Files.size(path));
-                            fileCount.incrementAndGet();
-                        } catch (IOException e) {
-                            LOG.warnf("Could not read size of file %s: %s", path, e.getMessage());
-                        }
-                    });
+        AtomicLong usedBytes = new AtomicLong(0);
+        try (Stream<Path> stream = Files.walk(rootDir)) {
+            stream.filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile).forEach(path -> {
+                fileCount.incrementAndGet();
+                try {
+                    usedBytes.addAndGet(Files.size(path));
+                } catch (IOException e) {
+                    LOG.warnf("Could not read size of file %s: %s", path, e.getMessage());
+                }
+            });
         } catch (IOException e) {
             LOG.warnf("Could not walk data directory for stats computation: %s", e.getMessage());
         }
-        return new StorageStats(totalSize.get(), maxTotalSizeBytes, fileCount.get());
+        return new StorageStats(fileCount.get(), maxFileCount, usedBytes.get(), maxTotalBytes);
     }
 
     /**
@@ -280,9 +305,9 @@ public class FileSystemService {
         AtomicInteger deleted = new AtomicInteger(0);
         AtomicInteger errors = new AtomicInteger(0);
 
-        try {
-            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip"))
-                    .filter(path -> isOlderThan(path, cutoff)).forEach(path -> {
+        try (Stream<Path> stream = Files.walk(rootDir)) {
+            stream.filter(path -> path.toString().endsWith(".zip")).filter(path -> isOlderThan(path, cutoff))
+                    .forEach(path -> {
                         try {
                             Files.delete(path);
                             deleted.incrementAndGet();
@@ -300,44 +325,36 @@ public class FileSystemService {
         LOG.infof("Storage cleanup complete: %d file(s) deleted, %d error(s).", deleted.get(), errors.get());
     }
 
-    private void checkSizeLimitBeforeSave(Path filePath, long newFileSizeBytes) {
-        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
-        if (!Files.exists(rootDir)) {
-            return;
-        }
-
-        long currentTotal = computeTotalSize(rootDir);
-
-        long existingFileSize = 0;
-        if (Files.exists(filePath)) {
-            try {
-                existingFileSize = Files.size(filePath);
-            } catch (IOException e) {
-                LOG.warnf("Could not read size of existing file %s: %s", filePath, e.getMessage());
-            }
-        }
-
-        long projectedTotal = currentTotal - existingFileSize + newFileSizeBytes;
-        if (projectedTotal > maxTotalSizeBytes) {
-            throw new StorageLimitExceededError(projectedTotal, maxTotalSizeBytes);
+    private void checkFileSizeLimit(long fileSizeBytes) {
+        if (fileSizeBytes > maxFileSizeBytes) {
+            throw new StorageFileSizeLimitExceededError(fileSizeBytes, maxFileSizeBytes);
         }
     }
 
-    private long computeTotalSize(Path rootDir) {
-        AtomicLong total = new AtomicLong(0);
-        try {
-            Files.walk(rootDir).filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
-                    .forEach(path -> {
-                        try {
-                            total.addAndGet(Files.size(path));
-                        } catch (IOException e) {
-                            LOG.warnf("Could not read size of file %s: %s", path, e.getMessage());
-                        }
-                    });
-        } catch (IOException e) {
-            LOG.warnf("Could not walk data directory for size computation: %s", e.getMessage());
+    private void checkFileCountLimit(Path filePath) {
+        if (Files.exists(filePath)) {
+            // Update to an existing file — count does not change
+            return;
         }
-        return total.get();
+        Path rootDir = pathResolver.resolveDefaultTenantDirectory();
+        int currentCount = countZipFiles(rootDir);
+        if (currentCount >= maxFileCount) {
+            throw new StorageFileCountLimitExceededError(currentCount, maxFileCount);
+        }
+    }
+
+    private int countZipFiles(Path rootDir) {
+        if (!Files.exists(rootDir)) {
+            return 0;
+        }
+        AtomicInteger count = new AtomicInteger(0);
+        try (Stream<Path> stream = Files.walk(rootDir)) {
+            stream.filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
+                    .forEach(_ -> count.incrementAndGet());
+        } catch (IOException e) {
+            LOG.warnf("Could not walk data directory for file count: %s", e.getMessage());
+        }
+        return count.get();
     }
 
     private boolean isOlderThan(Path path, Instant cutoff) {

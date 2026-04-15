@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.admin.api.dto.AdminSplitSummaryDTO;
 import org.asymetrik.web.fairnsquare.admin.api.dto.AdminStatsResponse;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.FileSystemService;
 import org.asymetrik.web.fairnsquare.split.SplitAdminQuery;
 import org.asymetrik.web.fairnsquare.split.SplitSummary;
 
@@ -24,14 +25,17 @@ import org.asymetrik.web.fairnsquare.split.SplitSummary;
 public class AdminService {
 
     private final SplitAdminQuery splitAdminQuery;
+    private final FileSystemService fileSystemService;
 
     @Inject
-    public AdminService(SplitAdminQuery splitAdminQuery) {
+    public AdminService(SplitAdminQuery splitAdminQuery, FileSystemService fileSystemService) {
         this.splitAdminQuery = splitAdminQuery;
+        this.fileSystemService = fileSystemService;
     }
 
     public AdminStatsResponse getStats() {
         List<SplitSummary> summaries = splitAdminQuery.getAllSummaries();
+        var storageStats = fileSystemService.computeStorageStats();
 
         Instant lastUpdated = summaries.stream().map(SplitSummary::updatedAt).max(Comparator.naturalOrder())
                 .orElse(null);
@@ -39,7 +43,8 @@ public class AdminService {
         List<AdminSplitSummaryDTO> dtos = summaries.stream().map(this::toDTO)
                 .sorted(Comparator.comparing(AdminSplitSummaryDTO::createdAt)).toList();
 
-        return new AdminStatsResponse(summaries.size(), lastUpdated != null ? lastUpdated.toString() : null, dtos);
+        return new AdminStatsResponse(summaries.size(), storageStats.maxFileCount(), storageStats.usedBytes(),
+                storageStats.maxTotalBytes(), lastUpdated != null ? lastUpdated.toString() : null, dtos);
     }
 
     private AdminSplitSummaryDTO toDTO(SplitSummary s) {

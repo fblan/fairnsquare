@@ -66,6 +66,13 @@
     return new Date(iso).toLocaleString();
   }
 
+  function formatBytes(bytes: number): string {
+    if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return bytes + ' B';
+  }
+
   // Oldest-created: first 5 splits sorted by createdAt asc
   const oldestCreated = $derived(
     stats ? [...stats.splits].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, 5) : []
@@ -130,11 +137,17 @@
     <div class="w-full grid grid-cols-2 sm:grid-cols-3 gap-3">
       <Card.Root>
         <Card.Content class="py-4 text-center">
-          <p class="text-3xl font-bold text-primary">{stats.totalSplits}</p>
+          <p class="text-3xl font-bold text-primary">{stats.totalSplits} <span class="text-lg font-normal text-muted-foreground">/ {stats.splitCountLimit}</span></p>
           <p class="text-sm text-muted-foreground mt-1">Total splits</p>
         </Card.Content>
       </Card.Root>
-      <Card.Root class="col-span-2 sm:col-span-2">
+      <Card.Root>
+        <Card.Content class="py-4 text-center">
+          <p class="text-xl font-bold text-primary">{formatBytes(stats.usedStorageBytes)} <span class="text-sm font-normal text-muted-foreground">/ {formatBytes(stats.maxStorageBytes)}</span></p>
+          <p class="text-sm text-muted-foreground mt-1">Storage used</p>
+        </Card.Content>
+      </Card.Root>
+      <Card.Root class="col-span-2 sm:col-span-1">
         <Card.Content class="py-4">
           <p class="text-xs text-muted-foreground uppercase tracking-wide">Last updated</p>
           <p class="text-sm font-medium mt-1">{formatDate(stats.lastUpdated)}</p>
