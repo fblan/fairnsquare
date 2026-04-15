@@ -17,6 +17,9 @@ export interface AdminSplitSummary {
 
 export interface AdminStats {
   totalSplits: number;
+  splitCountLimit: number;
+  usedStorageBytes: number;
+  maxStorageBytes: number;
   lastUpdated: string | null;
   splits: AdminSplitSummary[];
 }

@@ -22,16 +22,17 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusTest;
 
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageLimitExceededError;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageStats;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileCountLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileSizeLimitExceededError;
+import org.asymetrik.web.fairnsquare.infrastructure.filesystem.StorageStats;
 
 /**
- * Tests for {@link FileSystemService}: size limit enforcement, old file cleanup, storage stats. Uses a 1024-byte
- * storage limit (pinned via {@code maxStorageBytes} init parameter) so that byte thresholds in these tests remain
- * accurate regardless of the global test-profile default.
+ * Tests for {@link FileSystemService}: file-count limit enforcement, single-file-size limit enforcement, old file
+ * cleanup, and storage stats. Uses a max-file-count of 3 (pinned via {@code maxFileCount} init parameter) so that count
+ * thresholds in these tests remain accurate regardless of the global test-profile default.
  */
 @QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = "maxStorageBytes", value = "1024"))
+@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = "maxFileCount", value = "3"))
 class FileSystemServiceTest {
 
     @Inject
@@ -54,51 +55,55 @@ class FileSystemServiceTest {
     }
 
     // -------------------------------------------------------------------------
-    // Size limit tests (via saveFile)
+    // File count limit tests (via saveFile)
     // -------------------------------------------------------------------------
 
     @Test
     void shouldAllowSaveWhenStorageIsEmpty() {
-        assertThatCode(() -> fileSystemService.saveFile(new Filename("split-new.zip"), new byte[200]))
+        assertThatCode(() -> fileSystemService.saveFile(new Filename("split-new.zip"), new byte[10]))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void shouldAllowSaveWhenTotalWouldStayWithinLimit() {
-        // 500 existing + 200 new = 700 < 1024
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[500]);
+    void shouldAllowSaveWhenUnderCountLimit() {
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split2.zip"), new byte[10]);
 
-        assertThatCode(() -> fileSystemService.saveFile(new Filename("split-new.zip"), new byte[200]))
+        assertThatCode(() -> fileSystemService.saveFile(new Filename("split3.zip"), new byte[10]))
                 .doesNotThrowAnyException();
     }
 
     @Test
-    void shouldRejectSaveWhenTotalWouldExceedLimit() {
-        // 900 existing + 200 new = 1100 > 1024
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[900]);
+    void shouldRejectNewFileWhenCountLimitReached() {
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split2.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split3.zip"), new byte[10]);
 
-        assertThatThrownBy(() -> fileSystemService.saveFile(new Filename("split-new.zip"), new byte[200]))
-                .isInstanceOf(StorageLimitExceededError.class);
+        assertThatThrownBy(() -> fileSystemService.saveFile(new Filename("split4.zip"), new byte[10]))
+                .isInstanceOf(StorageFileCountLimitExceededError.class);
     }
 
     @Test
-    void shouldNotDoubleCountExistingFileOnUpdate() {
-        // splitA occupies 800 bytes; updating it with 500 bytes → (800 - 800) + 500 = 500 < 1024
-        fileSystemService.saveFile(new Filename("splitA.zip"), new byte[800]);
+    void shouldAllowUpdateWhenCountLimitReached() {
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split2.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split3.zip"), new byte[10]);
 
-        assertThatCode(() -> fileSystemService.saveFile(new Filename("splitA.zip"), new byte[500]))
+        assertThatCode(() -> fileSystemService.saveFile(new Filename("split1.zip"), new byte[20]))
                 .doesNotThrowAnyException();
     }
 
-    @Test
-    void shouldRejectUpdateWhenNewVersionWouldExceedLimit() {
-        // 600 bytes of other files + updating splitA (currently 100 bytes) with 800 bytes
-        // → (600 + 100 - 100) + 800 = 1400 > 1024
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[600]);
-        fileSystemService.saveFile(new Filename("splitA.zip"), new byte[100]);
+    // -------------------------------------------------------------------------
+    // Single file size limit tests (via saveFile)
+    // -------------------------------------------------------------------------
 
-        assertThatThrownBy(() -> fileSystemService.saveFile(new Filename("splitA.zip"), new byte[800]))
-                .isInstanceOf(StorageLimitExceededError.class);
+    @Test
+    void shouldRejectFileExceedingSizeLimit() {
+        // max-file-size-bytes is 524288 in the test profile; use a clearly oversized payload
+        byte[] oversized = new byte[600_000];
+
+        assertThatThrownBy(() -> fileSystemService.saveFile(new Filename("big.zip"), oversized))
+                .isInstanceOf(StorageFileSizeLimitExceededError.class);
     }
 
     // -------------------------------------------------------------------------
@@ -109,34 +114,35 @@ class FileSystemServiceTest {
     void shouldReturnZeroStatsWhenStorageIsEmpty() {
         StorageStats stats = fileSystemService.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(0);
         assertThat(stats.fileCount()).isEqualTo(0);
-        assertThat(stats.remainingPercent()).isEqualTo(100.0);
+        assertThat(stats.usedBytes()).isEqualTo(0);
+        assertThat(stats.maxFileCount()).isEqualTo(3);
+        assertThat(stats.remainingFileCount()).isEqualTo(3);
     }
 
     @Test
     void shouldReturnCorrectStatsWhenFilesExist() {
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[300]);
-        fileSystemService.saveFile(new Filename("split2.zip"), new byte[200]);
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split2.zip"), new byte[10]);
 
         StorageStats stats = fileSystemService.computeStorageStats();
 
-        assertThat(stats.usedBytes()).isEqualTo(500);
         assertThat(stats.fileCount()).isEqualTo(2);
-        assertThat(stats.remainingPercent()).isLessThan(100.0);
-        assertThat(stats.remainingMb()).isPositive();
+        assertThat(stats.usedBytes()).isEqualTo(20);
+        assertThat(stats.maxFileCount()).isEqualTo(3);
+        assertThat(stats.remainingFileCount()).isEqualTo(1);
     }
 
     @Test
     void shouldFormatStatsAsHumanReadableString() {
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[1024]);
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
 
         StorageStats stats = fileSystemService.computeStorageStats();
 
-        assertThat(stats.toString()).contains("usedSize=");
-        assertThat(stats.toString()).contains("remainingMo=");
-        assertThat(stats.toString()).contains("remainingPct=");
         assertThat(stats.toString()).contains("fileCount=1");
+        assertThat(stats.toString()).contains("maxFileCount=3");
+        assertThat(stats.toString()).contains("usedPct=");
+        assertThat(stats.toString()).contains("usedBytes=10");
     }
 
     // -------------------------------------------------------------------------
@@ -145,8 +151,8 @@ class FileSystemServiceTest {
 
     @Test
     void shouldDeleteFilesOlderThanConfiguredDays() throws IOException {
-        fileSystemService.saveFile(new Filename("old-split.zip"), new byte[100]);
-        fileSystemService.saveFile(new Filename("recent-split.zip"), new byte[100]);
+        fileSystemService.saveFile(new Filename("old-split.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("recent-split.zip"), new byte[10]);
 
         Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path oldFile = defaultDir.resolve("old-split.zip");
@@ -163,8 +169,8 @@ class FileSystemServiceTest {
 
     @Test
     void shouldKeepFilesNewerThanConfiguredDays() throws IOException {
-        fileSystemService.saveFile(new Filename("split1.zip"), new byte[100]);
-        fileSystemService.saveFile(new Filename("split2.zip"), new byte[100]);
+        fileSystemService.saveFile(new Filename("split1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("split2.zip"), new byte[10]);
 
         Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path file1 = defaultDir.resolve("split1.zip");
@@ -178,8 +184,8 @@ class FileSystemServiceTest {
 
     @Test
     void shouldDeleteAllFilesOlderThanLimit() throws IOException {
-        fileSystemService.saveFile(new Filename("old1.zip"), new byte[100]);
-        fileSystemService.saveFile(new Filename("old2.zip"), new byte[100]);
+        fileSystemService.saveFile(new Filename("old1.zip"), new byte[10]);
+        fileSystemService.saveFile(new Filename("old2.zip"), new byte[10]);
 
         Path defaultDir = fileSystemService.resolvePath(new Filename("dummy.zip")).getParent();
         Path old1 = defaultDir.resolve("old1.zip");

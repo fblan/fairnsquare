@@ -54,7 +54,7 @@
 
 ## Quarkus Test Context Sharing
 
-- `@QuarkusTestResource` must not use `restrictToAnnotatedClass = true` unless the class sets custom `initArgs` that would conflict with other test classes (e.g. a non-default `maxStorageBytes`). Using `restrictToAnnotatedClass = true` without a conflicting `initArgs` forces an unnecessary extra Quarkus application context per class, significantly increasing build time.
+- `@QuarkusTestResource` must not use `restrictToAnnotatedClass = true` unless the class sets custom `initArgs` that would conflict with other test classes (e.g. a non-default `maxFileCount` or `maxFileSizeBytes`). Using `restrictToAnnotatedClass = true` without a conflicting `initArgs` forces an unnecessary extra Quarkus application context per class, significantly increasing build time.
 - Test isolation must be achieved through unique resource identifiers (NanoID) rather than per-class filesystem isolation. Tests must never enumerate all stored resources.
 
 ## API Layer Placement
