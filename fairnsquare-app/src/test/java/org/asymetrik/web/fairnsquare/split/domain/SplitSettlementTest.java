@@ -5,12 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
-import org.asymetrik.web.fairnsquare.split.domain.settlement.ParticipantBalance;
-import org.asymetrik.web.fairnsquare.split.domain.settlement.Reimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
 import org.junit.jupiter.api.Test;
@@ -75,14 +74,16 @@ class SplitSettlementTest {
     }
 
     @Test
-    void removeParticipant_clearsSettlement() {
+    void removeParticipant_resetsSettlement() {
         Split split = Split.create("Test");
         Participant alice = Participant.create("Alice", 3);
         Participant bob = Participant.create("Bob", 2);
         split.addParticipant(alice);
         split.addParticipant(bob);
         // Add expense paid by Alice only so Bob can be removed
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Dinner", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
         split.settle(SettlementCalculator.calculate(split));
         assertThat(split.getSettlement()).isNotNull();
 
@@ -99,7 +100,10 @@ class SplitSettlementTest {
         assertThat(split.getSettlement()).isNotNull();
 
         Participant alice = split.getParticipants().get(0);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("50.00"), "Lunch", alice.id()));
+        Participant bob = split.getParticipants().get(1);
+        split.addExpense(ExpenseFree.create(new BigDecimal("50.00"), "Lunch", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
 
         assertThat(split.getSettlement()).isNull();
     }
@@ -111,7 +115,7 @@ class SplitSettlementTest {
         assertThat(split.getSettlement()).isNotNull();
 
         split.updateExpense(split.getExpenses().get(0).getId(), new BigDecimal("200.00"), "Updated Hotel",
-                split.getParticipants().get(0).id(), SplitMode.EQUAL);
+                split.getParticipants().get(0).id(), SplitMode.BY_NIGHT);
 
         assertThat(split.getSettlement()).isNull();
     }
@@ -133,7 +137,9 @@ class SplitSettlementTest {
         Participant bob = Participant.create("Bob", 2);
         split.addParticipant(alice);
         split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Hotel", alice.id()));
+        split.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Hotel", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
         return split;
     }
 }

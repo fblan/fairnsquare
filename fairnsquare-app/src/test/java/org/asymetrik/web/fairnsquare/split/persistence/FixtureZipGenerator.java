@@ -96,6 +96,39 @@ class FixtureZipGenerator {
             }
             """;
 
+    private static final String V1_EQUAL_EXPENSE_JSON = """
+            {
+              "id": "splitEqualExpense0001",
+              "name": "Compat - EQUAL Expense Type",
+              "createdAt": "2024-06-01T10:00:00Z",
+              "participants": [
+                {
+                  "id": "participantEveOld0001",
+                  "name": "Eve",
+                  "nights": 3.0,
+                  "share": 1.0
+                },
+                {
+                  "id": "participantFrankOld01",
+                  "name": "Frank",
+                  "nights": 2.0,
+                  "share": 1.0
+                }
+              ],
+              "expenses": [
+                {
+                  "type": "EQUAL",
+                  "id": "expenseEqualOld000001",
+                  "amount": "90.00",
+                  "description": "Dinner",
+                  "payerId": "participantEveOld0001",
+                  "createdAt": "2024-06-01T11:00:00Z"
+                }
+              ],
+              "settlement": null
+            }
+            """;
+
     @Test
     void generateFixtures() throws IOException {
         ZipSerializer zipSerializer = new ZipSerializer();
@@ -104,6 +137,7 @@ class FixtureZipGenerator {
         writeFixture(zipSerializer, "v1-no-preferred-creditor.zip", V1_NO_PREFERRED_CREDITOR_JSON);
         writeFixture(zipSerializer, "v1-number-of-persons.zip", V1_NUMBER_OF_PERSONS_JSON);
         writeFixture(zipSerializer, "v1-by-person-expense.zip", V1_BY_PERSON_EXPENSE_JSON);
+        writeFixture(zipSerializer, "v1-equal-expense.zip", V1_EQUAL_EXPENSE_JSON);
 
         System.out.println("Fixtures written to " + OUTPUT_DIR.toAbsolutePath());
     }

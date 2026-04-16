@@ -6,13 +6,11 @@ import java.util.List;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByShareDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
-import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseEqualDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseFreeDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ShareDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
@@ -20,7 +18,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Mapper for converting Expense domain objects to DTOs for REST API responses. Handles polymorphic expense types
- * (BY_NIGHT, EQUAL).
+ * (BY_NIGHT, BY_SHARE, FREE).
  */
 @ApplicationScoped
 public class ExpenseMapper {
@@ -54,9 +52,6 @@ public class ExpenseMapper {
             case ExpenseByShare byShare -> new ExpenseByShareDTO(byShare.getId().value(), byShare.getDescription(),
                     byShare.getAmount(), byShare.getPayerId() != null ? byShare.getPayerId().value() : null, "BY_SHARE",
                     "BY_SHARE", byShare.getCreatedAt().toString(), shares);
-            case ExpenseEqual equal -> new ExpenseEqualDTO(equal.getId().value(), equal.getDescription(),
-                    equal.getAmount(), equal.getPayerId() != null ? equal.getPayerId().value() : null, "EQUAL", "EQUAL",
-                    equal.getCreatedAt().toString(), shares);
             case ExpenseFree free -> new ExpenseFreeDTO(free.getId().value(), free.getDescription(), free.getAmount(),
                     free.getPayerId() != null ? free.getPayerId().value() : null, "FREE", "FREE",
                     free.getCreatedAt().toString(), shares);

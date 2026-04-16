@@ -26,16 +26,6 @@ class ExpenseTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    void create_withEqualMode_returnsExpenseEqual() {
-        Participant.Id payerId = Participant.Id.generate();
-        Expense expense = Expense.create(new BigDecimal("100.00"), "Test", payerId, SplitMode.EQUAL);
-
-        assertThat(expense).isInstanceOf(ExpenseEqual.class);
-        assertThat(expense.getSplitMode()).isEqualTo(SplitMode.EQUAL);
-    }
-
-    @Test
-    @SuppressWarnings("deprecation")
     void create_withFreeMode_throwsUnsupportedOperationException() {
         Participant.Id payerId = Participant.Id.generate();
 
@@ -120,17 +110,6 @@ class ExpenseTest {
                 java.time.Instant.now());
 
         assertThat(expense).isInstanceOf(ExpenseByNight.class);
-    }
-
-    @Test
-    void fromJson_withEqualMode_createsExpenseEqual() {
-        Expense.Id id = Expense.Id.generate();
-        Participant.Id payerId = Participant.Id.generate();
-
-        Expense expense = Expense.fromJson(id, new BigDecimal("100.00"), "Test", payerId, SplitMode.EQUAL,
-                java.time.Instant.now());
-
-        assertThat(expense).isInstanceOf(ExpenseEqual.class);
     }
 
     @Test

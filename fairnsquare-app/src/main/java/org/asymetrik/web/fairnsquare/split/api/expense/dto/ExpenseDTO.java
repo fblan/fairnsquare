@@ -8,14 +8,13 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 /**
  * Polymorphic DTO for Expense REST API responses. Decouples domain model from API contract. Uses Jackson type
- * discriminator matching domain structure (BY_NIGHT, EQUAL).
+ * discriminator matching domain structure (BY_NIGHT, BY_SHARE, FREE).
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = ExpenseByNightDTO.class, name = "BY_NIGHT"),
         @JsonSubTypes.Type(value = ExpenseByShareDTO.class, name = "BY_SHARE"),
-        @JsonSubTypes.Type(value = ExpenseEqualDTO.class, name = "EQUAL"),
         @JsonSubTypes.Type(value = ExpenseFreeDTO.class, name = "FREE") })
-public sealed interface ExpenseDTO permits ExpenseByNightDTO, ExpenseByShareDTO, ExpenseEqualDTO, ExpenseFreeDTO {
+public sealed interface ExpenseDTO permits ExpenseByNightDTO, ExpenseByShareDTO, ExpenseFreeDTO {
 
     String id();
 

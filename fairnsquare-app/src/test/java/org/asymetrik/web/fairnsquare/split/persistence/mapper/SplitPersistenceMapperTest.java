@@ -7,14 +7,16 @@ import java.util.List;
 
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementPartyId;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseFreePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
 import org.junit.jupiter.api.Test;
@@ -90,20 +92,46 @@ class SplitPersistenceMapperTest {
         split.addParticipant(alice);
 
         ExpenseByNight byNight = ExpenseByNight.create(new BigDecimal("80.00"), "Hotel", alice.id());
-        ExpenseEqual equal = ExpenseEqual.create(new BigDecimal("40.00"), "Dinner", alice.id());
+        ExpenseFree free = ExpenseFree.create(new BigDecimal("40.00"), "Dinner", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE)));
         split.addExpense(byNight);
-        split.addExpense(equal);
+        split.addExpense(free);
 
         SplitPersistenceDTO dto = mapper.toPersistenceDTO(split);
 
         assertThat(dto.expenses()).hasSize(2);
         assertThat(dto.expenses().get(0)).isInstanceOf(ExpenseByNightPersistenceDTO.class);
-        assertThat(dto.expenses().get(1)).isInstanceOf(ExpenseEqualPersistenceDTO.class);
+        assertThat(dto.expenses().get(1)).isInstanceOf(ExpenseFreePersistenceDTO.class);
 
         Split roundTrip = mapper.toDomain(dto);
         assertThat(roundTrip.getExpenses()).hasSize(2);
         assertThat(roundTrip.getExpenses().get(0)).isInstanceOf(ExpenseByNight.class);
-        assertThat(roundTrip.getExpenses().get(1)).isInstanceOf(ExpenseEqual.class);
+        assertThat(roundTrip.getExpenses().get(1)).isInstanceOf(ExpenseFree.class);
+    }
+
+    @Test
+    void shouldConvertLegacyEqualPersistenceDTOToFreeOnLoad() {
+        // Simulate loading a legacy EQUAL DTO (e.g., from an old ZIP file)
+        Participant alice = Participant.create("Alice", 2);
+        Participant bob = Participant.create("Bob", 3);
+        String aliceParticipantId = alice.id().value();
+        ExpenseEqualPersistenceDTO equalDTO = new ExpenseEqualPersistenceDTO(
+                org.asymetrik.web.fairnsquare.split.domain.expenses.Expense.Id.generate().value(),
+                new BigDecimal("40.00"), "Taxi", aliceParticipantId, "2026-01-01T10:00:00Z");
+        SplitPersistenceDTO dto = new SplitPersistenceDTO(Split.Id.generate().value(), "Legacy Split",
+                "2026-01-01T10:00:00Z", null,
+                List.of(new ParticipantPersistenceDTO(alice.id().value(), "Alice", 2, 1.0, null),
+                        new ParticipantPersistenceDTO(bob.id().value(), "Bob", 3, 1.0, null)),
+                List.of(equalDTO), null);
+
+        Split roundTrip = mapper.toDomain(dto);
+
+        assertThat(roundTrip.getExpenses()).hasSize(1);
+        assertThat(roundTrip.getExpenses().get(0)).isInstanceOf(ExpenseFree.class);
+        ExpenseFree converted = (ExpenseFree) roundTrip.getExpenses().get(0);
+        assertThat(converted.getAmount()).isEqualByComparingTo("40.00");
+        assertThat(converted.getSharesWithParts()).hasSize(2)
+                .allSatisfy(share -> assertThat(share.parts()).isEqualByComparingTo("1"));
     }
 
     @Test
@@ -137,7 +165,9 @@ class SplitPersistenceMapperTest {
         Participant bob = Participant.create("Bob", 2);
         original.addParticipant(alice);
         original.addParticipant(bob);
-        original.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Hotel", alice.id()));
+        original.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Hotel", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
         original.settle(SettlementCalculator.calculate(original));
 
         SplitPersistenceDTO dto = mapper.toPersistenceDTO(original);

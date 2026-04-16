@@ -15,7 +15,7 @@
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import ShareEditModal from './ShareEditModal.svelte';
-  import { Moon, Equal, Edit3, Users, X, Info } from 'lucide-svelte';
+  import { Moon, Edit3, Users, X, Info } from 'lucide-svelte';
 
   // Props
   let {
@@ -58,14 +58,10 @@
   // Split mode info modal state
   let activeInfo = $state<SplitMode | null>(null);
 
-  const splitModeInfo: Record<SplitMode, { title: string; description: string }> = {
+  const splitModeInfo: Record<Exclude<SplitMode, 'EQUAL'>, { title: string; description: string }> = {
     BY_NIGHT: {
       title: 'By Night',
       description: `The cost is shared proportionally based on each participant's total "night-shares" — calculated as nights × share weight.\n\nThe share weight represents the number of persons. For example, a couple has a share of 2, while a solo traveller has a share of 1.\n\nExample: Alice (1 person) stays 3 nights = 3 night-shares. Bob & Carol (couple, 2 persons) stay 2 nights = 4 night-shares. Total = 7 night-shares.\n\nAlice pays 3/7 of the expense, Bob & Carol pay 4/7.`,
-    },
-    EQUAL: {
-      title: 'Equal',
-      description: `The cost is divided equally among all participants, regardless of their nights, share weight, or any other factor.\n\nExample: 3 participants share a €90 expense → each pays €30.`,
     },
     BY_SHARE: {
       title: 'By Participant members',
@@ -565,16 +561,6 @@
                 <span>By Night</span>
               </Label>
               <button type="button" onclick={(e) => openInfo('BY_NIGHT', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about By Night">
-                <Info class="h-4 w-4" />
-              </button>
-            </div>
-            <div class="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent min-h-[44px]">
-              <RadioGroup.Item value="EQUAL" id="modal-mode-equal" />
-              <Label for="modal-mode-equal" class="flex items-center gap-2 cursor-pointer flex-1">
-                <Equal class="h-4 w-4" aria-hidden="true" />
-                <span>Equal</span>
-              </Label>
-              <button type="button" onclick={(e) => openInfo('EQUAL', e)} class="p-1 rounded-full hover:bg-muted text-muted-foreground" aria-label="Info about Equal">
                 <Info class="h-4 w-4" />
               </button>
             </div>

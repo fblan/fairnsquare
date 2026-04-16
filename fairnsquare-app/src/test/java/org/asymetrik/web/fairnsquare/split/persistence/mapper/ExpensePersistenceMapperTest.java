@@ -3,16 +3,13 @@ package org.asymetrik.web.fairnsquare.split.persistence.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
-import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpensePersistenceDTO;
 import org.junit.jupiter.api.Test;
 
@@ -40,18 +37,6 @@ class ExpensePersistenceMapperTest {
     }
 
     @Test
-    void shouldMapEqualExpenseToPersistenceDTOWithoutShares() {
-        Participant.Id payerId = Participant.Id.generate();
-
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("50.00"), "Dinner", payerId);
-
-        ExpensePersistenceDTO dto = mapper.toPersistenceDTO(expense);
-
-        assertThat(dto).isInstanceOf(ExpenseEqualPersistenceDTO.class);
-        assertThat(dto.description()).isEqualTo("Dinner");
-    }
-
-    @Test
     void shouldPreserveByNightExpenseInRoundTrip() {
         Participant alice = Participant.create("Alice", 3);
 
@@ -64,22 +49,6 @@ class ExpensePersistenceMapperTest {
         assertThat(roundTrip.getAmount()).isEqualByComparingTo(original.getAmount());
         assertThat(roundTrip.getDescription()).isEqualTo(original.getDescription());
         assertThat(roundTrip.getPayerId()).isEqualTo(original.getPayerId());
-
-    }
-
-    @Test
-    void shouldPreserveEqualExpenseInRoundTrip() {
-        Participant alice = Participant.create("Alice", 2);
-        List<Participant> participants = List.of(alice);
-
-        ExpenseEqual original = ExpenseEqual.create(new BigDecimal("50.00"), "Parking", alice.id());
-
-        ExpensePersistenceDTO dto = mapper.toPersistenceDTO(original);
-        Expense roundTrip = mapper.toDomain(dto);
-
-        assertThat(roundTrip).isInstanceOf(ExpenseEqual.class);
-        assertThat(roundTrip.getAmount()).isEqualByComparingTo(original.getAmount());
-        assertThat(roundTrip.getDescription()).isEqualTo(original.getDescription());
 
     }
 
