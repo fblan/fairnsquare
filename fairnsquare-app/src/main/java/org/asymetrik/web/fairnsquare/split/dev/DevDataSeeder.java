@@ -7,7 +7,6 @@ import java.util.List;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.SplitRepository;
@@ -119,18 +118,7 @@ public class DevDataSeeder {
         split.addExpense(ExpenseByNight.create(bd("189.50"), "Pizzeria à emporter soir 4", charlie.id()));
         split.addExpense(ExpenseByNight.create(bd("86.40"), "Location sono soirée", diana.id()));
 
-        // --- EQUAL expenses ---
-        // One-off activities where all participants share equally regardless of stay
-        split.addExpense(ExpenseEqual.create(bd("180.00"), "Dégustation vins domaine local", eve.id()));
-        split.addExpense(ExpenseEqual.create(bd("240.00"), "Location kayaks - demi-journée", frank.id()));
-        split.addExpense(ExpenseEqual.create(bd("420.00"), "Promenade en bateau dans les calanques", grace.id()));
-        split.addExpense(ExpenseEqual.create(bd("160.00"), "Escape game - Avignon", henry.id()));
-        split.addExpense(ExpenseEqual.create(bd("84.00"), "Visite musée & sites antiques d'Arles", isabelle.id()));
-        split.addExpense(ExpenseEqual.create(bd("200.00"), "Concert jazz au festival d'Arles", jack.id()));
-        split.addExpense(ExpenseEqual.create(bd("144.00"), "Location vélos - journée", alice.id()));
-
-        // --- FREE expenses (travel - only participants who traveled together) ---
-        // Group 1: Alice, Bob, Charlie, Diana drove from Paris
+        // --- FREE expenses (shared activities, all participants share equally regardless of stay) ---
         Participant.Id aliceId = alice.id();
         Participant.Id bobId = bob.id();
         Participant.Id charlieId = charlie.id();
@@ -141,7 +129,23 @@ public class DevDataSeeder {
         Participant.Id henryId = henry.id();
         Participant.Id isabelleId = isabelle.id();
         Participant.Id jackId = jack.id();
+        split.addExpense(ExpenseFree.create(bd("180.00"), "Dégustation vins domaine local", eveId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("240.00"), "Location kayaks - demi-journée", frankId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("420.00"), "Promenade en bateau dans les calanques", graceId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("160.00"), "Escape game - Avignon", henryId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("84.00"), "Visite musée & sites antiques d'Arles", isabelleId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("200.00"), "Concert jazz au festival d'Arles", jackId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
+        split.addExpense(ExpenseFree.create(bd("144.00"), "Location vélos - journée", aliceId,
+                equalParts(aliceId, bobId, charlieId, dianaId, eveId, frankId, graceId, henryId, isabelleId, jackId)));
 
+        // --- FREE expenses (travel - only participants who traveled together) ---
+        // Group 1: Alice, Bob, Charlie, Diana drove from Paris
         split.addExpense(ExpenseFree.create(bd("186.40"), "Carburant Paris → Provence (voiture groupe 1)", aliceId,
                 equalParts(aliceId, bobId, charlieId, dianaId)));
         split.addExpense(ExpenseFree.create(bd("178.20"), "Carburant Provence → Paris (voiture groupe 1)", bobId,

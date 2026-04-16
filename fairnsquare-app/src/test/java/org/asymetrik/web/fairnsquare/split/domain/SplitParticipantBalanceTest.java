@@ -3,8 +3,12 @@ package org.asymetrik.web.fairnsquare.split.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.util.List;
 
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +38,9 @@ class SplitParticipantBalanceTest {
         split.addParticipant(bob);
 
         // Alice pays 100, split equally → each owes 50
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Dinner", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
 
         Participant updatedAlice = split.getParticipant(alice.id());
         Participant updatedBob = split.getParticipant(bob.id());
@@ -55,7 +61,9 @@ class SplitParticipantBalanceTest {
         Participant bob = Participant.create("Bob", 2);
         split.addParticipant(alice);
         split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Dinner", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
 
         split.removeExpense(split.getExpenses().get(0).getId());
 
@@ -68,15 +76,16 @@ class SplitParticipantBalanceTest {
     @Test
     void updateExpense_recalculatesBalances() {
         Split split = Split.create("Test");
-        Participant alice = Participant.create("Alice", 3);
-        Participant bob = Participant.create("Bob", 2);
+        // Use equal nights so BY_NIGHT splits evenly
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
         split.addParticipant(alice);
         split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(ExpenseByNight.create(new BigDecimal("100.00"), "Dinner", alice.id()));
 
-        // Update to 200 — Alice still payer
+        // Update to 200 — Alice still payer, BY_NIGHT with equal nights → each owes 100
         split.updateExpense(split.getExpenses().get(0).getId(), new BigDecimal("200.00"), "Dinner", alice.id(),
-                org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode.EQUAL);
+                SplitMode.BY_NIGHT);
 
         Participant updatedAlice = split.getParticipant(alice.id());
         assertThat(updatedAlice.totalPaid()).isEqualByComparingTo(new BigDecimal("200.00"));
@@ -93,8 +102,12 @@ class SplitParticipantBalanceTest {
         split.addParticipant(bob);
 
         // Alice pays 100, Bob pays 60 — both split equally
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Hotel", alice.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("60.00"), "Food", bob.id()));
+        split.addExpense(ExpenseFree.create(new BigDecimal("100.00"), "Hotel", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
+        split.addExpense(ExpenseFree.create(new BigDecimal("60.00"), "Food", bob.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE),
+                        Expense.Share.withParts(bob.id(), BigDecimal.ONE))));
 
         Participant updatedAlice = split.getParticipant(alice.id());
         Participant updatedBob = split.getParticipant(bob.id());
@@ -112,19 +125,20 @@ class SplitParticipantBalanceTest {
     @Test
     void removeParticipant_recalculatesRemainingParticipantBalances() {
         Split split = Split.create("Test");
-        Participant alice = Participant.create("Alice", 3);
-        Participant bob = Participant.create("Bob", 2);
+        // Use equal nights so removing a participant recalculates shares evenly
+        Participant alice = Participant.create("Alice", 1);
+        Participant bob = Participant.create("Bob", 1);
         Participant charlie = Participant.create("Charlie", 1);
         split.addParticipant(alice);
         split.addParticipant(bob);
         split.addParticipant(charlie);
-        // Alice pays 90 split equally among 3 → each owes 30
-        split.addExpense(ExpenseEqual.create(new BigDecimal("90.00"), "Hotel", alice.id()));
+        // Alice pays 90 split BY_NIGHT among 3 equal nights → each owes 30
+        split.addExpense(ExpenseByNight.create(new BigDecimal("90.00"), "Hotel", alice.id()));
 
         // Remove Charlie (not a payer, can be removed)
         split.removeParticipant(charlie.id());
 
-        // Now 2 participants, Alice pays 90 → each owes 45
+        // Now 2 participants with equal nights, Alice pays 90 → each owes 45
         Participant updatedAlice = split.getParticipant(alice.id());
         assertThat(updatedAlice.totalPaid()).isEqualByComparingTo(new BigDecimal("90.00"));
         assertThat(updatedAlice.totalCost()).isEqualByComparingTo(new BigDecimal("45.00"));

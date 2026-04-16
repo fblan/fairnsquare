@@ -135,14 +135,6 @@ describe('ExpenseEditModal', () => {
       expect(byNightRadio).toBeChecked();
     });
 
-    it('pre-selects EQUAL split mode when expense uses EQUAL', () => {
-      const equalExpense: Expense = { ...mockExpense, splitMode: 'EQUAL' };
-      render(ExpenseEditModal, { props: { ...defaultProps, expense: equalExpense } });
-
-      const equalRadio = screen.getByRole('radio', { name: /equal/i });
-      expect(equalRadio).toBeChecked();
-    });
-
     it('renders Delete Expense button below form', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
@@ -183,8 +175,8 @@ describe('ExpenseEditModal', () => {
     it('enables Save Changes button when split mode is changed', async () => {
       render(ExpenseEditModal, { props: defaultProps });
 
-      const equalRadio = screen.getByRole('radio', { name: /equal/i });
-      await fireEvent.click(equalRadio);
+      const byShareRadio = screen.getByRole('radio', { name: /by participant members/i });
+      await fireEvent.click(byShareRadio);
 
       const saveButton = screen.getByRole('button', { name: /save changes/i });
       expect(saveButton).not.toBeDisabled();

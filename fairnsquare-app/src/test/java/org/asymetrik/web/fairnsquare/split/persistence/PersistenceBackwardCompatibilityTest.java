@@ -12,6 +12,7 @@ import org.asymetrik.web.fairnsquare.infrastructure.filesystem.Filename;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.junit.jupiter.api.Test;
 
 import io.quarkus.test.common.QuarkusTestResource;
@@ -109,6 +110,30 @@ class PersistenceBackwardCompatibilityTest {
         assertThat(loaded.getExpenses()).hasSize(3);
         assertThat(loaded.getSettlement()).isNotNull();
         assertThat(loaded.getSettlement().reimbursements()).hasSize(3);
+    }
+
+    /**
+     * Files saved when the EQUAL expense type existed contain {@code "type": "EQUAL"} in the expense JSON. EQUAL is no
+     * longer exposed in the UI; on load it must be transparently converted to a {@link ExpenseFree} with
+     * {@code parts = 1} for every participant in the split.
+     */
+    @Test
+    void shouldLoadLegacyEqualExpenseAsFreeSplitWithPartsOne() throws IOException {
+        String splitId = "splitEqualExpense0001";
+        loadFixtureIntoStorage("fixtures/compat/v1-equal-expense.zip", splitId);
+
+        Split loaded = splitRepository.load(splitId).orElseThrow();
+
+        assertThat(loaded.getId().value()).isEqualTo(splitId);
+        assertThat(loaded.getParticipants()).hasSize(2);
+        assertThat(loaded.getExpenses()).hasSize(1);
+
+        assertThat(loaded.getExpenses().getFirst()).isInstanceOf(ExpenseFree.class);
+        ExpenseFree converted = (ExpenseFree) loaded.getExpenses().getFirst();
+        assertThat(converted.getAmount()).isEqualByComparingTo("90.00");
+        assertThat(converted.getDescription()).isEqualTo("Dinner");
+        assertThat(converted.getSharesWithParts()).hasSize(2)
+                .allSatisfy(share -> assertThat(share.parts()).isEqualByComparingTo("1"));
     }
 
     /**

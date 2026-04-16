@@ -478,7 +478,7 @@ class ParticipantUseCaseTest {
         // Add expense via API
         given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Test Expense", "payerId": "%s"}
-                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
                 .statusCode(201);
 
         // Try to delete the participant - should return 409
@@ -503,7 +503,7 @@ class ParticipantUseCaseTest {
         // Add expense via API
         given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Test Expense", "payerId": "%s"}
-                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                """.formatted(participantId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
                 .statusCode(201);
 
         // Verify Problem Details format

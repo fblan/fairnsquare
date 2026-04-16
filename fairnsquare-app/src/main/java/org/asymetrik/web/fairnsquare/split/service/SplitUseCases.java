@@ -14,7 +14,6 @@ import org.asymetrik.web.fairnsquare.sharedkernel.logging.LogTag;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidSharesError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
@@ -254,7 +253,7 @@ public class SplitUseCases {
      * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
      *         PayerNotFoundError if the payer is not a participant in the split.
      *
-     * @deprecated Use addExpenseByNight(), addExpenseEqual(), or addExpenseFree() instead.
+     * @deprecated Use addExpenseByNight(), addExpenseByShare(), or addExpenseFree() instead.
      */
     @Deprecated
     public Optional<Expense> addExpense(@LogTag("splitId") String splitId, AddExpenseRequest request) {
@@ -263,8 +262,6 @@ public class SplitUseCases {
                     addExpenseByNight(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case BY_SHARE ->
                     addExpenseByShare(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
-            case EQUAL ->
-                    addExpenseEqual(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use addExpenseFree() with AddFreeExpenseRequest");
         };
@@ -320,35 +317,6 @@ public class SplitUseCases {
             split.validatePayerExists(payer);
 
             ExpenseByShare expense = ExpenseByShare.create(amount, description, payer);
-            split.addExpense(expense);
-            repository.save(split);
-
-            return expense;
-        });
-    }
-
-    /**
-     * Adds an EQUAL expense to an existing split. Shares are calculated equally among all participants.
-     *
-     * @param splitId
-     *            the split identifier
-     * @param amount
-     *            the expense amount
-     * @param description
-     *            the expense description
-     * @param payerId
-     *            the ID of the participant who paid
-     *
-     * @return an Optional containing the created expense if the split exists, empty otherwise
-     */
-    public Optional<ExpenseEqual> addExpenseEqual(@LogTag("splitId") String splitId, BigDecimal amount,
-            String description, @LogTag("payerId") String payerId) {
-        return repository.load(splitId).map(split -> {
-            Participant.Id payer = Participant.Id.of(payerId);
-            split.validatePayerExists(payer);
-
-            // Create expense and calculate shares using encapsulated logic
-            ExpenseEqual expense = ExpenseEqual.create(amount, description, payer);
             split.addExpense(expense);
             repository.save(split);
 

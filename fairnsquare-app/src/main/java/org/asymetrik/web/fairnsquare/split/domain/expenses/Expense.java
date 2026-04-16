@@ -13,7 +13,7 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
  * calculation strategy.
  */
-public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, ExpenseEqual, ExpenseFree {
+public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, ExpenseFree {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 
@@ -26,7 +26,7 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
     /**
      * Factory method to create an Expense of the appropriate subtype based on splitMode.
      *
-     * @deprecated Use ExpenseByNight.create() or ExpenseEqual.create() directly
+     * @deprecated Use ExpenseByNight.create(), ExpenseByShare.create() or ExpenseFree.create() directly
      */
     @Deprecated
     public static Expense create(BigDecimal amount, String description, Participant.Id payerId, SplitMode splitMode) {
@@ -35,7 +35,6 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
         return switch (splitMode) {
             case BY_NIGHT -> new ExpenseByNight(Id.generate(), amount, description, payerId, Instant.now());
             case BY_SHARE -> new ExpenseByShare(Id.generate(), amount, description, payerId, Instant.now());
-            case EQUAL -> new ExpenseEqual(Id.generate(), amount, description, payerId, Instant.now());
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use ExpenseFree.create(amount, description, payerId, shares)");
         };
@@ -55,7 +54,6 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
         return switch (mode) {
             case BY_NIGHT -> new ExpenseByNight(id, amount, description, payerId, createdAt);
             case BY_SHARE -> new ExpenseByShare(id, amount, description, payerId, createdAt);
-            case EQUAL -> new ExpenseEqual(id, amount, description, payerId, createdAt);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use ExpenseFree.fromJson(id, amount, description, payerId, shares, createdAt)");
         };
@@ -186,13 +184,13 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
     }
 
     /**
-     * Value object representing a participant's share of an expense. - For BY_NIGHT/EQUAL modes: amount is calculated,
-     * parts is null - For FREE mode: parts is stored, amount is calculated from parts
+     * Value object representing a participant's share of an expense. - For BY_NIGHT/BY_SHARE modes: amount is
+     * calculated, parts is null - For FREE mode: parts is stored, amount is calculated from parts
      */
     public record Share(Participant.Id participantId, BigDecimal amount, BigDecimal parts) {
 
         /**
-         * Creates a share with calculated amount (used by BY_NIGHT/EQUAL).
+         * Creates a share with calculated amount (used by BY_NIGHT/BY_SHARE).
          */
         public static Share withAmount(Participant.Id participantId, BigDecimal amount) {
             return new Share(participantId, amount, null);

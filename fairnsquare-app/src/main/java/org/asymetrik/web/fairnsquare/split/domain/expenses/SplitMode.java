@@ -11,11 +11,6 @@ public enum SplitMode {
     BY_NIGHT("BY_NIGHT"),
 
     /**
-     * Distribute expense equally among all participants.
-     */
-    EQUAL("EQUAL"),
-
-    /**
      * Distribute expense proportionally based on participant share.
      */
     BY_SHARE("BY_SHARE"),

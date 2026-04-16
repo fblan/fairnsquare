@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 
 import org.asymetrik.web.fairnsquare.split.api.dto.SplitResponseDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementCalculator;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
@@ -64,7 +63,7 @@ class SplitMapperTest {
         Participant bob = Participant.create("Bob", 2);
         split.addParticipant(alice);
         split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(BigDecimal.valueOf(100.00), "Hotel", alice.id()));
+        split.addExpense(ExpenseByNight.create(BigDecimal.valueOf(100.00), "Hotel", alice.id()));
         split.settle(SettlementCalculator.calculate(split));
 
         SplitResponseDTO dto = mapper.toDTO(split);

@@ -132,57 +132,6 @@ class ExpenseUseCaseTest {
     }
 
     /**
-     * Story 4.1 AC 4: POST with EQUAL mode calculates equal shares.
-     */
-    @Test
-    void addExpense_equalMode_calculatesEqualShares() {
-        String splitId = given().contentType(ContentType.JSON).body("""
-                {"name": "Equal Share Test"}
-                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
-
-        String aliceId = given().contentType(ContentType.JSON).body("""
-                {"name": "Alice", "nights": 4}
-                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
-                .path("id");
-
-        String bobId = given().contentType(ContentType.JSON).body("""
-                {"name": "Bob", "nights": 2}
-                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
-                .path("id");
-
-        String charlieId = given().contentType(ContentType.JSON).body("""
-                {"name": "Charlie", "nights": 3}
-                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
-                .path("id");
-
-        // Add expense of €90.00 EQUAL mode - should be €30 each
-        io.restassured.response.Response response = given().contentType(ContentType.JSON).body("""
-                {
-                    "amount": 90.00,
-                    "description": "Taxi",
-                    "payerId": "%s",
-                    "splitMode": "EQUAL"
-                }
-                """.formatted(aliceId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201)
-                .body("splitMode", equalTo("EQUAL")).body("shares", hasSize(3)).extract().response();
-
-        java.util.List<java.util.Map<String, Object>> shares = response.jsonPath().getList("shares");
-
-        Map<String, Map<String, Object>> sharesByParticipant = shares.stream()
-                .collect(Collectors.toMap(s -> s.get("participantId").toString(), s -> s));
-        assertThat(sharesByParticipant.get(aliceId).get("amount")).isEqualTo(30.00f);
-        assertThat(sharesByParticipant.get(bobId).get("amount")).isEqualTo(30.00f);
-        assertThat(sharesByParticipant.get(charlieId).get("amount")).isEqualTo(30.00f);
-
-        // Verify shares sum to 90.00
-        java.math.BigDecimal totalShares = shares.stream()
-                .map(s -> new java.math.BigDecimal(s.get("amount").toString()))
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-        assertThat(totalShares.compareTo(new java.math.BigDecimal("90.00")) == 0)
-                .as("Expected 90.00 but got " + totalShares).isTrue();
-    }
-
-    /**
      * Story 4.1 AC 11: Test expense is persisted in split's JSON file.
      */
     @Test
@@ -202,7 +151,7 @@ class ExpenseUseCaseTest {
                     "amount": 50.00,
                     "description": "Snacks",
                     "payerId": "%s",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(201);
 
@@ -230,7 +179,7 @@ class ExpenseUseCaseTest {
                     "amount": 50.00,
                     "description": "Test",
                     "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400)
                 .body("type", containsString("payer-not-found")).body("title", equalTo("Payer Not Found"));
@@ -254,7 +203,7 @@ class ExpenseUseCaseTest {
                 {
                     "description": "Test",
                     "payerId": "%s",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
     }
@@ -278,7 +227,7 @@ class ExpenseUseCaseTest {
                     "amount": 0.001,
                     "description": "Test",
                     "payerId": "%s",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
     }
@@ -302,7 +251,7 @@ class ExpenseUseCaseTest {
                     "amount": 50.00,
                     "description": "",
                     "payerId": "%s",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses").then().statusCode(400);
     }
@@ -317,7 +266,7 @@ class ExpenseUseCaseTest {
                     "amount": 50.00,
                     "description": "Test",
                     "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses").then().statusCode(404);
     }
@@ -332,7 +281,7 @@ class ExpenseUseCaseTest {
                     "amount": 50.00,
                     "description": "Test",
                     "payerId": "V1StGXR8_Z5jdHi6B-myT",
-                    "splitMode": "EQUAL"
+                    "splitMode": "BY_NIGHT"
                 }
                 """).when().post("/api/splits/invalid..id/expenses").then().statusCode(400);
     }
@@ -370,36 +319,6 @@ class ExpenseUseCaseTest {
     }
 
     /**
-     * TD-001.3 AC7: POST /expenses/equal creates ExpenseEqual.
-     */
-    @Test
-    void addExpenseEqual_createsExpenseWithEqualShares() {
-        String splitId = given().contentType(ContentType.JSON).body("""
-                {"name": "EQUAL Test"}
-                """).when().post("/api/splits").then().statusCode(201).extract().path("id");
-
-        String aliceId = given().contentType(ContentType.JSON).body("""
-                {"name": "Alice", "nights": 4}
-                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract()
-                .path("id");
-
-        given().contentType(ContentType.JSON).body("""
-                {"name": "Bob", "nights": 2}
-                """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
-
-        given().contentType(ContentType.JSON).body("""
-                {
-                    "amount": 100.00,
-                    "description": "Dinner",
-                    "payerId": "%s"
-                }
-                """.formatted(aliceId)).when().post("/api/splits/{splitId}/expenses/equal", splitId).then()
-                .statusCode(201).body("type", equalTo("EQUAL")).body("amount", equalTo(100.00f))
-                .body("shares", hasSize(2)).body("shares[0].amount", equalTo(50.00f))
-                .body("shares[1].amount", equalTo(50.00f));
-    }
-
-    /**
      * TD-001.3 AC7: New endpoints return 404 for non-existent split.
      */
     @Test
@@ -411,20 +330,6 @@ class ExpenseUseCaseTest {
                     "payerId": "V1StGXR8_Z5jdHi6B-myT"
                 }
                 """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/by-night").then().statusCode(404);
-    }
-
-    /**
-     * TD-001.3 AC7: New endpoints return 404 for non-existent split.
-     */
-    @Test
-    void addExpenseEqual_toNonExistentSplit_returns404() {
-        given().contentType(ContentType.JSON).body("""
-                {
-                    "amount": 50.00,
-                    "description": "Test",
-                    "payerId": "V1StGXR8_Z5jdHi6B-myT"
-                }
-                """).when().post("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/equal").then().statusCode(404);
     }
 
     // ==================== Story FNS-002.5: Delete Expense Tests ====================
@@ -450,8 +355,8 @@ class ExpenseUseCaseTest {
                     "description": "Groceries",
                     "payerId": "%s"
                 }
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Delete the expense
         given().when().delete("/api/splits/" + splitId + "/expenses/" + expenseId).then().statusCode(204);
@@ -481,8 +386,8 @@ class ExpenseUseCaseTest {
                     "description": "Snacks",
                     "payerId": "%s"
                 }
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         given().contentType(ContentType.JSON).body("""
                 {
@@ -490,7 +395,7 @@ class ExpenseUseCaseTest {
                     "description": "Drinks",
                     "payerId": "%s"
                 }
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then()
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
                 .statusCode(201);
 
         // Delete first expense
@@ -583,11 +488,11 @@ class ExpenseUseCaseTest {
     }
 
     /**
-     * FNS-002.6: PUT successfully changes split mode from BY_NIGHT to EQUAL.
+     * FNS-002.6: PUT successfully changes split mode and recalculates shares.
      */
     @Test
     void updateExpense_withSplitModeChange_returns200AndRecalculatesShares() {
-        // Create split with participants
+        // Create split with participants: Alice (3 nights), Bob (2 nights) = 5 total
         String splitId = given().contentType(ContentType.JSON).body("""
                 {"name": "Split Mode Change Test"}
                 """).when().post("/api/splits").then().statusCode(201).extract().path("id");
@@ -601,18 +506,18 @@ class ExpenseUseCaseTest {
                 {"name": "Bob", "nights": 2}
                 """).when().post("/api/splits/" + splitId + "/participants").then().statusCode(201);
 
-        // Create BY_NIGHT expense
+        // Create BY_SHARE expense initially
         String expenseId = given().contentType(ContentType.JSON).body("""
                 {"amount": 100.00, "description": "Hotel", "payerId": "%s"}
                 """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
                 .statusCode(201).extract().path("id");
 
-        // Change to EQUAL split mode
+        // Update to BY_NIGHT — Alice 3/5*100=60, Bob 2/5*100=40
         given().contentType(ContentType.JSON).body("""
-                {"amount": 100.00, "description": "Hotel", "payerId": "%s", "splitMode": "EQUAL"}
+                {"amount": 100.00, "description": "Hotel", "payerId": "%s", "splitMode": "BY_NIGHT"}
                 """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then()
-                .statusCode(200).body("splitMode", equalTo("EQUAL")).body("shares", hasSize(2))
-                .body("shares[0].amount", equalTo(50.00f)).body("shares[1].amount", equalTo(50.00f));
+                .statusCode(200).body("splitMode", equalTo("BY_NIGHT")).body("shares", hasSize(2))
+                .body("shares[0].amount", equalTo(60.00f)).body("shares[1].amount", equalTo(40.00f));
     }
 
     /**
@@ -638,12 +543,12 @@ class ExpenseUseCaseTest {
         // Create expense with Alice as payer
         String expenseId = given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Dinner", "payerId": "%s"}
-                """.formatted(alice)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(alice)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Change payer to Bob
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Dinner", "payerId": "%s", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Dinner", "payerId": "%s", "splitMode": "BY_NIGHT"}
                 """.formatted(bob)).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then()
                 .statusCode(200).body("payerId", equalTo(bob));
     }
@@ -663,7 +568,7 @@ class ExpenseUseCaseTest {
                 .path("id");
 
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "BY_NIGHT"}
                 """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/V1StGXR8_Z5jdHi6B-myT").then()
                 .statusCode(404).body("type", containsString("expense-not-found"));
     }
@@ -683,7 +588,7 @@ class ExpenseUseCaseTest {
                 .path("id");
 
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Test", "payerId": "%s", "splitMode": "BY_NIGHT"}
                 """.formatted(payerId)).when().put("/api/splits/" + splitId + "/expenses/invalid..id").then()
                 .statusCode(400).body("type", containsString("invalid-expense-id"));
     }
@@ -694,7 +599,7 @@ class ExpenseUseCaseTest {
     @Test
     void updateExpense_withNonExistentSplit_returns404() {
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "BY_NIGHT"}
                 """).when().put("/api/splits/V1StGXR8_Z5jdHi6B-myT/expenses/V1StGXR8_Z5jdHi6B-myT").then()
                 .statusCode(404);
     }
@@ -705,7 +610,7 @@ class ExpenseUseCaseTest {
     @Test
     void updateExpense_withInvalidSplitIdFormat_returns400() {
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "BY_NIGHT"}
                 """).when().put("/api/splits/invalid..id/expenses/V1StGXR8_Z5jdHi6B-myT").then().statusCode(400);
     }
 
@@ -726,12 +631,12 @@ class ExpenseUseCaseTest {
         // Create expense
         String expenseId = given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Test", "payerId": "%s"}
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/equal").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Try to update with non-existent payer
         given().contentType(ContentType.JSON).body("""
-                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "EQUAL"}
+                {"amount": 50.00, "description": "Test", "payerId": "V1StGXR8_Z5jdHi6B-myT", "splitMode": "BY_NIGHT"}
                 """).when().put("/api/splits/" + splitId + "/expenses/" + expenseId).then().statusCode(400).body("type",
                 containsString("payer-not-found"));
     }
