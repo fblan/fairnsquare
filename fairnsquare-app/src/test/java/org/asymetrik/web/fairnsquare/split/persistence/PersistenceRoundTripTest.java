@@ -19,7 +19,7 @@ import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestRe
 import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.junit.jupiter.api.Test;
@@ -89,19 +89,24 @@ class PersistenceRoundTripTest {
     }
 
     @Test
-    void shouldPersistAndLoadSplitWithEqualExpense() {
-        Split original = Split.create("With EQUAL Expense");
+    void shouldPersistAndLoadSplitWithFreeExpense() {
+        Split original = Split.create("With FREE Expense");
         Participant alice = Participant.create("Alice", 2);
         original.addParticipant(alice);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("50.00"), "Dinner", alice.id());
+        ExpenseFree expense = ExpenseFree.create(new BigDecimal("50.00"), "Dinner", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE)));
         original.addExpense(expense);
 
         splitRepository.save(original);
         Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getExpenses()).hasSize(1);
-        assertThat(loaded.getExpenses().getFirst()).isInstanceOf(ExpenseEqual.class);
+        assertThat(loaded.getExpenses().getFirst()).isInstanceOf(ExpenseFree.class);
+        ExpenseFree loaded0 = (ExpenseFree) loaded.getExpenses().getFirst();
+        assertThat(loaded0.getAmount()).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(loaded0.getSharesWithParts()).hasSize(1)
+                .allSatisfy(share -> assertThat(share.parts()).isEqualByComparingTo("1"));
     }
 
     @Test
@@ -111,16 +116,17 @@ class PersistenceRoundTripTest {
         original.addParticipant(alice);
 
         ExpenseByNight byNight = ExpenseByNight.create(new BigDecimal("80.00"), "Hotel", alice.id());
-        ExpenseEqual equal = ExpenseEqual.create(new BigDecimal("40.00"), "Taxi", alice.id());
+        ExpenseFree free = ExpenseFree.create(new BigDecimal("40.00"), "Taxi", alice.id(),
+                List.of(Expense.Share.withParts(alice.id(), BigDecimal.ONE)));
         original.addExpense(byNight);
-        original.addExpense(equal);
+        original.addExpense(free);
 
         splitRepository.save(original);
         Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
 
         assertThat(loaded.getExpenses()).hasSize(2);
         assertThat(loaded.getExpenses().get(0)).isInstanceOf(ExpenseByNight.class);
-        assertThat(loaded.getExpenses().get(1)).isInstanceOf(ExpenseEqual.class);
+        assertThat(loaded.getExpenses().get(1)).isInstanceOf(ExpenseFree.class);
     }
 
     @Test

@@ -404,34 +404,6 @@ public class SplitResource {
     }
 
     /**
-     * Adds an EQUAL expense to a split. Shares are calculated equally among all participants.
-     *
-     * @param splitId
-     *            the split identifier
-     * @param request
-     *            the add expense request (splitMode not required, EQUAL is used)
-     *
-     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
-     */
-    @Operation(summary = "Add EQUAL expense", description = "Creates an expense with shares calculated equally among all participants")
-    @APIResponse(responseCode = "201", description = "Expense created successfully")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid request")
-    @POST
-    @Path("/{splitId}/expenses/equal")
-    public Response addExpenseEqual(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
-        if (!Split.Id.isValid(splitId)) {
-            throw new InvalidSplitIdError(splitId);
-        }
-
-        return splitService.addExpenseEqual(splitId, request.amount(), request.description(), request.payerId())
-                .flatMap(expense -> splitService.getSplit(splitId)
-                        .map(split -> Response.status(Response.Status.CREATED)
-                                .entity(expenseMapper.toDTO(expense, split)).build()))
-                .orElseThrow(() -> new SplitNotFoundError(splitId));
-    }
-
-    /**
      * Adds a FREE expense with manually specified shares to a split.
      *
      * @param splitId

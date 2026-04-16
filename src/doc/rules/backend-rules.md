@@ -80,3 +80,13 @@
 ## Backward-Compatible Persistence Discriminators
 
 - When adding a type discriminator field to a persistence DTO (e.g. `fromType` on `ReimbursementPersistenceDTO`), use `null` as the legacy default value rather than introducing a migration or a sentinel string. Null (or absent) must map to the original/default type, and the persistence mapper must apply this default explicitly on load. This allows all files written before the discriminator existed to continue loading without modification.
+
+- When **removing** a domain type that has been persisted as a JSON discriminator (e.g. `"type": "EQUAL"` in ZIP archives), do NOT delete the persistence DTO class. Keep it exclusively in the persistence layer so Jackson can still deserialize legacy archives. The persistence mapper must transparently convert the legacy DTO to the nearest current type on load. The domain mapper must guard against receiving the legacy DTO directly (throw `UnsupportedOperationException`) to enforce that conversion happens at the correct layer.
+
+## Sealed Classes — Removing a Permitted Subtype
+
+- Removing a type from a `sealed` class or interface `permits` clause is a compile-breaking change for the removed subtype. Ensure the subtype file is deleted (or its `extends`/`implements` declaration removed) in the same commit. Leaving a `permits`-removed subtype on disk causes a compile error that manifests as an architecture test failure rather than a clear compiler diagnostic.
+
+## Expense Update — SplitMode Constraints
+
+- `split.updateExpense(id, amount, description, payer, SplitMode)` delegates to `Expense.fromJson()`, which cannot construct a `FREE` expense (FREE requires explicit per-participant shares that are not part of the update request signature). Tests exercising `updateExpense` must use `BY_NIGHT` or `BY_SHARE`. The `updateExpense` method must document this constraint with a `@throws UnsupportedOperationException` if `SplitMode.FREE` is passed.

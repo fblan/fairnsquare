@@ -1,10 +1,12 @@
 package org.asymetrik.web.fairnsquare.split.domain.settlement;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.asymetrik.web.fairnsquare.split.domain.Split;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.junit.jupiter.api.Test;
 
@@ -53,8 +55,7 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
 
-        ExpenseEqual expense = ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id());
-        split.addExpense(expense);
+        split.addExpense(equalFreeExpense(new BigDecimal("100.00"), "Dinner", alice.id(), alice, bob));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -84,8 +85,8 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("60.00"), "Groceries", alice.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("40.00"), "Gas", bob.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("60.00"), "Groceries", alice.id(), alice, bob));
+        split.addExpense(equalFreeExpense(new BigDecimal("40.00"), "Gas", bob.id(), alice, bob));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -140,7 +141,7 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("100.00"), "Dinner", alice.id(), alice, bob));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -163,7 +164,7 @@ class SettlementCalculatorTest {
         split.addParticipant(bob);
         split.addParticipant(charlie);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("150.00"), "Hotel", alice.id(), alice, bob, charlie));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -187,8 +188,8 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("50.00"), "Groceries", alice.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("50.00"), "Gas", bob.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("50.00"), "Groceries", alice.id(), alice, bob));
+        split.addExpense(equalFreeExpense(new BigDecimal("50.00"), "Gas", bob.id(), alice, bob));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -213,8 +214,8 @@ class SettlementCalculatorTest {
         split.addParticipant(bob);
         split.addParticipant(charlie);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("30.00"), "Snacks", alice.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("60.00"), "Dinner", bob.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("30.00"), "Snacks", alice.id(), alice, bob, charlie));
+        split.addExpense(equalFreeExpense(new BigDecimal("60.00"), "Dinner", bob.id(), alice, bob, charlie));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -260,10 +261,10 @@ class SettlementCalculatorTest {
         // Total expenses = 48: each owes 12.
         // Charlie pays 19 → balance +7. Dave pays 17 → balance +5.
         // Alice pays 2 → balance -10. Bob pays 10 → balance -2.
-        split.addExpense(ExpenseEqual.create(new BigDecimal("19.00"), "Groceries", c.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("17.00"), "Gas", d.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("2.00"), "Coffee", a.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("10.00"), "Snacks", b.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("19.00"), "Groceries", c.id(), a, b, c, d));
+        split.addExpense(equalFreeExpense(new BigDecimal("17.00"), "Gas", d.id(), a, b, c, d));
+        split.addExpense(equalFreeExpense(new BigDecimal("2.00"), "Coffee", a.id(), a, b, c, d));
+        split.addExpense(equalFreeExpense(new BigDecimal("10.00"), "Snacks", b.id(), a, b, c, d));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -297,10 +298,10 @@ class SettlementCalculatorTest {
         split.addParticipant(d);
         split.addParticipant(c);
 
-        split.addExpense(ExpenseEqual.create(new BigDecimal("19.00"), "Groceries", c.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("17.00"), "Gas", d.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("2.00"), "Coffee", a.id()));
-        split.addExpense(ExpenseEqual.create(new BigDecimal("10.00"), "Snacks", b.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("19.00"), "Groceries", c.id(), b, a, d, c));
+        split.addExpense(equalFreeExpense(new BigDecimal("17.00"), "Gas", d.id(), b, a, d, c));
+        split.addExpense(equalFreeExpense(new BigDecimal("2.00"), "Coffee", a.id(), b, a, d, c));
+        split.addExpense(equalFreeExpense(new BigDecimal("10.00"), "Snacks", b.id(), b, a, d, c));
 
         Settlement settlement = SettlementCalculator.calculate(split);
 
@@ -329,7 +330,7 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
         split.addParticipant(charlie);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("150.00"), "Hotel", alice.id(), alice, bob, charlie));
 
         // Bob and Charlie share an account
         Participant.SharedAccountId groupId = Participant.SharedAccountId.generate();
@@ -363,7 +364,7 @@ class SettlementCalculatorTest {
         split.addParticipant(alice);
         split.addParticipant(bob);
         split.addParticipant(charlie);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("150.00"), "Hotel", alice.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("150.00"), "Hotel", alice.id(), alice, bob, charlie));
 
         Participant.SharedAccountId groupId = Participant.SharedAccountId.generate();
         split.updateParticipant(alice.id(), alice.name().value(), alice.nights().value(), alice.share().value(),
@@ -389,7 +390,7 @@ class SettlementCalculatorTest {
         Participant bob = Participant.create("Bob", 1);
         split.addParticipant(alice);
         split.addParticipant(bob);
-        split.addExpense(ExpenseEqual.create(new BigDecimal("100.00"), "Dinner", alice.id()));
+        split.addExpense(equalFreeExpense(new BigDecimal("100.00"), "Dinner", alice.id(), alice, bob));
 
         split.updateParticipant(bob.id(), bob.name().value(), bob.nights().value(), bob.share().value(),
                 Participant.SharedAccountId.generate());
@@ -405,5 +406,12 @@ class SettlementCalculatorTest {
 
     private Split createSplit() {
         return Split.create("Test Split");
+    }
+
+    private ExpenseFree equalFreeExpense(BigDecimal amount, String description, Participant.Id payerId,
+            Participant... participants) {
+        List<Expense.Share> shares = java.util.Arrays.stream(participants)
+                .map(p -> Expense.Share.withParts(p.id(), BigDecimal.ONE)).toList();
+        return ExpenseFree.create(amount, description, payerId, shares);
     }
 }

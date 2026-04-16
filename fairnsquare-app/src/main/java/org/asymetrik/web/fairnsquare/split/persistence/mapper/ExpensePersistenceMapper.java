@@ -7,7 +7,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
-import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseEqual;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
@@ -32,8 +31,6 @@ public class ExpensePersistenceMapper {
             case ExpenseByNight _ -> new ExpenseByNightPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
             case ExpenseByShare _ -> new ExpenseBySharePersistenceDTO(id, expense.getAmount(), expense.getDescription(),
-                    payerId, createdAt);
-            case ExpenseEqual _ -> new ExpenseEqualPersistenceDTO(id, expense.getAmount(), expense.getDescription(),
                     payerId, createdAt);
             case ExpenseFree free -> {
                 var sharesDTOs = free.getSharesWithParts().stream().map(
@@ -64,8 +61,8 @@ public class ExpensePersistenceMapper {
                     ExpenseByNight.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
             case ExpenseBySharePersistenceDTO _ ->
                     ExpenseByShare.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
-            case ExpenseEqualPersistenceDTO _ ->
-                    ExpenseEqual.fromJson(id, dto.amount(), dto.description(), payerId, createdAt);
+            case ExpenseEqualPersistenceDTO _ -> throw new UnsupportedOperationException(
+                    "EQUAL persistence DTOs must be converted to FREE by SplitPersistenceMapper");
             case ExpenseFreePersistenceDTO free -> {
                 var shares = free.shares().stream()
                         .map(s -> Expense.Share.withParts(Participant.Id.of(s.participantId()), s.parts())).toList();

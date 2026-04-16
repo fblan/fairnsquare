@@ -1,5 +1,6 @@
 package org.asymetrik.web.fairnsquare.split.persistence.mapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -7,11 +8,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.split.domain.Split;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.ParticipantBalance;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.Reimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.SettlementPartyId;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpensePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.SettlementPersistenceDTO;
@@ -57,7 +61,8 @@ public class SplitPersistenceMapper {
         }
 
         if (dto.expenses() != null) {
-            dto.expenses().forEach(e -> split.addExpense(expenseMapper.toDomain(e)));
+            List<Participant> participants = split.getParticipants();
+            dto.expenses().forEach(e -> split.addExpense(toExpenseDomain(e, participants)));
         }
 
         if (dto.settlement() != null) {
@@ -68,6 +73,24 @@ public class SplitPersistenceMapper {
         split.restoreUpdatedAt(updatedAt);
 
         return split;
+    }
+
+    /**
+     * Converts a persistence DTO to a domain Expense, applying legacy migrations.
+     * <p>
+     * EQUAL expenses (no longer creatable from the UI) are transparently converted to {@link ExpenseFree} with
+     * {@code parts = 1} for every participant, preserving identical split semantics.
+     */
+    private Expense toExpenseDomain(ExpensePersistenceDTO dto, List<Participant> participants) {
+        if (dto instanceof ExpenseEqualPersistenceDTO equal) {
+            Expense.Id id = equal.id() != null ? Expense.Id.of(equal.id()) : null;
+            Participant.Id payerId = equal.payerId() != null ? Participant.Id.of(equal.payerId()) : null;
+            Instant createdAt = equal.createdAt() != null ? Instant.parse(equal.createdAt()) : null;
+            List<Expense.Share> shares = participants.stream().map(p -> Expense.Share.withParts(p.id(), BigDecimal.ONE))
+                    .toList();
+            return ExpenseFree.fromJson(id, equal.amount(), equal.description(), payerId, shares, createdAt);
+        }
+        return expenseMapper.toDomain(dto);
     }
 
     private SettlementPersistenceDTO settlementToPersistenceDTO(Settlement settlement) {

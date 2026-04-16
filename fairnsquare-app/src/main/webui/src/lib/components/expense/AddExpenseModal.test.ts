@@ -119,12 +119,6 @@ describe('ExpenseEditModal', () => {
       expect(byNightRadio).toBeChecked();
     });
 
-    it('renders Equal split mode option', () => {
-      render(ExpenseEditModal, { props: defaultProps });
-
-      expect(screen.getByRole('radio', { name: /equal/i })).toBeInTheDocument();
-    });
-
     it('description field has placeholder', () => {
       render(ExpenseEditModal, { props: defaultProps });
 
@@ -539,41 +533,6 @@ describe('ExpenseEditModal', () => {
     });
   });
 
-  // --- Split Mode Selection ---
-
-  describe('Split Mode Selection', () => {
-    it('allows selecting Equal split mode', async () => {
-      vi.mocked(addExpense).mockResolvedValue({
-        id: 'e1',
-        description: 'Test',
-        amount: 25.50,
-        payerId: 'p2',
-        splitMode: 'EQUAL',
-        createdAt: '2026-02-05T12:00:00Z',
-        shares: [],
-      });
-
-      render(ExpenseEditModal, { props: defaultProps });
-
-      // Select Equal mode
-      const equalRadio = screen.getByRole('radio', { name: /equal/i });
-      await fireEvent.click(equalRadio);
-
-      // Fill amount
-      const amountInput = screen.getByLabelText(/amount/i);
-      await fireEvent.input(amountInput, { target: { value: '30.00' } });
-
-      // Submit
-      const submitButton = screen.getByRole('button', { name: /add expense/i });
-      await fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(addExpense).toHaveBeenCalledWith('test-split-id', expect.objectContaining({
-          splitMode: 'EQUAL',
-        }));
-      });
-    });
-  });
 
   // --- Payer Selection ---
 
