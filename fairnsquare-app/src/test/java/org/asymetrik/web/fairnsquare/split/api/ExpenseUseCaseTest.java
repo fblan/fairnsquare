@@ -355,8 +355,8 @@ class ExpenseUseCaseTest {
                     "description": "Groceries",
                     "payerId": "%s"
                 }
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Delete the expense
         given().when().delete("/api/splits/" + splitId + "/expenses/" + expenseId).then().statusCode(204);
@@ -386,8 +386,8 @@ class ExpenseUseCaseTest {
                     "description": "Snacks",
                     "payerId": "%s"
                 }
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         given().contentType(ContentType.JSON).body("""
                 {
@@ -543,8 +543,8 @@ class ExpenseUseCaseTest {
         // Create expense with Alice as payer
         String expenseId = given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Dinner", "payerId": "%s"}
-                """.formatted(alice)).when().post("/api/splits/" + splitId + "/expenses/by-night").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(alice)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Change payer to Bob
         given().contentType(ContentType.JSON).body("""
@@ -631,8 +631,8 @@ class ExpenseUseCaseTest {
         // Create expense
         String expenseId = given().contentType(ContentType.JSON).body("""
                 {"amount": 50.00, "description": "Test", "payerId": "%s"}
-                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then().statusCode(201)
-                .extract().path("id");
+                """.formatted(payerId)).when().post("/api/splits/" + splitId + "/expenses/by-night").then()
+                .statusCode(201).extract().path("id");
 
         // Try to update with non-existent payer
         given().contentType(ContentType.JSON).body("""
