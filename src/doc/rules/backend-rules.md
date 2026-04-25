@@ -90,3 +90,9 @@
 ## Expense Update — SplitMode Constraints
 
 - `split.updateExpense(id, amount, description, payer, SplitMode)` delegates to `Expense.fromJson()`, which cannot construct a `FREE` expense (FREE requires explicit per-participant shares that are not part of the update request signature). Tests exercising `updateExpense` must use `BY_NIGHT` or `BY_SHARE`. The `updateExpense` method must document this constraint with a `@throws UnsupportedOperationException` if `SplitMode.FREE` is passed.
+
+## Cryptographic Randomness
+
+- Any randomness consumed by a cryptographic operation — AES/GCM IVs, salts, nonces, key material, signed tokens, CAPTCHA challenges, anti-CSRF values — must come from `java.security.SecureRandom`. `java.util.Random`, `Math.random()`, and `ThreadLocalRandom` are forbidden in security-sensitive paths because they expose predictable internal state (LCG, 48-bit seed) that an attacker can recover from a handful of outputs.
+- A single `SecureRandom` instance per service is sufficient — it is thread-safe and avoids per-call seeding cost.
+- Non-cryptographic randomness (test fixtures, dev seeders, UI animations, jitter for backoff) may continue to use `java.util.Random` or `ThreadLocalRandom`. The boundary is "would predictability give an attacker leverage?", not "is this code in `infrastructure/`?".

@@ -2,6 +2,7 @@ package org.asymetrik.web.fairnsquare.infrastructure.captcha.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.time.Duration;
 import java.time.Instant;
@@ -11,7 +12,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,7 +47,7 @@ public class CaptchaService {
     private static final Base64.Encoder B64_ENC = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder B64_DEC = Base64.getUrlDecoder();
 
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     @ConfigProperty(name = "captcha.secret", defaultValue = "change-me-in-production")
     String secret;
