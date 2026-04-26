@@ -33,11 +33,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class CaptchaService {
 
-    // Answer area layout constants
+    // Answer area layout constants — boxes are placed in a 2x2 grid below TOP_ZONE_HEIGHT, with each box randomly
+    // jittered inside its grid cell so the click coordinates differ between challenges (defeats blind-click bypass).
     private static final int ANSWER_AREA_COUNT = 4;
-    private static final int BOX_MARGIN = 20;
-    private static final int BOX_HEIGHT = 50;
-    private static final int BOX_Y = CaptchaChallenge.IMAGE_HEIGHT - BOX_HEIGHT - BOX_MARGIN;
+    private static final int GRID_ROWS = 2;
+    private static final int GRID_COLS = 2;
+    private static final int BOX_WIDTH = 90;
+    private static final int BOX_HEIGHT = 60;
+    private static final int CELL_PADDING = 8;
 
     // AES-GCM constants
     private static final String AES_CIPHER = "AES/GCM/NoPadding";
@@ -71,15 +74,25 @@ public class CaptchaService {
 
         List<Integer> allAnswers = buildShuffledAnswers(correctAnswer);
 
-        int boxWidth = (CaptchaChallenge.IMAGE_WIDTH - (ANSWER_AREA_COUNT + 1) * BOX_MARGIN) / ANSWER_AREA_COUNT;
+        int cellWidth = CaptchaChallenge.IMAGE_WIDTH / GRID_COLS;
+        int cellHeight = (CaptchaChallenge.IMAGE_HEIGHT - CaptchaChallenge.TOP_ZONE_HEIGHT) / GRID_ROWS;
+        int jitterX = cellWidth - BOX_WIDTH - 2 * CELL_PADDING;
+        int jitterY = cellHeight - BOX_HEIGHT - 2 * CELL_PADDING;
+
         List<CaptchaChallenge.AnswerArea> areas = new ArrayList<>();
         String correctAreaId = null;
 
         for (int i = 0; i < ANSWER_AREA_COUNT; i++) {
-            int x = BOX_MARGIN + i * (boxWidth + BOX_MARGIN);
+            int row = i / GRID_COLS;
+            int col = i % GRID_COLS;
+            int cellOriginX = col * cellWidth + CELL_PADDING;
+            int cellOriginY = CaptchaChallenge.TOP_ZONE_HEIGHT + row * cellHeight + CELL_PADDING;
+            int x = cellOriginX + random.nextInt(jitterX + 1);
+            int y = cellOriginY + random.nextInt(jitterY + 1);
+
             int answer = allAnswers.get(i);
             String id = CaptchaChallenge.generateId().substring(0, 8);
-            areas.add(new CaptchaChallenge.AnswerArea(id, x, BOX_Y, boxWidth, BOX_HEIGHT, answer));
+            areas.add(new CaptchaChallenge.AnswerArea(id, x, y, BOX_WIDTH, BOX_HEIGHT, answer));
             if (answer == correctAnswer && correctAreaId == null) {
                 correctAreaId = id;
             }
