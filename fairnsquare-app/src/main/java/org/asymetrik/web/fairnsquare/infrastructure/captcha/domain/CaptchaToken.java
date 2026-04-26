@@ -1,6 +1,7 @@
 package org.asymetrik.web.fairnsquare.infrastructure.captcha.domain;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
 
@@ -52,9 +53,10 @@ public record CaptchaToken(String value) {
         if (parts.length != 2) {
             return false;
         }
-        // Verify signature
+        // Constant-time signature comparison — prevents timing oracle on HMAC bytes
         String expectedSig = hmac(parts[0], secret);
-        if (!expectedSig.equals(parts[1])) {
+        if (!MessageDigest.isEqual(expectedSig.getBytes(StandardCharsets.UTF_8),
+                parts[1].getBytes(StandardCharsets.UTF_8))) {
             return false;
         }
         // Verify expiry

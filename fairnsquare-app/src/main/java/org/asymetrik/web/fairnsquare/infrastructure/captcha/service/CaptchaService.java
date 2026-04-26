@@ -52,7 +52,7 @@ public class CaptchaService {
 
     private final SecureRandom random = new SecureRandom();
 
-    @ConfigProperty(name = "captcha.secret", defaultValue = "change-me-in-production")
+    @ConfigProperty(name = "captcha.secret")
     String secret;
 
     @ConfigProperty(name = "captcha.challenge-ttl-seconds", defaultValue = "300")
