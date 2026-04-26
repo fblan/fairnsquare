@@ -10,8 +10,8 @@ import org.asymetrik.web.fairnsquare.infrastructure.captcha.domain.CaptchaToken;
  */
 public final class CaptchaTokenTestHelper {
 
-    /** The default secret used in tests (matches application.properties default). */
-    private static final String TEST_SECRET = "change-me-in-production";
+    /** The secret used in tests (matches %test.captcha.secret in application.properties). */
+    private static final String TEST_SECRET = "change-me-in-test";
 
     private CaptchaTokenTestHelper() {
     }

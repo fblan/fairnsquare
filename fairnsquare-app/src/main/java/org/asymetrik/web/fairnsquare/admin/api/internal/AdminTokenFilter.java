@@ -27,7 +27,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @AdminProtected
 public class AdminTokenFilter implements ContainerRequestFilter {
 
-    static final String ADMIN_TOKEN_HEADER = "X-Admin-Token";
+    public static final String ADMIN_TOKEN_HEADER = "X-Admin-Token";
 
     private final String passwordHash;
 
@@ -44,7 +44,7 @@ public class AdminTokenFilter implements ContainerRequestFilter {
         }
 
         String token = requestContext.getHeaderString(ADMIN_TOKEN_HEADER);
-        if (token == null || !sha256Hex(token).equalsIgnoreCase(passwordHash)) {
+        if (token == null || !constantTimeHashEquals(sha256Bytes(token), passwordHash)) {
             requestContext.abortWith(buildResponse(401, "Invalid or missing admin token."));
         }
     }
@@ -54,13 +54,23 @@ public class AdminTokenFilter implements ContainerRequestFilter {
         return Response.status(status).type(MediaType.APPLICATION_JSON).entity(body).build();
     }
 
-    private static String sha256Hex(String input) {
+    private static byte[] sha256Bytes(String input) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
+            return MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    // Constant-time comparison: parse the stored hex hash to bytes and compare with MessageDigest.isEqual
+    // to prevent timing oracles on the password hash. Lowercasing the stored hash normalises any case variation
+    // in the configured value without accepting mixed-case via equalsIgnoreCase (which was also timing-leaky).
+    private static boolean constantTimeHashEquals(byte[] computed, String storedHex) {
+        try {
+            byte[] stored = HexFormat.of().parseHex(storedHex.toLowerCase());
+            return MessageDigest.isEqual(computed, stored);
+        } catch (Exception e) {
+            return false;
         }
     }
 }
