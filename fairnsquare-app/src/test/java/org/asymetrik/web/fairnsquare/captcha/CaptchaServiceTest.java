@@ -2,7 +2,10 @@ package org.asymetrik.web.fairnsquare.captcha;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.asymetrik.web.fairnsquare.infrastructure.captcha.domain.CaptchaChallenge;
 import org.asymetrik.web.fairnsquare.infrastructure.captcha.domain.CaptchaToken;
@@ -65,6 +68,52 @@ class CaptchaServiceTest {
                 .map(CaptchaChallenge.AnswerArea::answer).orElseThrow();
 
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void generateChallenge_boxesAreInsideImageBounds() {
+        for (int i = 0; i < 50; i++) {
+            CaptchaChallenge challenge = service.generateChallenge();
+            for (CaptchaChallenge.AnswerArea area : challenge.answerAreas()) {
+                assertThat(area.x()).isGreaterThanOrEqualTo(0);
+                assertThat(area.y()).isGreaterThanOrEqualTo(CaptchaChallenge.TOP_ZONE_HEIGHT);
+                assertThat(area.x() + area.width()).isLessThanOrEqualTo(CaptchaChallenge.IMAGE_WIDTH);
+                assertThat(area.y() + area.height()).isLessThanOrEqualTo(CaptchaChallenge.IMAGE_HEIGHT);
+            }
+        }
+    }
+
+    @Test
+    void generateChallenge_boxesDoNotOverlap() {
+        for (int run = 0; run < 50; run++) {
+            CaptchaChallenge challenge = service.generateChallenge();
+            List<CaptchaChallenge.AnswerArea> areas = challenge.answerAreas();
+            for (int i = 0; i < areas.size(); i++) {
+                for (int j = i + 1; j < areas.size(); j++) {
+                    assertThat(rectanglesOverlap(areas.get(i), areas.get(j)))
+                            .as("Boxes %d and %d must not overlap (run %d)", i, j, run).isFalse();
+                }
+            }
+        }
+    }
+
+    @Test
+    void generateChallenge_boxPositionsVaryAcrossChallenges() {
+        // Defeats the blind-click attack: positions must NOT be the same across challenges.
+        // With 95x25 jitter range per cell, the probability that 30 challenges all place box 0 at the same (x,y)
+        // is astronomically small (~(1/2375)^29).
+        Set<String> firstBoxPositions = new HashSet<>();
+        for (int i = 0; i < 30; i++) {
+            CaptchaChallenge challenge = service.generateChallenge();
+            CaptchaChallenge.AnswerArea first = challenge.answerAreas().get(0);
+            firstBoxPositions.add(first.x() + "," + first.y());
+        }
+        assertThat(firstBoxPositions).as("Box 0 position must vary across challenges").hasSizeGreaterThan(1);
+    }
+
+    private static boolean rectanglesOverlap(CaptchaChallenge.AnswerArea a, CaptchaChallenge.AnswerArea b) {
+        return a.x() < b.x() + b.width() && a.x() + a.width() > b.x() && a.y() < b.y() + b.height()
+                && a.y() + a.height() > b.y();
     }
 
     // --- Challenge encryption (stateless token) ---
