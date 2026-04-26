@@ -91,6 +91,12 @@
 
 - `split.updateExpense(id, amount, description, payer, SplitMode)` delegates to `Expense.fromJson()`, which cannot construct a `FREE` expense (FREE requires explicit per-participant shares that are not part of the update request signature). Tests exercising `updateExpense` must use `BY_NIGHT` or `BY_SHARE`. The `updateExpense` method must document this constraint with a `@throws UnsupportedOperationException` if `SplitMode.FREE` is passed.
 
+## Timing-Safe Comparisons
+
+- All equality checks on secret material — HMAC signatures, password hashes, API tokens, signed values — must use `MessageDigest.isEqual(byte[], byte[])`. `String.equals`, `String.equalsIgnoreCase`, and `Arrays.equals` must not be used for this purpose: they short-circuit on the first differing byte and leak timing information proportional to the length of the common prefix.
+- To compare two strings (e.g. hex or base64 representations), convert both to bytes with the same encoding first: `MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8))`.
+- The rule applies anywhere the compared value was supplied (directly or indirectly) by an external caller.
+
 ## Cryptographic Randomness
 
 - Any randomness consumed by a cryptographic operation — AES/GCM IVs, salts, nonces, key material, signed tokens, CAPTCHA challenges, anti-CSRF values — must come from `java.security.SecureRandom`. `java.util.Random`, `Math.random()`, and `ThreadLocalRandom` are forbidden in security-sensitive paths because they expose predictable internal state (LCG, 48-bit seed) that an attacker can recover from a handful of outputs.
