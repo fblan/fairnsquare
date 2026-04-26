@@ -17,7 +17,12 @@ public record CaptchaChallenge(int operandA, int operandB, List<AnswerArea> answ
     public static final int IMAGE_WIDTH = 400;
 
     /** Height of the generated CAPTCHA image in pixels. */
-    public static final int IMAGE_HEIGHT = 160;
+    public static final int IMAGE_HEIGHT = 280;
+
+    /**
+     * Vertical extent reserved for the question text at the top of the image. Answer boxes are placed below this zone.
+     */
+    public static final int TOP_ZONE_HEIGHT = 80;
 
     /**
      * A clickable answer area on the CAPTCHA image.

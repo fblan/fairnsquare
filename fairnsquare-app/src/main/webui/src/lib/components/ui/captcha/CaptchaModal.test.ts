@@ -100,9 +100,9 @@ describe('CaptchaModal', () => {
     const img = await screen.findByAltText(/click the correct answer/i);
 
     Object.defineProperty(img, 'naturalWidth', { value: 400 });
-    Object.defineProperty(img, 'naturalHeight', { value: 160 });
+    Object.defineProperty(img, 'naturalHeight', { value: 280 });
     Object.defineProperty(img, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 400, height: 160 }),
+      value: () => ({ left: 0, top: 0, width: 400, height: 280 }),
     });
 
     await fireEvent.click(img, { clientX: 100, clientY: 120 });
@@ -120,9 +120,9 @@ describe('CaptchaModal', () => {
 
     const img = await screen.findByAltText(/click the correct answer/i);
     Object.defineProperty(img, 'naturalWidth', { value: 400 });
-    Object.defineProperty(img, 'naturalHeight', { value: 160 });
+    Object.defineProperty(img, 'naturalHeight', { value: 280 });
     Object.defineProperty(img, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 400, height: 160 }),
+      value: () => ({ left: 0, top: 0, width: 400, height: 280 }),
     });
 
     await fireEvent.click(img, { clientX: 100, clientY: 120 });
@@ -148,9 +148,9 @@ describe('CaptchaModal', () => {
 
     const img = await screen.findByAltText(/click the correct answer/i);
     Object.defineProperty(img, 'naturalWidth', { value: 400 });
-    Object.defineProperty(img, 'naturalHeight', { value: 160 });
+    Object.defineProperty(img, 'naturalHeight', { value: 280 });
     Object.defineProperty(img, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 400, height: 160 }),
+      value: () => ({ left: 0, top: 0, width: 400, height: 280 }),
     });
 
     await fireEvent.click(img, { clientX: 5, clientY: 5 });
@@ -167,9 +167,9 @@ describe('CaptchaModal', () => {
 
     const img = await screen.findByAltText(/click the correct answer/i);
     Object.defineProperty(img, 'naturalWidth', { value: 400 });
-    Object.defineProperty(img, 'naturalHeight', { value: 160 });
+    Object.defineProperty(img, 'naturalHeight', { value: 280 });
     Object.defineProperty(img, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 400, height: 160 }),
+      value: () => ({ left: 0, top: 0, width: 400, height: 280 }),
     });
 
     await fireEvent.click(img, { clientX: 5, clientY: 5 });

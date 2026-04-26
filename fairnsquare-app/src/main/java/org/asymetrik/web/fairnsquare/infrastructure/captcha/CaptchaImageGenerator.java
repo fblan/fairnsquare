@@ -87,7 +87,7 @@ public class CaptchaImageGenerator {
         FontMetrics fm = g.getFontMetrics();
         int textWidth = fm.stringWidth(question);
         int x = (CaptchaChallenge.IMAGE_WIDTH - textWidth) / 2;
-        int y = (CaptchaChallenge.IMAGE_HEIGHT - challenge.answerAreas().get(0).height() - 40) / 2 + fm.getAscent();
+        int y = (CaptchaChallenge.TOP_ZONE_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
         g.drawString(question, x, y);
     }
 
