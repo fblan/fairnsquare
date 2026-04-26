@@ -18,7 +18,7 @@
 
 - Removed the `:http://localhost:5173,http://localhost:8080` fallback from the base `quarkus.http.cors.origins` property. The env var `FAIRNSQUARE_CORS_ORIGINS` is now required in production; Quarkus will refuse to start if it is absent.
 - Added `%dev.quarkus.http.cors.origins=http://localhost:5173,http://localhost:8080` so dev mode continues to work without any env var.
-- Added `quarkus.http.cors.methods=GET,POST,DELETE,PATCH,OPTIONS` to restrict the CORS pre-flight allowlist to the methods the API actually uses, rather than the Quarkus default of all methods.
+- Added `quarkus.http.cors.methods=GET,POST,PUT,DELETE,OPTIONS` to restrict the CORS pre-flight allowlist to the methods the API actually uses (`PUT` is used by `updateParticipant` and `updateExpense`), rather than the Quarkus default of all methods.
 
 ### #135 — Test admin hash
 
