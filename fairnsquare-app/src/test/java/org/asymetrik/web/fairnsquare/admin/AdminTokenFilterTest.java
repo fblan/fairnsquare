@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class AdminTokenFilterTest {
 
-    private static final String PASSWORD = "password";
+    private static final String PASSWORD = "test-admin-secret-fairnsquare";
     private static final String PASSWORD_HASH = sha256Hex(PASSWORD);
 
     private AdminTokenFilter filter;
