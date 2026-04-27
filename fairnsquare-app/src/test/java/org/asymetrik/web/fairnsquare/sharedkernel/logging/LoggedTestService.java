@@ -34,4 +34,8 @@ public class LoggedTestService {
     public void failing(@LogTag("id") String id) {
         throw new IllegalStateException("test failure for " + id);
     }
+
+    public void withSensitiveTag(@LogTag(value = "id", sensitive = true) String id) {
+        // method to verify sensitive values are hashed in logs
+    }
 }

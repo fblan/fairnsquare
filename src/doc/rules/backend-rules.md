@@ -97,6 +97,15 @@
 - To compare two strings (e.g. hex or base64 representations), convert both to bytes with the same encoding first: `MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8))`.
 - The rule applies anywhere the compared value was supplied (directly or indirectly) by an external caller.
 
+## Capability Credentials in Logs
+
+- Parameters that function as capability credentials (e.g. NanoID-based identifiers where knowing the value alone grants access to a resource) must never be logged in raw form. Annotate them with `@LogTag(value = "...", sensitive = true)` so the interceptor logs a truncated SHA-256 hash instead. The hash is stable enough for log correlation but not reversible.
+- The rule applies to any identifier whose knowledge alone grants access — not just split IDs, but participant IDs, expense IDs, or any future token-like identifier used as an access key.
+
+## JAX-RS Response Filters — Scoping
+
+- Response filters that apply security headers to a subset of endpoints must use a `@NameBinding` annotation rather than path-string matching inside `ContainerResponseFilter.filter()`. Apply the binding annotation to the resource class (not individual methods) to cover all current and future methods automatically.
+
 ## Cryptographic Randomness
 
 - Any randomness consumed by a cryptographic operation — AES/GCM IVs, salts, nonces, key material, signed tokens, CAPTCHA challenges, anti-CSRF values — must come from `java.security.SecureRandom`. `java.util.Random`, `Math.random()`, and `ThreadLocalRandom` are forbidden in security-sensitive paths because they expose predictable internal state (LCG, 48-bit seed) that an attacker can recover from a handful of outputs.
