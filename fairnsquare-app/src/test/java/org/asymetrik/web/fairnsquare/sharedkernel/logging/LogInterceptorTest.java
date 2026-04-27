@@ -3,7 +3,10 @@ package org.asymetrik.web.fairnsquare.sharedkernel.logging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -118,6 +121,19 @@ class LogInterceptorTest {
         service.greet("Delta");
 
         assertThat(logHandler.getMessages()).anyMatch(msg -> msg.matches(".*duration=\\d+ms.*"));
+    }
+
+    @Test
+    void shouldHashSensitiveTagValues() throws Exception {
+        String rawId = "super-secret-split-id";
+        service.withSensitiveTag(rawId);
+
+        String expectedHash = HexFormat.of()
+                .formatHex(MessageDigest.getInstance("SHA-256").digest(rawId.getBytes(StandardCharsets.UTF_8)))
+                .substring(0, 16);
+
+        assertThat(logHandler.getMessages())
+                .anyMatch(msg -> msg.contains("id=" + expectedHash) && !msg.contains(rawId));
     }
 
     /**

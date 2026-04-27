@@ -44,6 +44,7 @@ import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
 /**
  * REST resource for managing splits.
  */
+@SplitApi
 @Path("/api/splits")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

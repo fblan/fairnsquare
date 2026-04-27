@@ -3,6 +3,10 @@ package org.asymetrik.web.fairnsquare.sharedkernel.logging.internal;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -61,7 +65,8 @@ public class LogInterceptor {
         for (int i = 0; i < parameters.length; i++) {
             LogTag logTag = findLogTag(parameters[i]);
             if (logTag != null) {
-                tags.put(logTag.value(), args[i]);
+                Object value = logTag.sensitive() ? hashValue(args[i]) : args[i];
+                tags.put(logTag.value(), value);
             }
         }
 
@@ -87,5 +92,18 @@ public class LogInterceptor {
             }
         }
         return null;
+    }
+
+    private static String hashValue(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.toString().getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 }
