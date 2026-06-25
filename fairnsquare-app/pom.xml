@@ -114,6 +114,13 @@
                 <configuration>
                     <parameters>true</parameters>
                     <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.asymetrik.modular</groupId>
+                            <artifactId>processor</artifactId>
+                            <version>${asymetrik-modular.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>

@@ -22,7 +22,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.31.1</quarkus.platform.version>
+        <quarkus.platform.version>3.37.0</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <!-- Java -->
@@ -40,7 +40,7 @@
         <jnanoid.version>2.0.0</jnanoid.version>
 
         <!-- Modular architecture validation -->
-        <asymetrik-modular.version>0.0.2</asymetrik-modular.version>
+        <asymetrik-modular.version>0.0.4</asymetrik-modular.version>
 
         <!-- Quarkiverse Extensions -->
         <quarkus-quinoa.version>2.7.2</quarkus-quinoa.version>
@@ -76,10 +76,15 @@
                 <version>${jnanoid.version}</version>
             </dependency>
 
-            <!-- Modular architecture validation (optional, for architecture tests) -->
+            <!-- Modular architecture validation -->
             <dependency>
                 <groupId>org.asymetrik.modular</groupId>
                 <artifactId>api</artifactId>
+                <version>${asymetrik-modular.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.asymetrik.modular</groupId>
+                <artifactId>processor</artifactId>
                 <version>${asymetrik-modular.version}</version>
             </dependency>
             <dependency>
