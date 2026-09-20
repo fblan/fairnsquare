@@ -14,6 +14,18 @@
 # Stage 0: Get Node.js 24 and npm binaries from UBI9 Node image
 FROM registry.access.redhat.com/ubi9/nodejs-24:latest AS node-binaries
 
+# Stage 0b: Resolve the git commit shown in the app footer.
+# Priority: --build-arg GIT_COMMIT=<sha>, then the .git directory of the build context (e.g. a Dokploy clone),
+# then "unknown".
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS gitinfo
+ARG GIT_COMMIT=unknown
+RUN microdnf install -y git && microdnf clean all
+# ".gi[t]" copies the content of .git when it exists and matches nothing (no error) when it does not.
+# The copied content is a valid git dir, so it can be queried with --git-dir.
+COPY pom.xml .gi[t] /gitmeta/
+RUN if [ "$GIT_COMMIT" != "unknown" ]; then echo "$GIT_COMMIT" > /git-commit; \
+    else git --git-dir=/gitmeta rev-parse HEAD > /git-commit 2>/dev/null || echo unknown > /git-commit; fi
+
 # Stage 1: Build the Quarkus application
 FROM registry.access.redhat.com/ubi9/openjdk-25:1.24-2.1771324969 AS builder
 USER root
@@ -75,8 +87,8 @@ COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/
 
 EXPOSE 8080
 
-ARG GIT_COMMIT=unknown
-ENV APP_GIT_COMMIT=$GIT_COMMIT
+# Git commit resolved at build time; the APP_GIT_COMMIT environment variable, when set at runtime, takes precedence
+COPY --from=gitinfo --chown=1001:root /git-commit /deployments/git-commit
 
 USER 1001
 
@@ -87,4 +99,4 @@ ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager -Djav
 ENV FAIRNSQUARE_DATA_PATH="/data"
 ENV FAIRNSQUARE_CORS_ORIGINS="https://fairnsquare.web.asymetrik.org"
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /deployments/quarkus-run.jar"]
+ENTRYPOINT ["sh", "-c", "export APP_GIT_COMMIT=\"${APP_GIT_COMMIT:-$(cat /deployments/git-commit)}\"; java $JAVA_OPTS -jar /deployments/quarkus-run.jar"]

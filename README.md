@@ -54,7 +54,7 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 | `FAIRNSQUARE_MAX_FILE_AGE_DAYS` | no | `90` | Number of days before a split file is cleaned up |
 | `CAPTCHA_CHALLENGE_TTL_SECONDS` | no | `300` | How long a CAPTCHA challenge remains valid |
 | `CAPTCHA_TOKEN_TTL_SECONDS` | no | `3600` | How long a solved CAPTCHA token remains valid |
-| `APP_GIT_COMMIT` | no | — | Git commit hash, injected automatically by CI |
+| `APP_GIT_COMMIT` | no | commit of the build | Git commit hash shown in the footer. The Docker image sets it at build time from `--build-arg GIT_COMMIT` (passed by CI), otherwise from the `.git` directory of the build context (e.g. a Dokploy build), otherwise `unknown`. A value set at runtime overrides all of these |
 | `VITE_ALLOWED_HOSTS` | no | — | Additional hosts allowed by the Vite dev server (e.g. an ngrok tunnel) |
 
 ### Generating `ADMIN_PASSWORD_HASH` and `CAPTCHA_SECRET`
