@@ -57,11 +57,14 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 | `APP_GIT_COMMIT` | no | — | Git commit hash, injected automatically by CI |
 | `VITE_ALLOWED_HOSTS` | no | — | Additional hosts allowed by the Vite dev server (e.g. an ngrok tunnel) |
 
-### Generating `ADMIN_PASSWORD_HASH`
+### Generating `ADMIN_PASSWORD_HASH` and `CAPTCHA_SECRET`
 
 ```bash
-echo -n "your-password" | sha256sum | awk '{print $1}'
+./scripts/hash-password.sh            # prompts for the password (hidden), prints ADMIN_PASSWORD_HASH
+./scripts/hash-password.sh --secret   # prints a random CAPTCHA_SECRET
 ```
+
+The password can also be passed as an argument (`./scripts/hash-password.sh <password>`), but it then ends up in your shell history.
 
 ---
 
