@@ -60,7 +60,10 @@ USER root
 RUN microdnf install -y fontconfig dejavu-sans-fonts && microdnf clean all \
     && chown 1001 /deployments \
     && chmod "g+rwX" /deployments \
-    && chown 1001:root /deployments
+    && chown 1001:root /deployments \
+    && mkdir -p /data \
+    && chown 1001:root /data \
+    && chmod "g+rwX" /data
 
 # Copy built artifacts from builder stage
 # Four distinct layers for efficient image caching:
