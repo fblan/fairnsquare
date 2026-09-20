@@ -36,6 +36,11 @@
 - In flex rows that mix variable-width content (names, text) with fixed-width content (action buttons, badges), the variable-width element must have `flex-1 min-w-0` and `truncate` to prevent overflow on narrow screens. Fixed-width elements must have `flex-none` or `shrink-0`.
 - When a row risks crowding (e.g. name + multiple badges + multiple buttons), split it into separate rows rather than stacking everything horizontally.
 
+## Vite-Specific APIs Must Not Be Used with Web Bundler
+
+- Do not use `import.meta.env.*` (e.g. `import.meta.env.DEV`, `import.meta.env.MODE`) in any frontend source file. These are Vite-only APIs — esbuild (used by `quarkus-web-bundler`) does not define `import.meta.env`, so at runtime `import.meta.env` is `undefined` and any property access throws a `TypeError`. This crash is silent at the effect level in Svelte 5, producing a blank page with no visible error message.
+- Use the `LAUNCH_MODE` global instead: `LAUNCH_MODE === 'DEVELOPMENT'` replaces `import.meta.env.DEV`. The Web Bundler injects `LAUNCH_MODE` as an esbuild define based on the Quarkus launch mode (`'DEVELOPMENT'`, `'TEST'`, `'PRODUCTION'`). Declare it in `app/env.d.ts` to keep TypeScript happy.
+
 ## Vite Dev Server Configuration
 
 - Developer-specific hostnames (tunnel URLs, etc.) must not be hardcoded in `vite.config.ts`. Use the `VITE_ALLOWED_HOSTS` env var read from `process.env`, falling back to `undefined` for Vite's default behavior. Local values go in `src/main/webui/.env.local` (gitignored via `*.local`).
