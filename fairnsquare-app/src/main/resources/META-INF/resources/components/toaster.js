@@ -84,15 +84,15 @@ class Toaster extends HTMLElement {
     dismiss.type = 'button';
     dismiss.textContent = '✕';
     dismiss.setAttribute('aria-label', 'Dismiss');
-    dismiss.addEventListener('click', () => this.remove(toast));
+    dismiss.addEventListener('click', () => this.removeToast(toast));
 
     toast.append(iconEl, text, dismiss);
     this.stack.append(toast);
     this.bringToFront();
-    setTimeout(() => this.remove(toast), duration);
+    setTimeout(() => this.removeToast(toast), duration);
   }
 
-  remove(toast) {
+  removeToast(toast) {
     toast.remove();
     if (!this.stack.children.length && this.stack.matches(':popover-open')) {
       this.stack.hidePopover();
