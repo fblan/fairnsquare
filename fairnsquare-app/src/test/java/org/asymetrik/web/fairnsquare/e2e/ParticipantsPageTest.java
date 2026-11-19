@@ -129,4 +129,24 @@ class ParticipantsPageTest extends E2eTestBase {
         assertThat(toast("Cannot remove Alice")).isVisible();
         assertThat(button("Edit Alice")).isVisible();
     }
+
+    @Test
+    void addsAnExpenseForAParticipantFromTheirCard() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        String bob = addParticipant(splitId, "Bob", 2);
+        page.navigate("/splits/" + splitId + "/participants");
+
+        button("Add expense for Bob").click();
+        var modal = dialog("Add Expense");
+        assertThat(field(modal, "Payer")).hasValue(bob);
+        field(modal, "Description").fill("Ferry");
+        field(modal, "Amount (€)").fill("40");
+        button(modal, "Add Expense").click();
+
+        assertThat(toast("Expense added")).isVisible();
+        assertThat(modal).not().isVisible();
+        page.navigate("/splits/" + splitId + "/expenses");
+        assertThat(text("Paid by Bob")).isVisible();
+    }
 }

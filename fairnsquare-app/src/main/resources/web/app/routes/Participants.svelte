@@ -8,7 +8,6 @@
   import Input from '$lib/components/ui/input/input.svelte';
   import Label from '$lib/components/ui/label/label.svelte';
   import ConfirmDialog from '$lib/components/ui/confirm-dialog/confirm-dialog.svelte';
-  import ExpenseEditModal from '$lib/components/expense/ExpenseEditModal.svelte';
   import EditParticipantModal from '$lib/components/participant/EditParticipantModal.svelte';
   import ParticipantExpensesModal from '$lib/components/participant/ParticipantExpensesModal.svelte';
   import ParticipantSummaryCard from '$lib/components/participant/ParticipantSummaryCard.svelte';
@@ -69,8 +68,8 @@
   let isDeleteSubmitting = $state(false);
 
   // Add Expense Modal state
-  let showAddExpenseModal = $state(false);
-  let selectedPayerId = $state<string | null>(null);
+  // The expense window is a web component (/components/expense-dialog.js, #170)
+  let expenseDialog = $state<(HTMLElement & { openAdd: (options: object) => void }) | null>(null);
 
   // Participant Expenses Modal state
   let showExpensesModal = $state(false);
@@ -377,13 +376,7 @@
   // Add Expense Modal handlers
   function handleAddExpenseClick(event: MouseEvent, participant: Participant) {
     event.stopPropagation();
-    selectedPayerId = participant.id;
-    showAddExpenseModal = true;
-  }
-
-  function handleAddExpenseModalClose() {
-    showAddExpenseModal = false;
-    selectedPayerId = null;
+    if (split) expenseDialog?.openAdd({ splitId: split.id, participants: split.participants, payerId: participant.id });
   }
 
   async function handleAddExpenseSuccess() {
@@ -695,16 +688,7 @@
 />
 
 <!-- Add Expense Modal -->
-{#if split}
-  <ExpenseEditModal
-    open={showAddExpenseModal}
-    splitId={split.id}
-    preselectedPayerId={selectedPayerId}
-    participants={split.participants}
-    onClose={handleAddExpenseModalClose}
-    onSuccess={handleAddExpenseSuccess}
-  />
-{/if}
+<fns-expense-dialog bind:this={expenseDialog} onexpensechange={handleAddExpenseSuccess}></fns-expense-dialog>
 
 <!-- Field Info Modal (add participant form) -->
 {#if activeFieldInfo}
