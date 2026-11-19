@@ -323,16 +323,18 @@ class ExpenseDialog extends HTMLElement {
   }
 
   /**
-   * Shows the errors of the fields already left. An empty field is only an error once the person submits
-   * (frontend rule: "required" is reserved for submission) — showing it on leaving the field also moved the
-   * buttons under the finger.
+   * Shows the errors of the fields already left. A field that started empty (a new expense) is only "required"
+   * once the person submits (frontend rule) — showing it on leaving the field also moved the buttons under the
+   * finger. A field the person emptied says so right away: editing, Save stays disabled, so submit never comes.
    */
   validate() {
     const errors = this.errors();
-    const shown = (touched, empty, error) => (touched && (this.submitted || !empty) ? error : null);
-    showError(this.description, this.descriptionError,
-      shown(this.descriptionTouched, !this.description.value.trim(), errors.description));
-    showError(this.amount, this.amountError, shown(this.amountTouched, this.amount.value === '', errors.amount));
+    const shown = (touched, empty, startedEmpty, error) =>
+      (touched && (this.submitted || !empty || !startedEmpty) ? error : null);
+    showError(this.description, this.descriptionError, shown(this.descriptionTouched,
+      !this.description.value.trim(), !this.expense, errors.description));
+    showError(this.amount, this.amountError, shown(this.amountTouched,
+      this.amount.value === '', !this.expense, errors.amount));
   }
 
   /** Brings the window in line with the form: Manual shares block, submit button. */
