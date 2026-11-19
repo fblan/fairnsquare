@@ -12,7 +12,8 @@ A frictionless expense-sharing web app for groups with variable participation.
 
 - Java 25 (OpenJDK)
 - Maven 3.x
-- Node.js 24
+
+No Node.js: the frontend is plain JavaScript web components, served as they are (no build step).
 
 ### Development mode
 
@@ -20,7 +21,7 @@ A frictionless expense-sharing web app for groups with variable participation.
 mvn quarkus:dev
 ```
 
-Starts the backend on port `8080` and a Vite dev server on port `5173` with hot reload.
+Starts the app on port `8080`. The frontend lives in `fairnsquare-app/src/main/resources/META-INF/resources/` (`index.html`, `main.js`, `infra/`, `components/`, `biz/<page>/`); after editing a file, reload the browser.
 
 ### Full build
 
@@ -28,7 +29,7 @@ Starts the backend on port `8080` and a Vite dev server on port `5173` with hot 
 mvn clean install
 ```
 
-Compiles the backend and the Svelte frontend together via Quarkus Quinoa.
+Compiles the app and runs all the tests, including the Playwright end-to-end tests of the frontend (`make test-backend` / `make test-frontend` run one side only).
 
 ### Docker
 
@@ -47,7 +48,7 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 |---|---|---|---|
 | `CAPTCHA_SECRET` | **yes** | — | HMAC-SHA256 secret used to sign CAPTCHA tokens |
 | `ADMIN_PASSWORD_HASH` | **yes** | — | SHA-256 hash of the admin password |
-| `FAIRNSQUARE_CORS_ORIGINS` | no | `http://localhost:5173,http://localhost:8080` | Comma-separated list of allowed CORS origins |
+| `FAIRNSQUARE_CORS_ORIGINS` | **yes** | dev: `http://localhost:8080` | Comma-separated list of allowed CORS origins |
 | `FAIRNSQUARE_DATA_PATH` | no | `data/` | Directory where split JSON files are stored |
 | `FAIRNSQUARE_MAX_FILE_COUNT` | no | `5000` | Maximum number of split files retained |
 | `FAIRNSQUARE_MAX_FILE_SIZE_BYTES` | no | `524288` | Maximum size of a single split file (bytes) |
@@ -55,7 +56,6 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 | `CAPTCHA_CHALLENGE_TTL_SECONDS` | no | `300` | How long a CAPTCHA challenge remains valid |
 | `CAPTCHA_TOKEN_TTL_SECONDS` | no | `3600` | How long a solved CAPTCHA token remains valid |
 | `APP_GIT_COMMIT` | no | commit of the build | Git commit hash shown in the footer. The Docker image sets it at build time from `--build-arg GIT_COMMIT` (passed by CI), otherwise from the `.git` directory of the build context (e.g. a Dokploy build), otherwise `unknown`. A value set at runtime overrides all of these |
-| `VITE_ALLOWED_HOSTS` | no | — | Additional hosts allowed by the Vite dev server (e.g. an ngrok tunnel) |
 
 ### Generating `ADMIN_PASSWORD_HASH` and `CAPTCHA_SECRET`
 

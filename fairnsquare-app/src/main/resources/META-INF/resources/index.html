@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FairNSquare</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/infra/theme.css" />
+    <style>
+      html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-weight: 400;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: var(--foreground);
+        background: var(--background);
+      }
+      :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+      .app { box-sizing: border-box; width: 100%; max-width: 520px; min-height: 100vh; margin: 0 auto; padding: 2.5rem 2rem; }
+      footer { margin-top: 2rem; padding: 1rem 0; font-size: 0.75rem; line-height: 1rem; text-align: center; color: var(--muted-foreground); }
+      .load-error { margin: 0; color: var(--destructive); }
+    </style>
+    <script type="module" src="/main.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <main class="page"></main>
+      <footer hidden></footer>
+    </div>
+    <fns-toaster></fns-toaster>
+  </body>
+</html>

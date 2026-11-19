@@ -26,19 +26,10 @@
 # IDE - VS Code
 **/.vscode
 
-# Node / Frontend (Svelte)
-**/node_modules
-**/dist
-**/build
-**/.svelte-kit
+# Environment
 **/.env
 **/.env.*
 !**/.env.example
-
-# Quinoa build output
-**/src/main/webui/dist
-**/src/main/webui/build
-**/src/main/webui/.svelte-kit
 
 # OS files
 **/.DS_Store

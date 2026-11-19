@@ -2,7 +2,7 @@
  * FairNSquare theme: the colour tokens, as CSS variables.
  *
  * Loaded once by index.html. CSS variables inherit into every Shadow DOM, so web components use them
- * as var(--primary), var(--muted-foreground)... The Svelte/Tailwind side maps them in app.css (@theme).
+ * as var(--primary), var(--muted-foreground)...
  */
 /* FairNSquare Theme - Based on UX Specification */
 /* Primary: Teal #0D9488, Secondary: Slate #475569 */

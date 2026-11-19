@@ -38,7 +38,7 @@ template.innerHTML = `
 
 /**
  * The toast notifications, bottom right. Listens to the `fns-toast` events that showToast() (infra/toasts.js)
- * and the Svelte addToast() send. Put one in the page.
+ * sends. index.html has one.
  *
  * The stack is a popover, so it stays above an open dialog (both live in the browser's top layer).
  */

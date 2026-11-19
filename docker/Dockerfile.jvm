@@ -11,10 +11,7 @@
 #   docker run -p 8080:8080 -v fairnsquare-data:/data asymetrik/fairnsquare
 ###
 
-# Stage 0: Get Node.js 24 and npm binaries from UBI9 Node image
-FROM registry.access.redhat.com/ubi9/nodejs-24:latest AS node-binaries
-
-# Stage 0b: Resolve the git commit shown in the app footer.
+# Stage 0: Resolve the git commit shown in the app footer.
 # Priority: --build-arg GIT_COMMIT=<sha>, then the .git directory of the build context (e.g. a Dokploy clone),
 # then "unknown".
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS gitinfo
@@ -29,20 +26,7 @@ RUN if [ "$GIT_COMMIT" != "unknown" ]; then echo "$GIT_COMMIT" > /git-commit; \
 # Stage 1: Build the Quarkus application
 FROM registry.access.redhat.com/ubi9/openjdk-25:1.24-2.1771324969 AS builder
 USER root
-# Copy Node.js and npm from the node-binaries stage
-COPY --from=node-binaries  /usr/bin/node /usr/bin/node
-COPY --from=node-binaries /usr/lib/node_modules /usr/lib/node_modules
-# Copy Node.js shared libraries
-COPY --from=node-binaries  /usr/lib64/libnode.so.* /usr/lib64/
-# Set up npm/npx as symlinks to the actual scripts in node_modules
-
-RUN ln -s /usr/lib/node_modules/npm/bin/npm-cli.js /usr/bin/npm && \
-    ln -s /usr/lib/node_modules/npm/bin/npx-cli.js /usr/bin/npx
-
 WORKDIR /build
-
-# Set NODE_PATH so npm can find its modules
-ENV NODE_PATH=/usr/lib/node_modules
 
 # Copy pom.xml files first for better dependency caching
 COPY  pom.xml ./

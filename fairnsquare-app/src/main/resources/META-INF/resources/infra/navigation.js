@@ -1,8 +1,8 @@
 /**
  * Moves to another page of the app without reloading it.
  *
- * Pushes the new address to the browser history, then fires `popstate`: the router (sv-router while the
- * Svelte shell remains, the plain router afterwards) listens to it and shows the page for the address.
+ * Pushes the new address to the browser history, then fires `popstate`: the router (main.js) listens to it,
+ * as it does for the back button, and shows the page for the address.
  *
  * @param {string} path the address, e.g. `/splits/abc/participants`
  * @param {{replace?: boolean}} [options] replace the current history entry instead of adding one

@@ -1,21 +1,13 @@
-.PHONY: test test-backend test-frontend test-parallel
+.PHONY: test test-backend test-frontend
 
-# Full build — sequential, as CI does (backend + frontend)
+# Full build — as CI does: compile, all tests, coverage check
 test:
 	mvn clean install
 
-# Backend tests only — skips frontend vitest (faster for backend-focused iteration)
+# Backend tests only — skips the Playwright end-to-end tests (faster for backend-focused iteration)
 test-backend:
-	mvn test -Dquarkus.quinoa.run-tests=false
+	mvn test -Dtest='!**/e2e/**'
 
-# Frontend tests only
+# Frontend tests only — the Playwright end-to-end tests
 test-frontend:
-	cd fairnsquare-app/src/main/webui && npm run test:run
-
-# Run backend and frontend tests in parallel
-# Both must pass; exits with non-zero if either fails
-test-parallel:
-	@(cd fairnsquare-app/src/main/webui && npm run test:run) & npm_pid=$$! ; \
-	mvn test -Dquarkus.quinoa.run-tests=false ; mvn_status=$$? ; \
-	wait $$npm_pid ; npm_status=$$? ; \
-	exit $$((mvn_status | npm_status))
+	mvn test -Dtest='**/e2e/**'
