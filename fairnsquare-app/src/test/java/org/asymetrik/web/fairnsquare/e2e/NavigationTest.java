@@ -62,6 +62,7 @@ class NavigationTest extends E2eTestBase {
     void expensesNeedAParticipantFirst() {
         String splitId = createSplit("Road trip");
         page.navigate("/splits/" + splitId + "/participants");
+        assertThat(text("Add your first participant to get started")).isVisible(); // loaded: the block is on
 
         button(nav(), "Expenses").click();
 
@@ -129,6 +130,7 @@ class NavigationTest extends E2eTestBase {
     void theBlockedNavigationDialogClosesWithGotIt() {
         String splitId = createSplit("Road trip");
         page.navigate("/splits/" + splitId + "/participants");
+        assertThat(text("Add your first participant to get started")).isVisible(); // loaded: the block is on
         button(nav(), "Expenses").click();
         assertThat(dialog("A participant is required")).isVisible();
 
