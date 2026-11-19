@@ -33,7 +33,6 @@
       description: `The number of people in this family group.\n\nAdults count as 1 each. Children can count for 0.5 to reflect their lower consumption.\n\nExample: a family of 2 adults and 2 children staying 7 nights → 3 members (2 × 1 + 2 × 0.5).\n\nIf one parent leaves early (e.g. stays only 3 nights), add them as a separate single participant with 3 nights and a share of 1. The rest of the family can then be entered with fewer members.`,
     },
   };
-  import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
   import { getCachedSplitName, setCachedSplitName } from '$lib/stores/splitTitleCache';
   import { tick } from 'svelte';
 
@@ -406,11 +405,11 @@
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   <!-- Header always visible once splitId is known -->
   {#if splitId}
-    <SplitPageHeader
-      splitName={splitDisplayName}
-      {splitId}
-      navigateGuard={split && split.participants.length === 0 ? () => 'no-participants' : undefined}
-    />
+    <fns-split-header
+      split-id={splitId}
+      split-name={splitDisplayName}
+      require-participant={split && split.participants.length === 0 ? '' : null}
+    ></fns-split-header>
   {/if}
 
   {#if showLoading}

@@ -86,4 +86,69 @@ class NavigationTest extends E2eTestBase {
 
         assertThat(page).hasURL(root.toString());
     }
+
+    @Test
+    void theCurrentPageIsMarkedInTheTabs() {
+        String splitId = createSplit("Road trip");
+        addParticipant(splitId, "Alice", 2);
+
+        for (String[] page_ : new String[][] { { "", "Home" }, { "/participants", "Participants" },
+                { "/expenses", "Expenses" }, { "/settlement", "Settlement" } }) {
+            page.navigate("/splits/" + splitId + page_[0]);
+            assertThat(button(nav(), page_[1])).hasAttribute("aria-current", "page");
+            assertThat(nav().locator("[aria-current=page]")).hasCount(1);
+        }
+    }
+
+    @Test
+    void theTabsFollowNavigationWithoutReload() {
+        String splitId = createSplit("Road trip");
+        addParticipant(splitId, "Alice", 2);
+        page.navigate("/splits/" + splitId);
+
+        button("View all participants").click();
+
+        assertThat(button(nav(), "Participants")).hasAttribute("aria-current", "page");
+        assertThat(button(nav(), "Home")).not().hasAttribute("aria-current", "page");
+    }
+
+    @Test
+    void shareCopiesTheLink() {
+        context.grantPermissions(java.util.List.of("clipboard-read", "clipboard-write"));
+        String splitId = createSplit("Road trip");
+        page.navigate("/splits/" + splitId);
+
+        button("Share link").click();
+
+        assertThat(toast("Link copied!")).isVisible();
+        org.assertj.core.api.Assertions.assertThat(page.evaluate("() => navigator.clipboard.readText()"))
+                .isEqualTo(page.url());
+    }
+
+    @Test
+    void theBlockedNavigationDialogClosesWithGotIt() {
+        String splitId = createSplit("Road trip");
+        page.navigate("/splits/" + splitId + "/participants");
+        button(nav(), "Expenses").click();
+        assertThat(dialog("A participant is required")).isVisible();
+
+        button(dialog("A participant is required"), "Got it").click();
+
+        assertThat(dialog("A participant is required")).not().isVisible();
+        assertThat(page).hasURL(Pattern.compile("/participants$"));
+    }
+
+    @Test
+    void addingAParticipantLiftsTheBlock() {
+        String splitId = createSplit("Road trip");
+        page.navigate("/splits/" + splitId + "/participants");
+        button("Add Single Participant").click();
+        field("Name").fill("Alice");
+        button("Add").click();
+        assertThat(toast("Alice successfully added")).isVisible();
+
+        button(nav(), "Expenses").click();
+
+        assertThat(page).hasURL(Pattern.compile("/expenses$"));
+    }
 }
