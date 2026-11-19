@@ -3,6 +3,7 @@ package org.asymetrik.web.fairnsquare.e2e;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -26,7 +27,7 @@ class LayoutTest extends E2eTestBase {
             "/admin, 390, 844", "/admin, 1280, 800" })
     void thePageFitsTheScreenWidth(String target, int width, int height) {
         String splitId = createSplit("A split with a rather long name to check wrapping");
-        String alice = addParticipant(splitId, "Alexandra", 3);
+        String alice = addParticipant(splitId, "Alexandrina-Konstantinopoulou", 3);
         addParticipant(splitId, "Bob", 2);
         addExpense(splitId, "Groceries for the whole week at the big supermarket", "123.45", alice);
         page.setViewportSize(width, height);
@@ -39,6 +40,26 @@ class LayoutTest extends E2eTestBase {
         assertThat(page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setLevel(1))).isVisible();
         page.waitForLoadState();
 
+        assertNoHorizontalOverflow();
+    }
+
+    @Test
+    void theExpenseFiltersFitAPhoneWithALongNameSelected() {
+        String splitId = createSplit("Trip");
+        String longName = addParticipant(splitId, "Alexandrina-Konstantinopoulou", 3);
+        addParticipant(splitId, "Bob", 2);
+        addExpense(splitId, "Groceries", "60", longName);
+        page.setViewportSize(390, 844);
+        page.navigate("/splits/" + splitId + "/expenses");
+
+        field("Filter by payer").selectOption(longName);
+        field("Filter by beneficiary").selectOption(longName);
+
+        assertThat(button("Clear filters")).isVisible();
+        assertNoHorizontalOverflow();
+    }
+
+    private void assertNoHorizontalOverflow() {
         Object overflow = page
                 .evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth");
         assertThat(((Number) overflow).intValue()).as("horizontal overflow in px").isLessThanOrEqualTo(0);

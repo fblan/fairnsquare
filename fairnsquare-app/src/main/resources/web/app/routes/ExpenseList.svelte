@@ -315,7 +315,7 @@
             aria-label="Filter by payer"
             value={selectedPayer}
             onchange={(e) => handlePayerFilterChange(e.currentTarget.value)}
-            class="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            class="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="">All payers</option>
             {#each split.participants as participant}
@@ -326,7 +326,7 @@
             aria-label="Filter by beneficiary"
             value={selectedBeneficiary}
             onchange={(e) => handleBeneficiaryFilterChange(e.currentTarget.value)}
-            class="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            class="flex-1 min-w-0 h-9 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
           >
             <option value="">All beneficiaries</option>
             {#each split.participants as participant}
