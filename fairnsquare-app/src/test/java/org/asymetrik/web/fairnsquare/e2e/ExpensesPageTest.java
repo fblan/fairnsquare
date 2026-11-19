@@ -302,6 +302,22 @@ class ExpensesPageTest extends E2eTestBase {
         assertThat(modal.getByText("Description is required")).not().isVisible();
     }
 
+    @Test
+    void emptyingAFieldOfAnExistingExpenseSaysItIsRequired() {
+        String splitId = createSplit("Trip");
+        String alice = addParticipant(splitId, "Alice", 2);
+        addExpense(splitId, "Groceries", "60", alice);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Edit expense: Groceries").click();
+        Locator modal = dialog("Edit Expense");
+
+        field(modal, "Description").fill("");
+        field(modal, "Amount (€)").focus();
+
+        assertThat(modal.getByText("Description is required")).isVisible();
+        assertThat(button(modal, "Save Changes")).isDisabled();
+    }
+
     /** Adds a Manual (FREE) expense where only the payer takes a part (the other participant gets 0). */
     private static void addFreeExpense(String splitId, String description, String amount, String payerId,
             String onlyBeneficiary, String other) {
