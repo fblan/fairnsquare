@@ -5,7 +5,6 @@
   import { Router } from 'sv-router';
   // Import router config to initialize routes
   import '$lib/router';
-  import Toaster from '$lib/components/ui/toast/Toaster.svelte';
   import Footer from '$lib/components/ui/footer/Footer.svelte';
 </script>
 
@@ -15,4 +14,5 @@
     <Footer />
   </div>
 </main>
-<Toaster />
+<!-- Toasts: a web component (/components/toaster.js) that also shows the ones addToast() sends. -->
+<fns-toaster></fns-toaster>

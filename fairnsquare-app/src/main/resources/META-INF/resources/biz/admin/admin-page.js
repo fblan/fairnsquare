@@ -1,14 +1,12 @@
 import { apiRequest } from '../../infra/api.js';
+import { baseStyles } from '../../components/base-styles.js';
 
 /** The admin token stays for the browser tab only. */
 const SESSION_KEY = 'admin_token';
 const TABLE_ROWS = 5;
 
-const template = document.createElement('template');
-template.innerHTML = `
-  <style>
-    :host { display: block; }
-    [hidden] { display: none !important; }
+const styles = new CSSStyleSheet();
+styles.replaceSync(`
     .page {
       display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
       width: 100%; max-width: 900px; margin: 0 auto; padding: 2rem 1rem; box-sizing: border-box;
@@ -16,44 +14,9 @@ template.innerHTML = `
     header { text-align: center; }
     h1 { margin: 0; font-size: 1.5rem; line-height: 2rem; font-weight: 700; color: var(--primary); }
     .subtitle { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--muted-foreground); }
-    .card {
-      box-sizing: border-box; width: 100%; padding: 1.5rem;
-      color: var(--card-foreground); background: var(--card);
-      border: 1px solid var(--border); border-radius: 0.75rem;
-      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    }
     .signin { max-width: 400px; }
     .signin h2 { margin: 0 0 1.5rem; font-size: 1rem; line-height: 1; font-weight: 600; }
     form { display: flex; flex-direction: column; gap: 1rem; }
-    .field { display: flex; flex-direction: column; gap: 0.5rem; }
-    label { font-size: 0.875rem; line-height: 1; font-weight: 500; }
-    input {
-      box-sizing: border-box; width: 100%; min-height: 44px; padding: 0.25rem 0.75rem;
-      font: inherit; font-size: 0.875rem; color: inherit; background: var(--background);
-      border: 1px solid var(--input); border-radius: calc(var(--radius) - 2px);
-      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); outline: none;
-    }
-    input:focus-visible {
-      border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
-    }
-    input:disabled { cursor: not-allowed; opacity: 0.5; }
-    .error { margin: 0; font-size: 0.875rem; color: var(--destructive); }
-    button {
-      min-height: 44px; padding: 0.5rem 1rem; font: inherit; font-size: 0.875rem; font-weight: 500;
-      border-radius: calc(var(--radius) - 2px); cursor: pointer;
-    }
-    button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent); }
-    button:disabled { pointer-events: none; opacity: 0.5; }
-    .primary {
-      width: 100%; color: var(--primary-foreground); background: var(--primary); border: none;
-      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    }
-    .primary:hover { background: color-mix(in oklch, var(--primary) 90%, transparent); }
-    .outline {
-      color: inherit; background: var(--background); border: 1px solid var(--border);
-      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    }
-    .outline:hover { color: var(--accent-foreground); background: var(--accent); }
     .stats { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; }
     .toolbar { display: flex; justify-content: flex-end; }
     .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
@@ -89,7 +52,10 @@ template.innerHTML = `
       section .card { padding: 0.75rem 0.5rem; }
       th, td { padding: 0.5rem 0.25rem; }
     }
-  </style>
+`);
+
+const template = document.createElement('template');
+template.innerHTML = `
   <div class="page">
     <header>
       <h1>Admin</h1>
@@ -104,12 +70,12 @@ template.innerHTML = `
           <input id="admin-password" type="password" placeholder="Admin password" autocomplete="current-password">
         </div>
         <p class="error" role="alert" hidden></p>
-        <button class="primary" type="submit" disabled>Sign in</button>
+        <button class="button primary wide" type="submit" disabled>Sign in</button>
       </form>
     </div>
 
     <div class="stats" hidden>
-      <div class="toolbar"><button class="outline sign-out" type="button">Sign out</button></div>
+      <div class="toolbar"><button class="button outline sign-out" type="button">Sign out</button></div>
       <div class="summary">
         <div class="card">
           <p class="big"><span class="total"></span> <span class="of">/ <span class="limit"></span></span></p>
@@ -153,7 +119,9 @@ template.innerHTML = `
 class AdminPage extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' }).append(template.content.cloneNode(true));
+    const root = this.attachShadow({ mode: 'open' });
+    root.adoptedStyleSheets = [baseStyles, styles];
+    root.append(template.content.cloneNode(true));
     const $ = (selector) => this.shadowRoot.querySelector(selector);
     this.signIn = $('.signin');
     this.form = $('form');
