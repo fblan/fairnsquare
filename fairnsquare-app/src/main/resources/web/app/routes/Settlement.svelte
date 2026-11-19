@@ -7,7 +7,6 @@
   import * as Card from '$lib/components/ui/card';
   import { addToast } from '$lib/stores/toastStore.svelte';
   import { route, navigate } from '$lib/router';
-  import SplitPageHeader from '$lib/components/ui/split-page-header/SplitPageHeader.svelte';
   import { getCachedSplitName, setCachedSplitName } from '$lib/stores/splitTitleCache';
 
   const splitId = $derived(route.params.splitId || '');
@@ -383,7 +382,7 @@
 <div class="flex flex-col items-center space-y-4 w-full max-w-[520px] mx-auto">
   <!-- Header always visible once splitId is known -->
   {#if splitId}
-    <SplitPageHeader {splitName} {splitId} />
+    <fns-split-header split-id={splitId} split-name={splitName}></fns-split-header>
   {/if}
 
   {#if showLoading}

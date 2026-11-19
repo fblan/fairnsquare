@@ -1,14 +1,21 @@
 /**
- * Session-level cache for split names.
- * Populated when any per-split page loads, read on component mount so the
- * header title is stable during page transitions instead of blinking blank.
+ * The names of the splits opened in this tab, so a split page can show its title while it loads instead of
+ * a blank header. Kept in sessionStorage, shared with the web components (infra/stores/split-names.js).
  */
-const cache = new Map<string, string>();
+const SPLIT_NAMES_KEY = 'fairnsquare_splitNames';
+
+function load(): Record<string, string> {
+  try {
+    return JSON.parse(sessionStorage.getItem(SPLIT_NAMES_KEY) ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
 
 export function getCachedSplitName(id: string): string {
-  return cache.get(id) ?? '';
+  return load()[id] ?? '';
 }
 
 export function setCachedSplitName(id: string, name: string): void {
-  cache.set(id, name);
+  sessionStorage.setItem(SPLIT_NAMES_KEY, JSON.stringify({ ...load(), [id]: name }));
 }
