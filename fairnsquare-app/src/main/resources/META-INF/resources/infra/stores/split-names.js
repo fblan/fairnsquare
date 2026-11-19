@@ -1,6 +1,6 @@
 /**
  * The names of the splits opened in this tab, so a split page can show its title while it loads instead of
- * a blank header. Kept in sessionStorage, which the Svelte pages (lib/stores/splitTitleCache.ts) share.
+ * a blank header. Kept in sessionStorage.
  */
 
 const SPLIT_NAMES_KEY = 'fairnsquare_splitNames';

@@ -25,19 +25,13 @@ _bmad/
 # IDE - VS Code
 .vscode/
 
-# Node / Frontend (Svelte)
+# npm packages (the old Web Bundler installed them in fairnsquare-app/node_modules)
 node_modules/
-dist/
-build/
-.svelte-kit/
+
+# Environment
 .env
 .env.*
 !.env.example
-
-# Quinoa build output
-src/main/webui/dist/
-src/main/webui/build/
-src/main/webui/.svelte-kit/
 
 # OS files
 .DS_Store

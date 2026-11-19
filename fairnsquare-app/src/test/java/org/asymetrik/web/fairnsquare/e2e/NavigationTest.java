@@ -1,6 +1,7 @@
 package org.asymetrik.web.fairnsquare.e2e;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static io.restassured.RestAssured.given;
 
 import java.util.regex.Pattern;
 
@@ -76,6 +77,50 @@ class NavigationTest extends E2eTestBase {
 
         assertThat(toast("Split not found — create a new one.")).isVisible();
         assertThat(page).hasURL(root.toString());
+    }
+
+    @Test
+    void anUnknownAddressShowsTheHome() {
+        page.navigate("/no/such/page");
+
+        assertThat(field("Split Name")).isVisible();
+        assertThat(page).hasURL(root.toString());
+    }
+
+    @Test
+    void aTrailingSlashStillOpensThePage() {
+        String splitId = createSplit("Road trip");
+        addParticipant(splitId, "Alice", 2);
+
+        page.navigate("/splits/" + splitId + "/expenses/");
+
+        assertThat(button(nav(), "Expenses")).hasAttribute("aria-current", "page");
+    }
+
+    @Test
+    void backAndForwardShowTheirPage() {
+        String splitId = createSplit("Road trip");
+        addParticipant(splitId, "Alice", 2);
+        page.navigate("/splits/" + splitId);
+        button("View all participants").click();
+        assertThat(button("Add Single Participant")).isVisible();
+
+        page.goBack();
+        assertThat(button("View all participants")).isVisible();
+        assertThat(button("Add Single Participant")).not().isVisible();
+
+        page.goForward();
+        assertThat(button("Add Single Participant")).isVisible();
+        assertThat(page).hasURL(Pattern.compile("/participants$"));
+    }
+
+    @Test
+    void theFooterShowsTheBuild() {
+        String commit = given().get("/api/info").then().statusCode(200).extract().path("commit");
+
+        page.navigate("/");
+
+        assertThat(page.getByRole(AriaRole.CONTENTINFO)).hasText(commit.substring(0, Math.min(7, commit.length())));
     }
 
     @Test
