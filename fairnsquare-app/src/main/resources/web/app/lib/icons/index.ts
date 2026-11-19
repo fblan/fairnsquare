@@ -13,7 +13,6 @@ export { default as Moon } from './Moon.svelte';
 export { default as Pencil } from './Pencil.svelte';
 export { default as Plus } from './Plus.svelte';
 export { default as Receipt } from './Receipt.svelte';
-export { default as RefreshCw } from './RefreshCw.svelte';
 export { default as Share2 } from './Share2.svelte';
 export { default as Trash2 } from './Trash2.svelte';
 export { default as TrendingDown } from './TrendingDown.svelte';
