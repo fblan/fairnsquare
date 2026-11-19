@@ -5,6 +5,19 @@
 - Every frontend change must be covered by automated tests, unless there is a documented reason justifying the exception.
 - Exceptions must be recorded in the corresponding feature implementation document (`src/main/doc/implementation/YYYY-MM-DD-*.md`) under the **Tests** section, with a clear explanation of why automated testing was not feasible or applicable.
 - Automated tests must be described in the feature implementation document under the **Tests** section, listing test files, test counts, and what each group of tests covers.
+- Frontend tests are Playwright end-to-end tests in `fairnsquare-app/src/test/java/org/asymetrik/web/fairnsquare/e2e/`, extending `E2eTestBase`. They run in `mvn package`; no Node toolchain is needed.
+- Locate elements only by role, label or exact text (`button(...)`, `field(...)`, `text(...)`, `dialog(...)`, `toast(...)` helpers) — never by CSS/Tailwind classes, `data-testid` or framework markup. The tests must keep passing when the rendering framework changes.
+- Use exact matching: `getByLabel("Nights")` also matches an "Info about Nights" button, and `getByText("Groceries")` also matches a toast repeating it. When two elements share a name (two "Cancel" buttons), scope the locator to the dialog or region (`button(dialog("…"), "Cancel")`).
+- Set up test data (splits, participants, expenses) through the REST API helpers, and drive through the UI only what the test is about. Each test creates its own split; never rely on data from another test.
+- Assert with Playwright's `assertThat(locator)`, which waits for the UI to update. Never assert right after an action with a one-shot read (`isVisible()`, `textContent()`).
+- A page that changes layout must keep `LayoutTest` passing: no sideways scrolling at 390×844 and 1280×800. Add realistic long values (names, descriptions) when a page shows user text.
+- When a test fails, its Playwright trace is in `fairnsquare-app/target/playwright-traces/` (CI: the `playwright-traces` artifact). Open it before guessing at the cause.
+
+## Accessible Names
+
+- Every button that shows only an icon must have an `aria-label` describing its action, including the item it acts on when there are several (e.g. `Edit Alice`, `Delete expense: Groceries`). Tests and screen readers both rely on it.
+- Every form field must have a `<label for>` (or `aria-label`), and every modal must be `role="dialog"` with `aria-labelledby` pointing at its title.
+- Custom pickers (dropdowns that are not a native `<select>`) must expose the listbox pattern: the trigger has `aria-haspopup="listbox"` and `aria-expanded`, the list has `role="listbox"` and each choice `role="option"` with `aria-selected`, and the arrow keys move between choices. New or rewritten components follow this; the current Svelte payer picker does not yet.
 
 ## Numeric Inputs
 
@@ -14,14 +27,6 @@
 
 - Forms that create or update entities must include client-side validation that mirrors backend constraints (e.g. uniqueness, format, range). Do not rely solely on API error responses and toast notifications for user feedback — use inline form errors.
 - Inline validation while typing must not show "required" errors on an empty field — that error is reserved for form submission. Other errors (format, range, uniqueness) must appear as soon as the invalid value is detected while typing.
-
-## Testing Reactive Store Updates
-
-- When a reactive store is mutated (e.g. `addToast()`, `clearToasts()`) after `render()` in a test, always wrap assertions in `waitFor()`. Svelte 5's DOM updates are batched and asynchronous from the test runner's perspective — synchronous assertions after store mutations will see stale DOM.
-
-## Testing Number Inputs
-
-- For `<input type="number">` with Svelte's `bind:value`, always use `fireEvent.input(el, { target: { value: '...' } })` instead of `userEvent.clear()` + `userEvent.type()`. The `userEvent` approach does not reliably trigger Svelte's `bind:value` reactivity for number inputs in jsdom. Use `fireEvent.blur()` to trigger `onblur` validation handlers.
 
 ## External Object Reactivity
 
@@ -53,7 +58,7 @@
 ## localStorage Utilities
 
 - localStorage access must be encapsulated in a dedicated utility module (e.g. `src/lib/stores/myStore.ts`) rather than called inline in components. The module must export named `save*`, `load*`, and `clear*` functions. The localStorage key must be a private constant inside that module.
-- The module must be mocked in component tests (`vi.mock('$lib/stores/myStore')`). Tests for the utility itself must use `localStorage.clear()` in `beforeEach`.
+- End-to-end tests run in a fresh browser context, so localStorage starts empty in every test; set needed values with `context.addInitScript` (as `E2eTestBase` does for the CAPTCHA token).
 - When loading a persisted value on component mount triggers an async operation (e.g. API verification), use `$effect` and handle the async result with `.then()/.catch()` rather than making `$effect` async.
 
 ## Action Button Placement
@@ -78,27 +83,14 @@
 
 ## Error Message Lifecycle in Async Load Functions
 
-- When a component function resets state and then awaits an async call (e.g., `loadChallenge` after a wrong answer), do not clear `errorMessage` at the top of the function. Clear it only in the success branch, after the await resolves. Clearing it synchronously at the top batches the reset with the other state changes before the first `await`, so the DOM never shows the error — breaking both UX (error flashes invisibly) and `waitFor` assertions in tests. Always pattern: set error → call `loadFn` → inside `loadFn`, clear error on success.
-
-## Mutable Mock Objects in `vi.mock` Factories
-
-- When a `vi.mock` factory needs to reference a variable that is mutated between tests (e.g. `route.pathname` set in `beforeEach`), define it with `vi.hoisted(() => ({ ... }))` rather than a top-level `const`. Top-level variables are not yet initialized when `vi.mock` is hoisted, causing a `ReferenceError` at runtime.
-
-## Scoping Queries When Multiple Elements Share the Same Label
-
-- When a component renders multiple buttons or elements with the same accessible name (e.g. two "Cancel" buttons — one in the modal footer, one inside a sub-banner), always scope `getByRole` queries using `within(container)` to avoid ambiguity errors. Use `within(screen.getByRole('alert'))`, `within(screen.getByRole('dialog'))`, or any distinct ARIA landmark to narrow the query to the relevant region.
+- When a component function resets state and then awaits an async call (e.g., `loadChallenge` after a wrong answer), do not clear `errorMessage` at the top of the function. Clear it only in the success branch, after the await resolves. Clearing it synchronously at the top batches the reset with the other state changes before the first `await`, so the DOM never shows the error — the user never sees it and tests cannot assert it. Always pattern: set error → call `loadFn` → inside `loadFn`, clear error on success.
 
 ## sessionStorage for Short-Lived Auth Tokens
 
 - When storing a short-lived authentication credential (e.g. an admin token, a session token) in browser storage, prefer `sessionStorage` over `localStorage`. `sessionStorage` is cleared automatically when the browser tab is closed, limiting exposure on shared machines.
 - The storage key must be a module-level constant (or defined in the component that owns it).
-- In tests, call `sessionStorage.clear()` in `beforeEach` to prevent token bleed between tests.
-
-## `getByText` Ambiguity from `<select>` Options
-
-- When entity names appear both as rendered text nodes AND as `<option>` values in a `<select>`, `getByText('Name')` will throw due to multiple matches. Use `getAllByText` when only testing presence, or use more specific queries (`getByRole('heading', { name: '...' })`, `getByRole('combobox', { name: '...' })`).
 
 ## Browser Testing Before Proposing
 
-- Before marking any UI feature as complete, verify it visually in the browser on **both mobile and desktop** viewports using Playwright. Use `mcp__playwright__browser_resize` to switch between viewports (e.g. 390×844 for mobile, 1280×800 for desktop). Do not rely solely on automated tests — layout issues (overflow, clipping, modal sizing, truncation) are only caught by visual inspection.
+- Before marking any UI feature as complete, verify it visually in the browser on **both mobile and desktop** viewports (390×844 and 1280×800), e.g. with Playwright screenshots. `LayoutTest` catches sideways overflow, but clipping, modal sizing and truncation are only caught by looking.
 - When a new component uses Tailwind utility classes that do not exist in any other file, verify at runtime that those classes are actually compiled and applied (check `window.getComputedStyle`). If a class is missing from the compiled CSS, use an already-compiled equivalent or restructure to avoid relying on uncompiled classes.

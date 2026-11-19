@@ -43,3 +43,9 @@ The tests were checked to fail when the UI changes (a changed "Paid by" label ma
 In one full `mvn package` run, `addsAnExpensePaidByAChosenParticipant` failed once: the Add Expense dialog stayed open and no request reached the server. It could not be reproduced (5 cold runs under full CPU load passed). The test now checks the field values before submitting, and the trace saved on failure will show what happened if it comes back.
 
 `LayoutTest` found a real bug: a long participant name makes the expense filters overflow on a phone. It is tracked in #158; until it is fixed, `LayoutTest` uses ordinary names.
+
+## Rules updated
+
+`src/doc/rules/frontend-rules.md` (approved by the user):
+- **Testing:** the vitest/jsdom rules (reactive store `waitFor`, number input `fireEvent`, `vi.mock` hoisting, `within()` scoping, `getByText` ambiguity) are replaced by Playwright rules: where the tests live, role/label/text locators with exact matching, API-built test data, waiting assertions, `LayoutTest`, traces on failure.
+- **Accessible Names (new):** icon-only buttons need an `aria-label`; fields need labels; dialogs need `role="dialog"` + `aria-labelledby`; custom pickers must follow the listbox pattern (the current payer picker does not yet).
