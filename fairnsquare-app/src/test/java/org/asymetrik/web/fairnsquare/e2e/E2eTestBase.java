@@ -88,9 +88,12 @@ abstract class E2eTestBase {
         return true;
     }
 
-    /** The button with this exact accessible name. */
+    /**
+     * The visible button with this exact accessible name. Closed windows stay in the page (hidden), so the page-level
+     * helpers only look at what the person can see.
+     */
     protected Locator button(String name) {
-        return page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(name).setExact(true));
+        return visible(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(name).setExact(true)));
     }
 
     /** The button with this exact accessible name inside the given element. */
@@ -98,9 +101,9 @@ abstract class E2eTestBase {
         return scope.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName(name).setExact(true));
     }
 
-    /** The form field with this exact label. */
+    /** The visible form field with this exact label. */
     protected Locator field(String label) {
-        return page.getByLabel(label, new Page.GetByLabelOptions().setExact(true));
+        return visible(page.getByLabel(label, new Page.GetByLabelOptions().setExact(true)));
     }
 
     /** The form field with this exact label inside the given element. */
@@ -108,9 +111,13 @@ abstract class E2eTestBase {
         return scope.getByLabel(label, new Locator.GetByLabelOptions().setExact(true));
     }
 
-    /** The element whose whole text is exactly this. */
+    /** The visible element whose whole text is exactly this. */
     protected Locator text(String text) {
-        return page.getByText(text, new Page.GetByTextOptions().setExact(true));
+        return visible(page.getByText(text, new Page.GetByTextOptions().setExact(true)));
+    }
+
+    private static Locator visible(Locator locator) {
+        return locator.filter(new Locator.FilterOptions().setVisible(true));
     }
 
     /** The open dialog with this exact accessible name. */
