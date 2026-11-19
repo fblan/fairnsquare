@@ -32,6 +32,7 @@ class ExpensesPageTest extends E2eTestBase {
 
         button("Add Expense").click();
         Locator modal = dialog("Add Expense");
+        waitForFocusOnDescription(modal);
         field(modal, "Description").fill("Groceries");
         field(modal, "Amount (€)").fill("60");
         field(modal, "Payer").click();
@@ -57,6 +58,7 @@ class ExpensesPageTest extends E2eTestBase {
 
         button("Edit expense: Groceries").click();
         Locator modal = dialog("Edit Expense");
+        waitForFocusOnDescription(modal);
         field(modal, "Description").fill("Dinner");
         field(modal, "Amount (€)").fill("85.50");
         button(modal, "Save Changes").click();
@@ -99,5 +101,13 @@ class ExpensesPageTest extends E2eTestBase {
 
         button("Clear filters").first().click();
         assertThat(button("Edit expense: Groceries")).isVisible();
+    }
+
+    /**
+     * The window focuses Description shortly after it opens; typing before that would follow the focus into Description
+     * (#168).
+     */
+    private static void waitForFocusOnDescription(Locator modal) {
+        assertThat(field(modal, "Description")).isFocused();
     }
 }
