@@ -121,6 +121,12 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- End-to-end browser tests of the frontend -->
+        <dependency>
+            <groupId>io.quarkiverse.playwright</groupId>
+            <artifactId>quarkus-playwright</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Modular architecture validation -->
         <dependency>
             <groupId>org.asymetrik.modular</groupId>
