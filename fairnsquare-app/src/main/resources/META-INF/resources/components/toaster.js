@@ -22,7 +22,7 @@ template.innerHTML = `
     .info { color: var(--primary-foreground); background: var(--primary); }
     .icon { flex: none; margin-top: 0.125rem; font-size: 0.875rem; font-weight: 700; }
     .text { flex: 1; min-width: 0; }
-    .message { margin: 0; font-size: 0.875rem; font-weight: 500; }
+    .message { margin: 0; font-size: 0.875rem; font-weight: 500; white-space: pre-line; overflow-wrap: anywhere; }
     .description {
       margin: 0.125rem 0 0; font-size: 0.75rem; opacity: 0.8;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
