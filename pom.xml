@@ -44,6 +44,7 @@
 
         <!-- Quarkiverse Extensions -->
         <quarkus-web-bundler.version>2.3.2</quarkus-web-bundler.version>
+        <quarkus-playwright.version>2.4.0</quarkus-playwright.version>
     </properties>
 
     <dependencyManagement>
@@ -72,6 +73,13 @@
                 <groupId>io.quarkiverse.web-bundler</groupId>
                 <artifactId>quarkus-web-bundler-tailwindcss</artifactId>
                 <version>${quarkus-web-bundler.version}</version>
+            </dependency>
+
+            <!-- Playwright - end-to-end browser tests of the frontend -->
+            <dependency>
+                <groupId>io.quarkiverse.playwright</groupId>
+                <artifactId>quarkus-playwright</artifactId>
+                <version>${quarkus-playwright.version}</version>
             </dependency>
 
             <!-- NanoID for cryptographically secure split identifiers -->
