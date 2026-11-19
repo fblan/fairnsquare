@@ -1,5 +1,19 @@
 # Frontend Development Rules
 
+## Web Components
+
+- The frontend is plain JavaScript web components in `fairnsquare-app/src/main/resources/META-INF/resources/`, served as they are (no build step):
+  - `infra/` holds what has no UI (API client, navigation, toasts, `stores/`);
+  - `components/` holds the shared elements;
+  - `biz/<page>/` holds a page and the windows only it uses;
+  - `main.js` routes the addresses to the pages.
+- Every custom element is named `fns-<name>` (`fns-expenses-page`, `fns-confirm-dialog`) and lives in a file of the same name without the prefix (`expenses-page.js`).
+- Each element renders in its own Shadow DOM, with `adoptedStyleSheets = [baseStyles, styles]`. The colours come from the CSS variables of `infra/theme.css`.
+- Values that come from the server or the person (names, descriptions) go in with `textContent`, never `innerHTML`, so that they are never read as HTML. `innerHTML` is only for the component's own fixed markup and icons.
+- Never name a method or a field like a member of `HTMLElement` / `Element` (`remove`, `title`, `hidden`, `id`, `append`…): it replaces the browser's own.
+  - Example: a `remove()` method on a page replaced `Element.remove()`. When the page was taken out of the document, its own delete action ran instead and opened "Delete this expense?".
+  - Check MDN when a name is a common word; prefer specific names (`deleteExpense`, `heading`).
+
 ## Testing
 
 - Every frontend change must be covered by automated tests, unless there is a documented reason justifying the exception.
@@ -9,6 +23,7 @@
 - Locate elements only by role, label or exact text (`button(...)`, `field(...)`, `text(...)`, `dialog(...)`, `toast(...)` helpers) — never by CSS classes, `data-testid` or framework markup. The tests must keep passing when the rendering framework changes.
 - Use exact matching: `getByLabel("Nights")` also matches an "Info about Nights" button, and `getByText("Groceries")` also matches a toast repeating it. When two elements share a name (two "Cancel" buttons), scope the locator to the dialog or region (`button(dialog("…"), "Cancel")`).
 - Set up test data (splits, participants, expenses) through the REST API helpers, and drive through the UI only what the test is about. Each test creates its own split; never rely on data from another test.
+- Test error cases (server error, network failure, slow answer) by stubbing the API call with `page.route(...)`, rather than trying to make the real server fail.
 - Assert with Playwright's `assertThat(locator)`, which waits for the UI to update. Never assert right after an action with a one-shot read (`isVisible()`, `textContent()`).
 - A page that changes layout must keep `LayoutTest` passing: no sideways scrolling at 390×844 and 1280×800. Add realistic long values (names, descriptions) when a page shows user text.
 - When a test fails, its Playwright trace is in `fairnsquare-app/target/playwright-traces/` (CI: the `playwright-traces` artifact). Open it before guessing at the cause.
@@ -31,6 +46,7 @@
 ## Dynamic Forms
 
 - When a form is revealed dynamically (e.g. an add form shown by a button), the first input must receive focus automatically: call `focus()` once it is shown; in a `<dialog>`, put `autofocus` on it so `showModal()` focuses it.
+- Never move the focus with a timer (`setTimeout(() => input.focus(), 50)`): someone (or a test) who starts typing within the delay has the end of their text moved to another field. This made tests save "Groceries60" and "Alicia4".
 
 ## Responsive Layout
 
@@ -79,3 +95,9 @@
 ## Browser Testing Before Proposing
 
 - Before marking any UI feature as complete, verify it visually in the browser on **both mobile and desktop** viewports (390×844 and 1280×800), e.g. with Playwright screenshots. `LayoutTest` catches sideways overflow, but clipping, modal sizing and truncation are only caught by looking.
+
+## Browser Caching
+
+- A file whose name does not change when its content does (`index.html`, `main.js`, the web component scripts, `theme.css`) must never be cached by the browser without asking the server: it is served with `Cache-Control: no-cache` (the `revalidate` filter in `application.properties`), so the browser gets a cheap 304 when the file has not changed and the new version after a deploy.
+- Otherwise the browser mixes the modules of two deploys. For example, a new page importing a new export from an old cached `icons.js` fails to load and stays blank (#178). Tests start with an empty cache and cannot see this.
+- Only a file whose name changes with its content (a content hash) may get a long or `immutable` cache.
