@@ -1,23 +1,27 @@
 package org.asymetrik.web.fairnsquare.split.domain;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
+
 import java.math.BigDecimal;
 
 import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-
 /**
  * Request DTO for updating an existing expense in a split.
  */
-public record UpdateExpenseRequest(
-        @NotNull(message = "Amount is required") @DecimalMin(value = "0.01", message = "Amount must be at least 0.01") BigDecimal amount,
+public record UpdateExpenseRequest(BigDecimal amount,
 
-        @Size(max = 200, message = "Description cannot exceed 200 characters") String description,
+        String description,
 
-        @NotBlank(message = "Payer is required") String payerId,
+        String payerId,
 
-        @NotNull(message = "Split mode is required") SplitMode splitMode) {
+        SplitMode splitMode) implements Violations.Validated {
+
+    @Override
+    public void validate() {
+        Violations.check().notNull(amount, "Amount is required").atLeast(amount, "0.01", "Amount must be at least 0.01")
+                .maxLength(description, 200, "Description cannot exceed 200 characters")
+                .notBlank(payerId, "Payer is required").notNull(splitMode, "Split mode is required").orThrow();
+    }
+
 }

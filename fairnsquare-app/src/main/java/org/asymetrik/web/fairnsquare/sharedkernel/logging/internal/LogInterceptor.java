@@ -1,5 +1,7 @@
 package org.asymetrik.web.fairnsquare.sharedkernel.logging.internal;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -16,8 +18,6 @@ import jakarta.annotation.Priority;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.Interceptor;
 import jakarta.interceptor.InvocationContext;
-
-import org.jboss.logging.Logger;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.LogTag;
@@ -41,7 +41,7 @@ public class LogInterceptor {
     @AroundInvoke
     public Object logInvocation(InvocationContext context) throws Exception {
         Method method = context.getMethod();
-        Logger logger = Logger.getLogger(method.getDeclaringClass());
+        Logger logger = System.getLogger(method.getDeclaringClass().getName());
         String methodName = method.getName();
         String tags = extractTags(method, context.getParameters());
 
@@ -49,11 +49,13 @@ public class LogInterceptor {
         try {
             Object result = context.proceed();
             long duration = System.currentTimeMillis() - start;
-            logger.infof("method=%s %sresult=%s duration=%dms", methodName, tags, formatResult(result), duration);
+            logger.log(Level.INFO,
+                    "method=%s %sresult=%s duration=%dms".formatted(methodName, tags, formatResult(result), duration));
             return result;
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - start;
-            logger.errorf("method=%s %serror=%s duration=%dms", methodName, tags, e.getMessage(), duration);
+            logger.log(Level.ERROR,
+                    "method=%s %serror=%s duration=%dms".formatted(methodName, tags, e.getMessage(), duration));
             throw e;
         }
     }

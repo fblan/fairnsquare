@@ -11,31 +11,40 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.SplitRepository;
 
-import io.quarkus.arc.profile.IfBuildProfile;
-import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.event.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 /**
- * Seeds a realistic sample split on application startup in dev mode. The split is always recreated with the same
- * predictable ID so developers can bookmark it. Scenario: one week vacation in Provence with 10 participants having
- * different stay durations.
+ * Seeds a realistic sample split on application startup in dev mode ({@code fairnsquare.dev.seed}, true in the dev
+ * profile). The split is always recreated with the same predictable ID so developers can bookmark it. Scenario: one
+ * week vacation in Provence with 10 participants having different stay durations.
  */
 @ApplicationScoped
-@IfBuildProfile("dev")
 public class DevDataSeeder {
 
     static final String DEV_SPLIT_ID = "devSampleSplit2026001";
 
     private final SplitRepository splitRepository;
+    private final boolean seed;
 
     @Inject
-    public DevDataSeeder(SplitRepository splitRepository) {
+    public DevDataSeeder(SplitRepository splitRepository,
+            @ConfigProperty(name = "fairnsquare.dev.seed", defaultValue = "false") boolean seed) {
         this.splitRepository = splitRepository;
+        this.seed = seed;
     }
 
-    void onStart(@Observes StartupEvent event) {
+    void onStart(@Observes Startup event) {
+        if (seed) {
+            seed();
+        }
+    }
+
+    void seed() {
         if (splitRepository.exists(DEV_SPLIT_ID)) {
             splitRepository.delete(DEV_SPLIT_ID);
         }

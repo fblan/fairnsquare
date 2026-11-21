@@ -1,90 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <!-- vidocq's parent: the runtime's versions, its annotation processors and the packaging (vidocq:package). -->
+    <parent>
+        <groupId>io.vidocq.runtime</groupId>
+        <artifactId>vidocq-runtime-parent</artifactId>
+        <version>0.4.0-RC2</version>
+        <relativePath/>
+    </parent>
+
     <groupId>org.asymetrik.web</groupId>
     <artifactId>fairnsquare-app</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
 
-
-    <parent>
-        <groupId>org.asymetrik.web</groupId>
-        <artifactId>fairnsquare-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
+    <properties>
+        <java.version>25</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <vidocq.mainModule>org.asymetrik.web.fairnsquare</vidocq.mainModule>
+        <vidocq.mainClass>org.asymetrik.web.fairnsquare.FairnsquareApp</vidocq.mainClass>
+        <vidocq.version>0.4.0-RC2</vidocq.version>
+        <asymetrik-modular.version>0.0.2</asymetrik-modular.version>
+    </properties>
 
     <dependencies>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc</artifactId>
+            <groupId>io.vidocq.runtime</groupId>
+            <artifactId>vidocq-runtime-core</artifactId>
+            <version>${vidocq.version}</version>
         </dependency>
+        <!-- Jakarta REST (Cassini) with JSON-B (Champollion) for the bodies. -->
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest</artifactId>
+            <groupId>io.vidocq.runtime.extensions.jakartaee.core</groupId>
+            <artifactId>vidocq-runtime-cassini-rest-extension</artifactId>
         </dependency>
+        <!-- MicroProfile Config: @ConfigProperty, profiles. -->
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-jackson</artifactId>
+            <groupId>io.vidocq.runtime.extensions.microprofile</groupId>
+            <artifactId>vidocq-runtime-ravel-config-extension</artifactId>
+            <version>${vidocq.version}</version>
         </dependency>
-        <!-- Bean Validation for request validation -->
+        <!-- MicroProfile Health: /q/health, as with Quarkus. -->
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-hibernate-validator</artifactId>
+            <groupId>io.vidocq.runtime.extensions.microprofile</groupId>
+            <artifactId>vidocq-runtime-knock-health-extension</artifactId>
+            <version>${vidocq.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-openapi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-health</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-logging-json</artifactId>
-        </dependency>
-        <!-- Scheduler for periodic tasks (nightly storage cleanup) -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-scheduler</artifactId>
-        </dependency>
-        <!-- Container image build support via Docker -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-container-image-docker</artifactId>
-        </dependency>
-<!-- NanoID for cryptographically secure split identifiers -->
+        <!-- NanoID for cryptographically secure split identifiers -->
         <dependency>
             <groupId>com.aventrix.jnanoid</groupId>
             <artifactId>jnanoid</artifactId>
+            <version>2.0.0</version>
         </dependency>
+        <!-- Modular architecture: @Module on the modules' package-info. -->
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit</artifactId>
+            <groupId>org.asymetrik.modular</groupId>
+            <artifactId>api</artifactId>
+            <version>${asymetrik-modular.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
+            <version>6.0.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <version>3.27.6</version>
             <scope>test</scope>
         </dependency>
         <!-- End-to-end browser tests of the frontend -->
         <dependency>
-            <groupId>io.quarkiverse.playwright</groupId>
-            <artifactId>quarkus-playwright</artifactId>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>1.64.0</version>
             <scope>test</scope>
-        </dependency>
-        <!-- Modular architecture validation -->
-        <dependency>
-            <groupId>org.asymetrik.modular</groupId>
-            <artifactId>api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.asymetrik.modular</groupId>
             <artifactId>verification</artifactId>
+            <version>${asymetrik-modular.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -92,77 +95,102 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>io.quarkus.platform</groupId>
-                <artifactId>quarkus-maven-plugin</artifactId>
-                <extensions>true</extensions>
+                <groupId>io.vidocq.runtime</groupId>
+                <artifactId>vidocq-runtime-maven-plugin</artifactId>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>build</goal>
-                            <goal>generate-code</goal>
-                            <goal>generate-code-tests</goal>
-                            <goal>native-image-agent</goal>
+                            <goal>package</goal>
                         </goals>
+                        <configuration>
+                            <!-- vidocq:package passes mainClass verbatim to the JVM module option, which needs
+                                 module/class. -->
+                            <mainClass>${vidocq.mainModule}/${vidocq.mainClass}</mainClass>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <parameters>true</parameters>
-                    <encoding>UTF-8</encoding>
+                    <compilerArgs combine.children="append">
+                        <!-- Champollion (JSON-B) finds the entity types of the resources' Response.ok(...) by reading
+                             the method bodies through javac's Tree API. That attributes the classes during annotation
+                             processing, and javac then rejects every nested record with a compact constructor
+                             (Split.Name, Participant.Id...): "invalid canonical constructor ... must not contain
+                             explicit constructor invocation". Without the generated bindings, JSON-B binds by
+                             reflection at runtime. -->
+                        <arg>-Achampollion.jsonb.rest=false</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths combine.children="append">
+                        <path>
+                            <groupId>io.vidocq.runtime.extensions.jakartaee.core</groupId>
+                            <artifactId>vidocq-runtime-cassini-rest-extension-codegen</artifactId>
+                            <version>${vidocq.version}</version>
+                        </path>
+                        <path>
+                            <groupId>io.vidocq.runtime.extensions.microprofile</groupId>
+                            <artifactId>vidocq-runtime-ravel-config-extension-codegen</artifactId>
+                            <version>${vidocq.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <systemPropertyVariables>
-                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-                        <maven.home>${maven.home}</maven.home>
-                    </systemPropertyVariables>
-                    <!-- @{argLine} is placeholder for JaCoCo agent injection -->
-                    <argLine>@{argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED</argLine>
-                </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <systemPropertyVariables>
-                        <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
-                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-                        <maven.home>${maven.home}</maven.home>
-                    </systemPropertyVariables>
-                    <!-- @{argLine} is placeholder for JaCoCo agent injection -->
-                    <argLine>@{argLine}</argLine>
+                    <!-- Tests run on the classpath: RestAssured and Playwright aren't JPMS-friendly, and vidocq boots
+                         there too. -->
+                    <useModulePath>false</useModulePath>
+                    <argLine>@{argLine} -Djava.awt.headless=true</argLine>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.16</version>
+                <configuration>
+                    <excludes>
+                        <!-- Started by the vidocq launcher, never by a test. -->
+                        <exclude>org/asymetrik/web/fairnsquare/FairnsquareApp*</exclude>
+                        <!-- Generated by vidocq's annotation processors. -->
+                        <exclude>**/*_Factory*</exclude>
+                        <exclude>**/*_ClientProxy*</exclude>
+                        <exclude>**/*$$*</exclude>
+                        <exclude>**/_*</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <version>2.29.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>format</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>native</id>
-            <activation>
-                <property>
-                    <name>native</name>
-                </property>
-            </activation>
-            <properties>
-                <skipITs>false</skipITs>
-                <quarkus.native.enabled>true</quarkus.native.enabled>
-            </properties>
-        </profile>
-    </profiles>
 </project>

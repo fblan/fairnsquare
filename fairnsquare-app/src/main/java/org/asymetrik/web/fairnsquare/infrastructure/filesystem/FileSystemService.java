@@ -1,5 +1,7 @@
 package org.asymetrik.web.fairnsquare.infrastructure.filesystem;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,8 +22,7 @@ import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageF
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.StorageStats;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.TenantPathResolver;
 import org.asymetrik.web.fairnsquare.sharedkernel.logging.Log;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.eclipse.microprofile.config.Config;
 
 /**
  * Technical domain service for raw file system operations. Provides file read/write primitives and enforces storage
@@ -35,18 +36,27 @@ import org.jboss.logging.Logger;
 @ApplicationScoped
 public class FileSystemService {
 
-    private static final Logger LOG = Logger.getLogger(FileSystemService.class);
+    private static final Logger LOG = System.getLogger(FileSystemService.class.getName());
 
     private final TenantPathResolver pathResolver;
     private final int maxFileCount;
     private final long maxFileSizeBytes;
     private final int maxFileAgeDays;
 
+    /**
+     * The limits come from the configuration ({@code fairnsquare.storage.*}). Read from {@link Config} rather than with
+     * {@code @ConfigProperty} parameters: vidocq 0.4.0-RC2 loses their metadata on an intercepted bean's constructor
+     * ("@ConfigProperty metadata is required on injection point"), and this bean is intercepted ({@code @Log}).
+     */
     @Inject
-    public FileSystemService(TenantPathResolver pathResolver,
-            @ConfigProperty(name = "fairnsquare.storage.max-file-count", defaultValue = "5000") int maxFileCount,
-            @ConfigProperty(name = "fairnsquare.storage.max-file-size-bytes", defaultValue = "524288") long maxFileSizeBytes,
-            @ConfigProperty(name = "fairnsquare.storage.max-file-age-days", defaultValue = "90") int maxFileAgeDays) {
+    public FileSystemService(TenantPathResolver pathResolver, Config config) {
+        this(pathResolver, config.getOptionalValue("fairnsquare.storage.max-file-count", Integer.class).orElse(5000),
+                config.getOptionalValue("fairnsquare.storage.max-file-size-bytes", Long.class).orElse(524288L),
+                config.getOptionalValue("fairnsquare.storage.max-file-age-days", Integer.class).orElse(90));
+    }
+
+    public FileSystemService(TenantPathResolver pathResolver, int maxFileCount, long maxFileSizeBytes,
+            int maxFileAgeDays) {
         this.pathResolver = pathResolver;
         this.maxFileCount = maxFileCount;
         this.maxFileSizeBytes = maxFileSizeBytes;
@@ -236,7 +246,7 @@ public class FileSystemService {
                 ids.add(filename.substring(0, filename.length() - 4));
             });
         } catch (IOException e) {
-            LOG.warnf("Could not list split IDs from %s: %s", rootDir, e.getMessage());
+            LOG.log(Level.WARNING, "Could not list split IDs from %s: %s".formatted(rootDir, e.getMessage()));
         }
         return ids;
     }
@@ -281,11 +291,11 @@ public class FileSystemService {
                 try {
                     usedBytes.addAndGet(Files.size(path));
                 } catch (IOException e) {
-                    LOG.warnf("Could not read size of file %s: %s", path, e.getMessage());
+                    LOG.log(Level.WARNING, "Could not read size of file %s: %s".formatted(path, e.getMessage()));
                 }
             });
         } catch (IOException e) {
-            LOG.warnf("Could not walk data directory for stats computation: %s", e.getMessage());
+            LOG.log(Level.WARNING, "Could not walk data directory for stats computation: %s".formatted(e.getMessage()));
         }
         return new StorageStats(fileCount.get(), maxFileCount, usedBytes.get(), maxTotalBytes);
     }
@@ -297,7 +307,7 @@ public class FileSystemService {
     public void cleanOldFiles() {
         Path rootDir = pathResolver.resolveDefaultTenantDirectory();
         if (!Files.exists(rootDir)) {
-            LOG.info("Storage cleanup: root directory does not exist, nothing to clean.");
+            LOG.log(Level.INFO, "Storage cleanup: root directory does not exist, nothing to clean.");
             return;
         }
 
@@ -311,18 +321,21 @@ public class FileSystemService {
                         try {
                             Files.delete(path);
                             deleted.incrementAndGet();
-                            LOG.infof("Storage cleanup: deleted old file %s", path);
+                            LOG.log(Level.INFO, "Storage cleanup: deleted old file %s".formatted(path));
                         } catch (IOException e) {
                             errors.incrementAndGet();
-                            LOG.warnf("Storage cleanup: failed to delete %s: %s", path, e.getMessage());
+                            LOG.log(Level.WARNING,
+                                    "Storage cleanup: failed to delete %s: %s".formatted(path, e.getMessage()));
                         }
                     });
         } catch (IOException e) {
-            LOG.errorf("Storage cleanup: failed to walk data directory %s: %s", rootDir, e.getMessage());
+            LOG.log(Level.ERROR,
+                    "Storage cleanup: failed to walk data directory %s: %s".formatted(rootDir, e.getMessage()));
             return;
         }
 
-        LOG.infof("Storage cleanup complete: %d file(s) deleted, %d error(s).", deleted.get(), errors.get());
+        LOG.log(Level.INFO,
+                "Storage cleanup complete: %d file(s) deleted, %d error(s).".formatted(deleted.get(), errors.get()));
     }
 
     private void checkFileSizeLimit(long fileSizeBytes) {
@@ -352,7 +365,7 @@ public class FileSystemService {
             stream.filter(path -> path.toString().endsWith(".zip")).filter(Files::isRegularFile)
                     .forEach(_ -> count.incrementAndGet());
         } catch (IOException e) {
-            LOG.warnf("Could not walk data directory for file count: %s", e.getMessage());
+            LOG.log(Level.WARNING, "Could not walk data directory for file count: %s".formatted(e.getMessage()));
         }
         return count.get();
     }
@@ -362,7 +375,7 @@ public class FileSystemService {
             FileTime lastModified = Files.getLastModifiedTime(path);
             return lastModified.toInstant().isBefore(cutoff);
         } catch (IOException e) {
-            LOG.warnf("Could not read last-modified time of %s: %s", path, e.getMessage());
+            LOG.log(Level.WARNING, "Could not read last-modified time of %s: %s".formatted(path, e.getMessage()));
             return false;
         }
     }

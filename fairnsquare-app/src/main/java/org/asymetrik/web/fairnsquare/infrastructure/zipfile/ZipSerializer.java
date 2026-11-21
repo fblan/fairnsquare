@@ -7,11 +7,16 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.json.Json;
+import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonString;
+import jakarta.json.JsonWriter;
+import jakarta.json.stream.JsonGenerator;
 
 import org.asymetrik.web.fairnsquare.infrastructure.zipfile.internal.ZipMetadata;
 
@@ -31,18 +36,27 @@ public class ZipSerializer {
     public static final String METADATA_ENTRY = "metadata.json";
     public static final String DATA_ENTRY = "data.bin";
 
-    private final ObjectMapper objectMapper;
-
-    public ZipSerializer() {
-        this.objectMapper = createObjectMapper();
+    private static byte[] writeMetadata(ZipMetadata metadata) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (JsonWriter writer = Json.createWriterFactory(Map.of(JsonGenerator.PRETTY_PRINTING, true))
+                .createWriter(bytes)) {
+            writer.writeObject(Json.createObjectBuilder().add("version", metadata.version())
+                    .add("deserializer", metadata.deserializer()).build());
+        }
+        return bytes.toByteArray();
     }
 
-    private ObjectMapper createObjectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        return mapper;
+    private static ZipMetadata readMetadata(byte[] content) {
+        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(content))) {
+            JsonObject json = reader.readObject();
+            return new ZipMetadata(text(json, "version"), text(json, "deserializer"));
+        } catch (JsonException | ClassCastException e) {
+            throw new ZipException("Failed to read " + METADATA_ENTRY, e);
+        }
+    }
+
+    private static String text(JsonObject json, String name) {
+        return json.get(name) instanceof JsonString string ? string.getString() : null;
     }
 
     /**
@@ -75,8 +89,7 @@ public class ZipSerializer {
      */
     public byte[] toZip(byte[] data, String version) {
         try {
-            byte[] metadataBytes = objectMapper
-                    .writeValueAsBytes(new ZipMetadata(version, ZipMetadata.CLEAR_DESERIALIZER));
+            byte[] metadataBytes = writeMetadata(new ZipMetadata(version, ZipMetadata.CLEAR_DESERIALIZER));
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try (ZipOutputStream zos = new ZipOutputStream(baos)) {
@@ -114,7 +127,7 @@ public class ZipSerializer {
             while ((entry = zis.getNextEntry()) != null) {
                 byte[] content = readAllBytes(zis);
                 switch (entry.getName()) {
-                    case METADATA_ENTRY -> metadata = objectMapper.readValue(content, ZipMetadata.class);
+                    case METADATA_ENTRY -> metadata = readMetadata(content);
                     case DATA_ENTRY -> dataBytes = content;
                 }
                 zis.closeEntry();

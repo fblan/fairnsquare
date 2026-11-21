@@ -20,6 +20,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.infrastructure.captcha.domain.CaptchaChallenge;
 import org.asymetrik.web.fairnsquare.infrastructure.captcha.domain.CaptchaToken;
@@ -52,12 +53,15 @@ public class CaptchaService {
 
     private final SecureRandom random = new SecureRandom();
 
+    @Inject
     @ConfigProperty(name = "captcha.secret")
     String secret;
 
+    @Inject
     @ConfigProperty(name = "captcha.challenge-ttl-seconds", defaultValue = "300")
     long challengeTtlSeconds;
 
+    @Inject
     @ConfigProperty(name = "captcha.token-ttl-seconds", defaultValue = "3600")
     long tokenTtlSeconds;
 

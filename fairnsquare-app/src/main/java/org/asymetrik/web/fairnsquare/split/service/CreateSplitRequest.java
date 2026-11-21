@@ -1,13 +1,17 @@
 package org.asymetrik.web.fairnsquare.split.service;
 
-import jakarta.validation.constraints.NotBlank;
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
 
 /**
  * Request DTO for creating a new split.
  */
-public class CreateSplitRequest {
+public class CreateSplitRequest implements Violations.Validated {
 
-    @NotBlank(message = "Split name is required")
+    @Override
+    public void validate() {
+        Violations.check().notBlank(name, "Split name is required").orThrow();
+    }
+
     private String name;
 
     public CreateSplitRequest() {

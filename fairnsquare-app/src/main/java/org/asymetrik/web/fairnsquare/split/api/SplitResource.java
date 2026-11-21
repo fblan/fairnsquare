@@ -2,11 +2,7 @@ package org.asymetrik.web.fairnsquare.split.api;
 
 import java.net.URI;
 
-import org.eclipse.microprofile.openapi.annotations.Operation;
-import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
-
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -17,6 +13,8 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
 
 import org.asymetrik.web.fairnsquare.split.api.expense.mapper.ExpenseMapper;
 import org.asymetrik.web.fairnsquare.split.api.mapper.ParticipantMapper;
@@ -45,7 +43,7 @@ import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
  * REST resource for managing splits.
  */
 @SplitApi
-@Path("/api/splits")
+@Path("/splits")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class SplitResource {
@@ -76,7 +74,8 @@ public class SplitResource {
      */
     @POST
     @CaptchaProtected
-    public Response createSplit(@Valid CreateSplitRequest request) {
+    public Response createSplit(CreateSplitRequest request) {
+        Violations.valid(request);
         Split split = splitService.createSplit(request);
 
         URI location = URI.create("/api/splits/" + split.getId().value());
@@ -111,10 +110,6 @@ public class SplitResource {
      *
      * @return 200 OK with the settlement, or 404 Not Found if the split does not exist or has no computed settlement
      */
-    @Operation(summary = "Get persisted settlement", description = "Returns the previously computed settlement for a split. Returns 404 if no settlement has been computed yet.")
-    @APIResponse(responseCode = "200", description = "Persisted settlement returned")
-    @APIResponse(responseCode = "404", description = "Split not found or no settlement computed yet")
-    @APIResponse(responseCode = "400", description = "Invalid split ID format")
     @GET
     @Path("/{splitId}/settlement")
     public Response getSettlement(@PathParam("splitId") String splitId) {
@@ -135,10 +130,6 @@ public class SplitResource {
      *
      * @return 200 OK with the calculated settlement, or 404 Not Found, or 400 Bad Request for invalid ID
      */
-    @Operation(summary = "Calculate settlement", description = "Calculates participant balances and reimbursement proposals, persists the result, and returns it.")
-    @APIResponse(responseCode = "200", description = "Settlement calculated and persisted")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid split ID format")
     @POST
     @Path("/{splitId}/settlement")
     public Response calculateSettlement(@PathParam("splitId") String splitId) {
@@ -159,10 +150,6 @@ public class SplitResource {
      *
      * @return 204 No Content if cleared, 404 Not Found if split does not exist, 400 Bad Request for invalid ID
      */
-    @Operation(summary = "Unsettle", description = "Clears the persisted settlement for a split, allowing participants and expenses to be edited again.")
-    @APIResponse(responseCode = "204", description = "Settlement cleared")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid split ID format")
     @DELETE
     @Path("/{splitId}/settlement")
     public Response unsettleSettlement(@PathParam("splitId") String splitId) {
@@ -189,7 +176,8 @@ public class SplitResource {
      */
     @POST
     @Path("/{splitId}/participants")
-    public Response addParticipant(@PathParam("splitId") String splitId, @Valid AddParticipantRequest request) {
+    public Response addParticipant(@PathParam("splitId") String splitId, AddParticipantRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -215,7 +203,8 @@ public class SplitResource {
     @PUT
     @Path("/{splitId}/participants/{participantId}")
     public Response updateParticipant(@PathParam("splitId") String splitId,
-            @PathParam("participantId") String participantId, @Valid UpdateParticipantRequest request) {
+            @PathParam("participantId") String participantId, UpdateParticipantRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -270,14 +259,11 @@ public class SplitResource {
      *
      * @return 200 OK with the updated expense, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Update expense", description = "Updates an expense and recalculates shares based on new split mode")
-    @APIResponse(responseCode = "200", description = "Expense updated successfully")
-    @APIResponse(responseCode = "404", description = "Split or expense not found")
-    @APIResponse(responseCode = "400", description = "Invalid split ID, expense ID, or request data")
     @PUT
     @Path("/{splitId}/expenses/{expenseId}")
     public Response updateExpense(@PathParam("splitId") String splitId, @PathParam("expenseId") String expenseId,
-            @Valid UpdateExpenseRequest request) {
+            UpdateExpenseRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -301,10 +287,6 @@ public class SplitResource {
      *
      * @return 204 No Content on success, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Delete expense", description = "Removes an expense from a split and recalculates balances")
-    @APIResponse(responseCode = "204", description = "Expense deleted successfully")
-    @APIResponse(responseCode = "404", description = "Split or expense not found")
-    @APIResponse(responseCode = "400", description = "Invalid split ID or expense ID format")
     @DELETE
     @Path("/{splitId}/expenses/{expenseId}")
     public Response deleteExpense(@PathParam("splitId") String splitId, @PathParam("expenseId") String expenseId) {
@@ -338,7 +320,8 @@ public class SplitResource {
     @Deprecated
     @POST
     @Path("/{splitId}/expenses")
-    public Response addExpense(@PathParam("splitId") String splitId, @Valid AddExpenseRequest request) {
+    public Response addExpense(@PathParam("splitId") String splitId, AddExpenseRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -358,13 +341,10 @@ public class SplitResource {
      *
      * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Add BY_NIGHT expense", description = "Creates an expense with shares calculated proportionally to participant nights")
-    @APIResponse(responseCode = "201", description = "Expense created successfully")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid request")
     @POST
     @Path("/{splitId}/expenses/by-night")
-    public Response addExpenseByNight(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
+    public Response addExpenseByNight(@PathParam("splitId") String splitId, AddTypedExpenseRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -386,13 +366,10 @@ public class SplitResource {
      *
      * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Add BY_SHARE expense", description = "Creates an expense with shares calculated proportionally to participant share")
-    @APIResponse(responseCode = "201", description = "Expense created successfully")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid request")
     @POST
     @Path("/{splitId}/expenses/by-share")
-    public Response addExpenseByShare(@PathParam("splitId") String splitId, @Valid AddTypedExpenseRequest request) {
+    public Response addExpenseByShare(@PathParam("splitId") String splitId, AddTypedExpenseRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }
@@ -414,13 +391,10 @@ public class SplitResource {
      *
      * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
      */
-    @Operation(summary = "Add FREE expense", description = "Creates an expense with manually specified shares per participant")
-    @APIResponse(responseCode = "201", description = "Expense created successfully")
-    @APIResponse(responseCode = "404", description = "Split not found")
-    @APIResponse(responseCode = "400", description = "Invalid request or shares don't sum to amount")
     @POST
     @Path("/{splitId}/expenses/free")
-    public Response addExpenseFree(@PathParam("splitId") String splitId, @Valid AddFreeExpenseRequest request) {
+    public Response addExpenseFree(@PathParam("splitId") String splitId, AddFreeExpenseRequest request) {
+        Violations.valid(request);
         if (!Split.Id.isValid(splitId)) {
             throw new InvalidSplitIdError(splitId);
         }

@@ -1,11 +1,8 @@
 package org.asymetrik.web.fairnsquare.split.service;
 
-import java.math.BigDecimal;
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
 /**
  * Request DTO for adding a new expense to a split via type-specific endpoints. The split mode is determined by the
@@ -37,10 +34,18 @@ import jakarta.validation.constraints.Size;
  * @param payerId
  *            The ID of the participant who paid
  */
-public record AddTypedExpenseRequest(
-        @NotNull(message = "Amount is required") @DecimalMin(value = "0.01", message = "Amount must be at least 0.01") BigDecimal amount,
+public record AddTypedExpenseRequest(BigDecimal amount,
 
-        @NotBlank(message = "Description is required") @Size(max = 200, message = "Description cannot exceed 200 characters") String description,
+        String description,
 
-        @NotBlank(message = "Payer is required") String payerId) {
+        String payerId) implements Violations.Validated {
+
+    @Override
+    public void validate() {
+        Violations.check().notNull(amount, "Amount is required").atLeast(amount, "0.01", "Amount must be at least 0.01")
+                .notBlank(description, "Description is required")
+                .maxLength(description, 200, "Description cannot exceed 200 characters")
+                .notBlank(payerId, "Payer is required").orThrow();
+    }
+
 }

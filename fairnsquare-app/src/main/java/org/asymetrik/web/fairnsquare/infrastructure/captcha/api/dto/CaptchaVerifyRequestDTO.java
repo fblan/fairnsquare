@@ -1,23 +1,23 @@
 package org.asymetrik.web.fairnsquare.infrastructure.captcha.api.dto;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
 
 /**
  * Request DTO for verifying a CAPTCHA answer. Contains the encrypted challenge token and the click coordinates.
  */
-public class CaptchaVerifyRequestDTO {
+public class CaptchaVerifyRequestDTO implements Violations.Validated {
 
-    @NotBlank(message = "challengeToken is required")
+    @Override
+    public void validate() {
+        Violations.check().notBlank(challengeToken, "challengeToken is required").notNull(x, "x coordinate is required")
+                .atLeast(x, 0, "x coordinate must be non-negative").notNull(y, "y coordinate is required")
+                .atLeast(y, 0, "y coordinate must be non-negative").orThrow();
+    }
+
     private String challengeToken;
 
-    @NotNull(message = "x coordinate is required")
-    @Min(value = 0, message = "x coordinate must be non-negative")
     private Integer x;
 
-    @NotNull(message = "y coordinate is required")
-    @Min(value = 0, message = "y coordinate must be non-negative")
     private Integer y;
 
     public CaptchaVerifyRequestDTO() {

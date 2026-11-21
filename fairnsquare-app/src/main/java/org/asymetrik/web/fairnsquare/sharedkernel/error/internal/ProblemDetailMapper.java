@@ -1,42 +1,22 @@
 package org.asymetrik.web.fairnsquare.sharedkernel.error.internal;
 
-import java.util.stream.Collectors;
-
-import jakarta.validation.ConstraintViolationException;
-
-import org.jboss.resteasy.reactive.RestResponse;
-import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import jakarta.ws.rs.ext.Provider;
 
 import org.asymetrik.web.fairnsquare.sharedkernel.error.BaseError;
 
 /**
- * Global exception mapper that converts exceptions to RFC 9457 Problem Details format.
+ * Converts the application's errors ({@link BaseError}, request validation included) to RFC 9457 Problem Details.
  */
-public class ProblemDetailMapper {
+@Provider
+public class ProblemDetailMapper implements ExceptionMapper<BaseError> {
 
-    private static final String ERROR_BASE_URI = "https://fairnsquare.app/errors/";
-
-    /**
-     * Maps Bean Validation constraint violations to Problem Details response.
-     */
-    @ServerExceptionMapper
-    public RestResponse<ProblemDetail> mapConstraintViolation(ConstraintViolationException e) {
-        String detail = e.getConstraintViolations().stream().map(violation -> violation.getMessage())
-                .collect(Collectors.joining("; "));
-
-        ProblemDetail problem = new ProblemDetail(ERROR_BASE_URI + "validation-error", "Validation Error", 400, detail);
-
-        return RestResponse.status(RestResponse.Status.BAD_REQUEST, problem);
-    }
-
-    /**
-     * Maps BaseError subclasses to Problem Details response.
-     */
-    @ServerExceptionMapper
-    public RestResponse<ProblemDetail> mapBaseError(BaseError e) {
-        ProblemDetail problem = new ProblemDetail(e.getType(), e.getTitle(), e.getStatus(), e.getDetail());
-
-        return RestResponse.ResponseBuilder.<ProblemDetail> create(e.getStatus()).entity(problem).build();
+    @Override
+    public Response toResponse(BaseError e) {
+        return Response.status(e.getStatus()).type(MediaType.APPLICATION_JSON)
+                .entity(new ProblemDetail(e.getType(), e.getTitle(), e.getStatus(), e.getDetail())).build();
     }
 
     /**

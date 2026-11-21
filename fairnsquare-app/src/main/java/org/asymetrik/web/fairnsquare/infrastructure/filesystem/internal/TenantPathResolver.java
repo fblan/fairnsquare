@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -18,8 +19,12 @@ public class TenantPathResolver {
     public static final String DEFAULT_TENANT = "default";
     private static final String ZIP_EXTENSION = ".zip";
 
-    @ConfigProperty(name = "fairnsquare.data.path", defaultValue = "data")
-    public String dataPath;
+    private final String dataPath;
+
+    @Inject
+    public TenantPathResolver(@ConfigProperty(name = "fairnsquare.data.path", defaultValue = "data") String dataPath) {
+        this.dataPath = dataPath;
+    }
 
     /**
      * Resolves the file path for the default tenant.

@@ -1,14 +1,9 @@
 package org.asymetrik.web.fairnsquare.split.service;
 
+import org.asymetrik.web.fairnsquare.sharedkernel.validation.Violations;
+
 import java.math.BigDecimal;
 import java.util.List;
-
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 /**
  * Request DTO for adding a FREE mode expense with manually specified share parts.
@@ -39,14 +34,33 @@ import jakarta.validation.constraints.Size;
  * @param shares
  *            List of manual share parts per participant (amounts calculated proportionally)
  */
-public record AddFreeExpenseRequest(
-        @NotNull(message = "Amount is required") @DecimalMin(value = "0.01", message = "Amount must be at least 0.01") BigDecimal amount,
+public record AddFreeExpenseRequest(BigDecimal amount,
 
-        @NotBlank(message = "Description is required") @Size(max = 200, message = "Description cannot exceed 200 characters") String description,
+        String description,
 
-        @NotBlank(message = "Payer is required") String payerId,
+        String payerId,
 
-        @NotEmpty(message = "Shares list cannot be empty") List<@Valid ShareRequest> shares) {
+        List<ShareRequest> shares) implements Violations.Validated {
+
+    @Override
+    public void validate() {
+        Violations violations = Violations.check().notNull(amount, "Amount is required")
+                .atLeast(amount, "0.01", "Amount must be at least 0.01")
+                .notBlank(description, "Description is required")
+                .maxLength(description, 200, "Description cannot exceed 200 characters")
+                .notBlank(payerId, "Payer is required").notEmpty(shares, "Shares list cannot be empty");
+        if (shares != null) {
+            for (ShareRequest share : shares) {
+                violations.when(share == null, "Share is required");
+                if (share != null) {
+                    violations.notBlank(share.participantId(), "Participant ID is required")
+                            .notNull(share.parts(), "Share parts is required")
+                            .atLeast(share.parts(), "0.00", "Share parts cannot be negative");
+                }
+            }
+        }
+        violations.orThrow();
+    }
 
     /**
      * Represents manual share parts for one participant in a FREE mode expense.
@@ -56,8 +70,8 @@ public record AddFreeExpenseRequest(
      * @param parts
      *            The share parts (minimum 0.00, zero allowed)
      */
-    public record ShareRequest(@NotBlank(message = "Participant ID is required") String participantId,
+    public record ShareRequest(String participantId,
 
-            @NotNull(message = "Share parts is required") @DecimalMin(value = "0.00", inclusive = true, message = "Share parts cannot be negative") BigDecimal parts) {
+            BigDecimal parts) {
     }
 }

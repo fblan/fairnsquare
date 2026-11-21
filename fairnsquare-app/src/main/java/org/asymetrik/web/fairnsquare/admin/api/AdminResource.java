@@ -14,7 +14,7 @@ import org.asymetrik.web.fairnsquare.admin.service.AdminService;
  * Admin REST resource. All endpoints require a valid {@code X-Admin-Token} header (enforced by
  * {@link org.asymetrik.web.fairnsquare.admin.api.internal.AdminTokenFilter}).
  */
-@Path("/api/admin")
+@Path("/admin")
 @AdminProtected
 public class AdminResource {
 

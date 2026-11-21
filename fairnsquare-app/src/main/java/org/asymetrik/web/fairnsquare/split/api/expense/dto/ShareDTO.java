@@ -2,19 +2,11 @@ package org.asymetrik.web.fairnsquare.split.api.expense.dto;
 
 import java.math.BigDecimal;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 /**
  * DTO for expense share information in REST API responses. For FREE mode, parts is present; for BY_NIGHT/EQUAL, parts
  * is null.
  */
-public record ShareDTO(@JsonProperty("participantId") String participantId, @JsonProperty("amount") BigDecimal amount,
-        @JsonProperty("parts") BigDecimal parts) {
-
-    @JsonCreator
-    public ShareDTO {
-    }
+public record ShareDTO(String participantId, BigDecimal amount, BigDecimal parts) {
 
     /**
      * Creates a ShareDTO with calculated amount (no parts).
