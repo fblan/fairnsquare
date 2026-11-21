@@ -12,13 +12,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -27,8 +26,7 @@ import io.restassured.http.ContentType;
  * Integration tests for Expense management use cases. Tests expense creation with different split modes (BY_NIGHT,
  * EQUAL).
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class ExpenseUseCaseTest {
 
     @BeforeEach

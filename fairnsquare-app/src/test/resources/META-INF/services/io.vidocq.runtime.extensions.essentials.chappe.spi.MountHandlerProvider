@@ -1,0 +1,2 @@
+# module-info provides it; the tests run on the classpath, which only reads this file.
+org.asymetrik.web.fairnsquare.infrastructure.web.FrontendMount

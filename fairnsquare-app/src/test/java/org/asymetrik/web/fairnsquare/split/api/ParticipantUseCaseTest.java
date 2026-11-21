@@ -8,13 +8,12 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -22,8 +21,7 @@ import io.restassured.http.ContentType;
 /**
  * Integration tests for Participant management use cases. Tests add, update, and delete participant endpoints.
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class ParticipantUseCaseTest {
 
     @BeforeEach

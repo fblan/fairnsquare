@@ -11,11 +11,11 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpensePersistenceDTO;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
+@FairnsquareTest
 class ExpensePersistenceMapperTest {
 
     @Inject

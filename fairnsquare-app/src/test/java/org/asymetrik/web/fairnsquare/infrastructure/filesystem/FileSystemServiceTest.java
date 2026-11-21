@@ -14,13 +14,11 @@ import java.util.Comparator;
 
 import jakarta.inject.Inject;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTestRuntime;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.common.ResourceArg;
-import io.quarkus.test.junit.QuarkusTest;
 
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileCountLimitExceededError;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.internal.StorageFileSizeLimitExceededError;
@@ -31,15 +29,14 @@ import org.asymetrik.web.fairnsquare.infrastructure.filesystem.StorageStats;
  * cleanup, and storage stats. Uses a max-file-count of 3 (pinned via {@code maxFileCount} init parameter) so that count
  * thresholds in these tests remain accurate regardless of the global test-profile default.
  */
-@QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = "maxFileCount", value = "3"))
+@FairnsquareTest(maxFileCount = 3)
 class FileSystemServiceTest {
 
     @Inject
     FileSystemService fileSystemService;
 
-    @ConfigProperty(name = "fairnsquare.data.path")
-    String dataPath;
+    /** fairnsquare.data.path: the test runtime's data directory. */
+    String dataPath = FairnsquareTestRuntime.dataDirectory().toString();
 
     @BeforeEach
     void setUp() throws IOException {

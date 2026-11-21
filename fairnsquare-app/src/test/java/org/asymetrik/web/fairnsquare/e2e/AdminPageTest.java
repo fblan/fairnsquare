@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Locator;
@@ -12,9 +14,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Route;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
+@FairnsquareTest
 class AdminPageTest extends E2eTestBase {
 
     /** Matches the %test.admin.password-hash in application.properties. */

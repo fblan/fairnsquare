@@ -34,8 +34,7 @@ class FileSystemServiceDirectTest {
 
     @BeforeEach
     void setUp() {
-        resolver = new TenantPathResolver();
-        resolver.dataPath = tempDir.toString();
+        resolver = new TenantPathResolver(tempDir.toString());
         service = new FileSystemService(resolver, MAX_FILE_COUNT, MAX_FILE_SIZE_BYTES, MAX_AGE_DAYS);
     }
 
@@ -56,8 +55,7 @@ class FileSystemServiceDirectTest {
 
     @Test
     void computeStorageStats_returnsZerosWhenDirectoryDoesNotExist() {
-        TenantPathResolver nonExistentResolver = new TenantPathResolver();
-        nonExistentResolver.dataPath = tempDir.resolve("nonexistent").toString();
+        TenantPathResolver nonExistentResolver = new TenantPathResolver(tempDir.resolve("nonexistent").toString());
         FileSystemService svc = new FileSystemService(nonExistentResolver, MAX_FILE_COUNT, MAX_FILE_SIZE_BYTES,
                 MAX_AGE_DAYS);
 

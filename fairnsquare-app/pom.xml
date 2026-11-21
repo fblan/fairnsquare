@@ -22,6 +22,9 @@
         <vidocq.mainClass>org.asymetrik.web.fairnsquare.FairnsquareApp</vidocq.mainClass>
         <vidocq.version>0.4.0-RC2</vidocq.version>
         <asymetrik-modular.version>0.0.2</asymetrik-modular.version>
+        <!-- Dev mode (mvn compile vidocq:dev): Ravel reads the %dev. keys of vidocq.properties only under the
+             MicroProfile profile, which vidocq's own dev profile doesn't set. -->
+        <vidocq.dev.systemProperties>mp.config.profile=dev</vidocq.dev.systemProperties>
     </properties>
 
     <dependencies>

@@ -6,14 +6,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.regex.Pattern;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.options.SelectOption;
 
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
-@QuarkusTest
+@FairnsquareTest
 class SettlementPageTest extends E2eTestBase {
 
     private static final String SHARED_ACCOUNT = "sharedAccount12345678";

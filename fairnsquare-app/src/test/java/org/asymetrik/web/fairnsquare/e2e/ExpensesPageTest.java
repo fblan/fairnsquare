@@ -5,16 +5,17 @@ import static io.restassured.RestAssured.given;
 
 import java.util.regex.Pattern;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.SelectOption;
 
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
-@QuarkusTest
+@FairnsquareTest
 class ExpensesPageTest extends E2eTestBase {
 
     @Test

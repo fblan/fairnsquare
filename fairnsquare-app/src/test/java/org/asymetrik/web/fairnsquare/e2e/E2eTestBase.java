@@ -2,11 +2,13 @@ package org.asymetrik.web.fairnsquare.e2e;
 
 import static io.restassured.RestAssured.given;
 
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+import org.asymetrik.web.fairnsquare.testing.SharedBrowser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.AfterTestExecutionCallback;
@@ -19,10 +21,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Tracing;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkiverse.playwright.InjectPlaywright;
-import io.quarkiverse.playwright.WithPlaywright;
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.common.http.TestHTTPResource;
+import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 
 /**
@@ -38,18 +37,14 @@ import io.restassured.http.ContentType;
  * Tests locate elements by role, label or text — never by CSS classes or framework markup — so that they keep passing
  * when the frontend moves from Svelte to web components.
  */
-@WithPlaywright
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 abstract class E2eTestBase {
 
     /** Must match the key used by the frontend captcha store. */
     private static final String CAPTCHA_TOKEN_KEY = "fairnsquare_captchaToken";
 
-    @InjectPlaywright
-    Browser browser;
-
-    @TestHTTPResource("/")
-    URL root;
+    /** The application's page, http://localhost:port/. */
+    protected URL root;
 
     protected BrowserContext context;
     protected Page page;
@@ -68,8 +63,9 @@ abstract class E2eTestBase {
     };
 
     @BeforeEach
-    void openPage() {
-        context = browser.newContext(new Browser.NewContextOptions().setBaseURL(root.toString()));
+    void openPage() throws Exception {
+        root = URI.create("http://localhost:" + RestAssured.port + "/").toURL();
+        context = SharedBrowser.chromium().newContext(new Browser.NewContextOptions().setBaseURL(root.toString()));
         if (withCaptchaToken()) {
             context.addInitScript("localStorage.setItem('%s', '%s')".formatted(CAPTCHA_TOKEN_KEY,
                     CaptchaTokenTestHelper.generateToken()));

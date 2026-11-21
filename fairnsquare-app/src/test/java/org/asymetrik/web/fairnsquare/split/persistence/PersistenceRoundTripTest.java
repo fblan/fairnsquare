@@ -15,23 +15,20 @@ import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.FileSystemService;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.Filename;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
-import org.junit.jupiter.api.Test;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 /**
  * Integration tests verifying the full persistence round-trip: domain -> DTO -> ZIP archive -> DTO -> domain.
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class PersistenceRoundTripTest {
 
     @Inject

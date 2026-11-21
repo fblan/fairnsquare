@@ -7,15 +7,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Route;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
+@FairnsquareTest
 class HomePageTest extends E2eTestBase {
 
     @Test

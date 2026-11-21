@@ -2,6 +2,7 @@ package org.asymetrik.web.fairnsquare.infrastructure.captcha.api;
 
 import java.util.Base64;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -24,6 +25,7 @@ import org.asymetrik.web.fairnsquare.infrastructure.captcha.CaptchaImageGenerato
  * REST resource for the stateless CAPTCHA flow: create challenge (returns encrypted token + inline image), verify
  * answer by submitting the token and click coordinates.
  */
+@ApplicationScoped
 @Path("/captcha/challenges")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

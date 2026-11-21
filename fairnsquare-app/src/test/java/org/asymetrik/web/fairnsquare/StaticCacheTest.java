@@ -4,16 +4,16 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import io.quarkus.test.junit.QuarkusTest;
 
 /**
  * The page and the web component scripts have no content hash in their names: the browser must ask the server again on
  * each load (a 304 when unchanged), or after a deploy it mixes old and new modules and a page stays blank (#178).
  */
-@QuarkusTest
+@FairnsquareTest
 class StaticCacheTest {
 
     @ParameterizedTest

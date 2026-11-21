@@ -7,19 +7,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Route;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
-
 /**
  * Without a CAPTCHA token, creating a split first asks for the human verification. The challenge API is stubbed: the
  * real one draws a random sum the test cannot read.
  */
-@QuarkusTest
+@FairnsquareTest
 class CaptchaTest extends E2eTestBase {
 
     /** A plain 40×20 PNG. */

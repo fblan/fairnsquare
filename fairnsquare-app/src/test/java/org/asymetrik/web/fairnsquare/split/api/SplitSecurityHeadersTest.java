@@ -5,18 +5,16 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
 /**
  * Verifies that responses to /api/splits/** carry the required security headers from {@link SplitCacheControlFilter}.
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class SplitSecurityHeadersTest {
 
     @Test
@@ -44,7 +42,7 @@ class SplitSecurityHeadersTest {
 
     @Test
     void nonSplitEndpointsShouldNotCarrySplitCacheControlHeader() {
-        given().when().get("/q/health").then().header("Cache-Control", not(equalTo("private, no-store")));
+        given().when().get("/api/health").then().header("Cache-Control", not(equalTo("private, no-store")));
     }
 
     private String createSplit() {

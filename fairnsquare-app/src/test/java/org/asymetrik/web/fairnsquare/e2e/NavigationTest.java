@@ -5,15 +5,15 @@ import static io.restassured.RestAssured.given;
 
 import java.util.regex.Pattern;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
+@FairnsquareTest
 class NavigationTest extends E2eTestBase {
 
     private Locator nav() {

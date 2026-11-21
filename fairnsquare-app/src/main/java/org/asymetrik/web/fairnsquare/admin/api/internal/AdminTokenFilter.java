@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -32,8 +33,9 @@ public class AdminTokenFilter implements ContainerRequestFilter {
     private final String passwordHash;
 
     @Inject
-    public AdminTokenFilter(@ConfigProperty(name = "admin.password-hash", defaultValue = "") String passwordHash) {
-        this.passwordHash = passwordHash;
+    public AdminTokenFilter(@ConfigProperty(name = "admin.password-hash") Optional<String> passwordHash) {
+        // MicroProfile Config reads an empty value as no value: blank and missing both turn the admin page off.
+        this.passwordHash = passwordHash.orElse("");
     }
 
     @Override

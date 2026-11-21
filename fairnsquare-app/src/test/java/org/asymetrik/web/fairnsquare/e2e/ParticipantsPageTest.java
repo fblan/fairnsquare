@@ -4,14 +4,15 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
 
 import static io.restassured.RestAssured.given;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
-@QuarkusTest
+@FairnsquareTest
 class ParticipantsPageTest extends E2eTestBase {
 
     @Test

@@ -3,6 +3,8 @@ package org.asymetrik.web.fairnsquare.e2e;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -10,12 +12,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
 
-import io.quarkus.test.junit.QuarkusTest;
-
 /**
  * Every page fits the screen width on a phone and on a desktop: nothing makes the page scroll sideways.
  */
-@QuarkusTest
+@FairnsquareTest
 class LayoutTest extends E2eTestBase {
 
     @ParameterizedTest(name = "{0} at {1}x{2}")

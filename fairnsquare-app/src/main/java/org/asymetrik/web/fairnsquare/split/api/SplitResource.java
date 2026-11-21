@@ -2,6 +2,7 @@ package org.asymetrik.web.fairnsquare.split.api;
 
 import java.net.URI;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -43,6 +44,7 @@ import org.asymetrik.web.fairnsquare.split.service.SplitUseCases;
  * REST resource for managing splits.
  */
 @SplitApi
+@ApplicationScoped
 @Path("/splits")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

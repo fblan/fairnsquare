@@ -9,14 +9,12 @@ import jakarta.inject.Inject;
 
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.FileSystemService;
 import org.asymetrik.web.fairnsquare.infrastructure.filesystem.Filename;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
-import org.junit.jupiter.api.Test;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 /**
  * Backward compatibility tests for split persistence. Each test loads a frozen ZIP fixture file representing an old
@@ -29,8 +27,7 @@ import io.quarkus.test.junit.QuarkusTest;
  * When a new backward-compatibility mechanism is introduced (new nullable field, renamed field, aliased enum value),
  * add the corresponding fixture via {@code FixtureZipGenerator} and add a test method here.
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class PersistenceBackwardCompatibilityTest {
 
     @Inject

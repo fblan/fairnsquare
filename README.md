@@ -18,10 +18,10 @@ No Node.js: the frontend is plain JavaScript web components, served as they are 
 ### Development mode
 
 ```bash
-mvn quarkus:dev
+cd fairnsquare-app && mvn compile vidocq:dev
 ```
 
-Starts the app on port `8080`. The frontend lives in `fairnsquare-app/src/main/resources/META-INF/resources/` (`index.html`, `main.js`, `infra/`, `components/`, `biz/<page>/`); after editing a file, reload the browser.
+Starts the app on port `8080` in vidocq's dev mode: it recompiles and reloads on a Java change, seeds a sample split (`/splits/devSampleSplit2026001`), accepts the admin password `password`, and opens a debugger port (5005). The frontend lives in `fairnsquare-app/src/main/resources/META-INF/resources/` (`index.html`, `main.js`, `infra/`, `components/`, `biz/<page>/`); after editing a file, reload the browser.
 
 ### Full build
 
@@ -38,6 +38,8 @@ docker build -f docker/Dockerfile.jvm -t fairnsquare .
 docker run -p 8080:8080 --env-file .env fairnsquare
 ```
 
+The health check is `GET /api/health` (`/api/health/live`, `/api/health/ready`).
+
 ---
 
 ## Environment variables
@@ -47,8 +49,7 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `CAPTCHA_SECRET` | **yes** | — | HMAC-SHA256 secret used to sign CAPTCHA tokens |
-| `ADMIN_PASSWORD_HASH` | **yes** | — | SHA-256 hash of the admin password |
-| `FAIRNSQUARE_CORS_ORIGINS` | **yes** | dev: `http://localhost:8080` | Comma-separated list of allowed CORS origins |
+| `ADMIN_PASSWORD_HASH` | no | — | SHA-256 hash of the admin password; without it, the admin page is off |
 | `FAIRNSQUARE_DATA_PATH` | no | `data/` | Directory where split JSON files are stored |
 | `FAIRNSQUARE_MAX_FILE_COUNT` | no | `5000` | Maximum number of split files retained |
 | `FAIRNSQUARE_MAX_FILE_SIZE_BYTES` | no | `524288` | Maximum size of a single split file (bytes) |

@@ -19,11 +19,11 @@ import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersisten
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseFreePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ParticipantPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.SplitPersistenceDTO;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.junit.QuarkusTest;
-
-@QuarkusTest
+@FairnsquareTest
 class SplitPersistenceMapperTest {
 
     @Inject

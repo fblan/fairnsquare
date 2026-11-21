@@ -6,25 +6,23 @@ import java.nio.file.Path;
 
 import jakarta.inject.Inject;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.Test;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTestRuntime;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 /**
  * Integration tests for infrastructure and configuration validation. Verifies application configuration properties are
  * correctly applied.
  */
-@QuarkusTest
-@QuarkusTestResource(TempStorageTestResource.class)
+@FairnsquareTest
 class InfrastructureUseCaseTest {
 
     @Inject
     FileSystemService fileSystemService;
 
-    @ConfigProperty(name = "fairnsquare.data.path")
-    String configuredDataPath;
+    /** fairnsquare.data.path: the test runtime's data directory. */
+    String configuredDataPath = FairnsquareTestRuntime.dataDirectory().toString();
 
     /**
      * AC 6: Configurable data path via config property. Verifies that the fairnsquare.data.path config property is

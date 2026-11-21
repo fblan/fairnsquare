@@ -5,14 +5,12 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import org.asymetrik.web.fairnsquare.CaptchaTokenTestHelper;
-import org.asymetrik.web.fairnsquare.infrastructure.filesystem.TempStorageTestResource;
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.common.ResourceArg;
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -21,8 +19,7 @@ import io.restassured.http.ContentType;
  * Integration test verifying that split creation is rejected with HTTP 507 when the file-count storage limit is
  * reached.
  */
-@QuarkusTest
-@QuarkusTestResource(value = TempStorageTestResource.class, restrictToAnnotatedClass = true, initArgs = @ResourceArg(name = "maxFileCount", value = "2"))
+@FairnsquareTest(maxFileCount = 2)
 class CreateSplitFileCountLimitTest {
 
     @BeforeEach

@@ -5,15 +5,16 @@ import static io.restassured.RestAssured.given;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.Route;
 
-import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 
 /** The split dashboard, /splits/<id>. */
-@QuarkusTest
+@FairnsquareTest
 class SplitPageTest extends E2eTestBase {
 
     @Test

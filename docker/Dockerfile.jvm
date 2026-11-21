@@ -1,86 +1,50 @@
 ####
-# Multi-stage JVM Dockerfile for FairNSquare (Quarkus)
+# Multi-stage image: Maven builds the vidocq distribution (fairnsquare-app/target/fairnsquare-app-*/: bin, lib, app),
+# then a JRE image runs it. Build context is the repo root:
 #
-# Build the image from the project root:
-#   docker build -f docker/Dockerfile.jvm -t asymetrik/fairnsquare .
+#   docker build -f docker/Dockerfile.jvm -t fairnsquare .
 #
-# Run the container:
-#   docker run -p 8080:8080 asymetrik/fairnsquare
-#
-# With persistent data volume:
-#   docker run -p 8080:8080 -v fairnsquare-data:/data asymetrik/fairnsquare
-###
+# Tests are skipped here; run them before pushing.
+####
 
-# Stage 0: Resolve the git commit shown in the app footer.
-# Priority: --build-arg GIT_COMMIT=<sha>, then the .git directory of the build context (e.g. a Dokploy clone),
-# then "unknown".
+# The commit, for /api/info and the startup log (app.git.commit, from APP_GIT_COMMIT).
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS gitinfo
 ARG GIT_COMMIT=unknown
 RUN microdnf install -y git && microdnf clean all
-# ".gi[t]" copies the content of .git when it exists and matches nothing (no error) when it does not.
-# The copied content is a valid git dir, so it can be queried with --git-dir.
 COPY pom.xml .gi[t] /gitmeta/
 RUN if [ "$GIT_COMMIT" != "unknown" ]; then echo "$GIT_COMMIT" > /git-commit; \
     else git --git-dir=/gitmeta rev-parse HEAD > /git-commit 2>/dev/null || echo unknown > /git-commit; fi
 
-# Stage 1: Build the Quarkus application
 FROM registry.access.redhat.com/ubi9/openjdk-25:1.24-2.1771324969 AS builder
 USER root
 WORKDIR /build
+# Poms first, so the dependency download layer is cached until either changes.
+COPY pom.xml ./
+COPY fairnsquare-app/pom.xml ./fairnsquare-app/
+RUN mvn -B -q dependency:go-offline -pl fairnsquare-app
+COPY fairnsquare-app/src ./fairnsquare-app/src
+RUN mvn -B -q package -DskipTests -pl fairnsquare-app \
+    && mkdir dist \
+    && cp -r fairnsquare-app/target/fairnsquare-app-*/. dist/
 
-# Copy pom.xml files first for better dependency caching
-COPY  pom.xml ./
-COPY  fairnsquare-app/pom.xml ./fairnsquare-app/
-
-# Download dependencies (cached layer if pom.xml unchanged)
-RUN mvn dependency:go-offline -B 
-
-# Copy source code
-COPY  fairnsquare-app/src ./fairnsquare-app/src
-# Build the Quarkus application (fast-jar packaging)
-RUN mvn clean package -DskipTests -B
-
-# Stage 2: Runtime image with UBI9 and JRE 25
 FROM registry.access.redhat.com/ubi9/openjdk-25-runtime:latest
-
-# Install JRE 25
-# Note: If java-25-openjdk-headless is not available, this will use the latest available version
-# RUN microdnf install -y shadow-utils && \
-#     microdnf install -y java-25-openjdk-headless && \
-#     microdnf clean all && \
-#     rpm -q java-25-openjdk-headless
-
 WORKDIR /deployments
 USER root
-# Install fontconfig + DejaVu fonts required by java.awt (CaptchaImageGenerator) in headless mode
+# Fonts: the CAPTCHA image is drawn with AWT.
 RUN microdnf install -y fontconfig dejavu-sans-fonts && microdnf clean all \
-    && chown 1001 /deployments \
-    && chmod "g+rwX" /deployments \
     && chown 1001:root /deployments \
+    && chmod "g+rwX" /deployments \
     && mkdir -p /data \
     && chown 1001:root /data \
     && chmod "g+rwX" /data
-
-# Copy built artifacts from builder stage
-# Four distinct layers for efficient image caching:
-# library dependencies change rarely, application code changes often
-COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/lib/ /deployments/lib/
-COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/*.jar /deployments/
-COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/app/ /deployments/app/
-COPY --from=builder --chown=1001:root /build/fairnsquare-app/target/quarkus-app/quarkus/ /deployments/quarkus/
-
-EXPOSE 8080
-
-# Git commit resolved at build time; the APP_GIT_COMMIT environment variable, when set at runtime, takes precedence
+COPY --from=builder --chown=1001:root /build/dist/ /deployments/
 COPY --from=gitinfo --chown=1001:root /git-commit /deployments/git-commit
 
+# vidocq.http.port (vidocq.properties)
+EXPOSE 8080
 USER 1001
-
-# Persist split data outside the container filesystem
 VOLUME ["/data"]
 
-ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager -Djava.awt.headless=true -Xmx512m -XX:-UseBASE64Intrinsics"
+ENV JAVA_OPTS="-Djava.awt.headless=true -Xmx512m -XX:-UseBASE64Intrinsics"
 ENV FAIRNSQUARE_DATA_PATH="/data"
-ENV FAIRNSQUARE_CORS_ORIGINS="https://fairnsquare.web.asymetrik.org"
-
-ENTRYPOINT ["sh", "-c", "export APP_GIT_COMMIT=\"${APP_GIT_COMMIT:-$(cat /deployments/git-commit)}\"; java $JAVA_OPTS -jar /deployments/quarkus-run.jar"]
+ENTRYPOINT ["sh", "-c", "export APP_GIT_COMMIT=\"${APP_GIT_COMMIT:-$(cat /deployments/git-commit)}\"; exec /deployments/bin/fairnsquare-app.sh"]

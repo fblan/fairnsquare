@@ -14,7 +14,23 @@
     <name>FairNSquare - Parent</name>
     <description>Frictionless expense-sharing web app for groups with variable participation</description>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <modules>
         <module>fairnsquare-app</module>
     </modules>
+
+    <build>
+        <plugins>
+            <!-- Declared here too, so that CI's `mvn formatter:validate` from the root finds the plugin's prefix
+                 (fairnsquare-app formats its sources at each build). -->
+            <plugin>
+                <groupId>net.revelc.code.formatter</groupId>
+                <artifactId>formatter-maven-plugin</artifactId>
+                <version>2.29.0</version>
+            </plugin>
+        </plugins>
+    </build>
 </project>

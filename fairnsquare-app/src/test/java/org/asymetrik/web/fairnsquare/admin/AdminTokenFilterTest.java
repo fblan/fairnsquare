@@ -1,5 +1,6 @@
 package org.asymetrik.web.fairnsquare.admin;
 
+import java.util.Optional;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.net.URI;
@@ -38,7 +39,7 @@ class AdminTokenFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new AdminTokenFilter(PASSWORD_HASH);
+        filter = new AdminTokenFilter(Optional.of(PASSWORD_HASH));
     }
 
     @Test
@@ -73,7 +74,7 @@ class AdminTokenFilterTest {
     @Test
     void uppercaseStoredHash_stillValidates() throws Exception {
         // constantTimeHashEquals lowercases stored hash before parsing — accepts both cases
-        filter = new AdminTokenFilter(PASSWORD_HASH.toUpperCase());
+        filter = new AdminTokenFilter(Optional.of(PASSWORD_HASH.toUpperCase()));
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -83,7 +84,7 @@ class AdminTokenFilterTest {
 
     @Test
     void unconfiguredHash_abortsWith503() throws Exception {
-        filter = new AdminTokenFilter("");
+        filter = new AdminTokenFilter(Optional.of(""));
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -95,7 +96,7 @@ class AdminTokenFilterTest {
     @Test
     void invalidHashFormat_abortsWith401() throws Exception {
         // HexFormat.parseHex throws on garbage — constantTimeHashEquals catches and returns false → 401
-        filter = new AdminTokenFilter("not-valid-hex!!");
+        filter = new AdminTokenFilter(Optional.of("not-valid-hex!!"));
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -128,6 +129,13 @@ class AdminTokenFilterTest {
         @Override
         public String getHeaderString(String name) {
             return AdminTokenFilter.ADMIN_TOKEN_HEADER.equals(name) ? token : null;
+        }
+
+        // Jakarta REST 4.0
+        @Override
+        public boolean containsHeaderString(String name, String valueSeparatorRegex,
+                java.util.function.Predicate<String> valuePredicate) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

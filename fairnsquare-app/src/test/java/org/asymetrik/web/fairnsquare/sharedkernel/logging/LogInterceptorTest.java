@@ -14,16 +14,16 @@ import java.util.logging.LogRecord;
 
 import jakarta.inject.Inject;
 
+import org.asymetrik.web.fairnsquare.testing.FairnsquareTest;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.junit.QuarkusTest;
-
 /**
  * Tests for {@link LogInterceptor}. Uses a {@link LoggedTestService} test bean to verify logging behavior.
  */
-@QuarkusTest
+@FairnsquareTest
 class LogInterceptorTest {
 
     @Inject
