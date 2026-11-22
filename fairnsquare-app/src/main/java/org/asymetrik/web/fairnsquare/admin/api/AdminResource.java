@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.Response;
 
 import org.asymetrik.web.fairnsquare.admin.api.dto.AdminStatsResponse;
 import org.asymetrik.web.fairnsquare.admin.service.AdminService;
+import org.asymetrik.web.fairnsquare.admin.service.ModuleReportService;
 
 /**
  * Admin REST resource. All endpoints require a valid {@code X-Admin-Token} header (enforced by
@@ -18,11 +19,20 @@ import org.asymetrik.web.fairnsquare.admin.service.AdminService;
 @AdminProtected
 public class AdminResource {
 
+    /**
+     * The report runs scripts: sandboxed, it can't reach the application's origin, its storage included, if it is ever
+     * opened directly.
+     */
+    static final String MODULE_REPORT_POLICY = "sandbox allow-scripts; default-src 'none'; "
+            + "script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:";
+
     private final AdminService adminService;
+    private final ModuleReportService moduleReport;
 
     @Inject
-    public AdminResource(AdminService adminService) {
+    public AdminResource(AdminService adminService, ModuleReportService moduleReport) {
         this.adminService = adminService;
+        this.moduleReport = moduleReport;
     }
 
     /**
@@ -35,5 +45,18 @@ public class AdminResource {
     public Response getStats() {
         AdminStatsResponse stats = adminService.getStats();
         return Response.ok(stats).build();
+    }
+
+    /**
+     * modular's module report of the running build, a whole HTML page; 404 when the build has none.
+     */
+    @GET
+    @Path("/module-report")
+    @Produces(MediaType.TEXT_HTML)
+    public Response getModuleReport() {
+        return moduleReport.page()
+                .map(page -> Response.ok(page).header("Content-Security-Policy", MODULE_REPORT_POLICY).build())
+                .orElseGet(() -> Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN)
+                        .entity("No module report in this build.").build());
     }
 }
