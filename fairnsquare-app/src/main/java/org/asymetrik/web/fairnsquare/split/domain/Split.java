@@ -16,6 +16,8 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.PayerNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.SplitMode;
 import org.asymetrik.web.fairnsquare.split.domain.participant.DuplicateParticipantNameError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseReimbursement;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidBeneficiaryError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantHasExpensesError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
 import org.asymetrik.web.fairnsquare.split.domain.settlement.Settlement;
@@ -206,10 +208,29 @@ public class Split {
      * @param participantId
      *            the ID of the participant to check
      *
-     * @return true if the participant is a payer on any expense, false otherwise
+     * @return true if the participant is a payer, or a reimbursement's beneficiary, on any expense
      */
     public boolean hasExpensesForParticipant(Participant.Id participantId) {
-        return expenses.stream().anyMatch(e -> e.getPayerId() != null && e.getPayerId().equals(participantId));
+        return expenses.stream().anyMatch(e -> participantId.equals(e.getPayerId())
+                || e instanceof ExpenseReimbursement r && participantId.equals(r.getBeneficiaryId()));
+    }
+
+    /**
+     * Validates a reimbursement's beneficiary: given, a participant of this split, and not the payer.
+     *
+     * @throws InvalidBeneficiaryError
+     *             otherwise
+     */
+    public void validateBeneficiary(Participant.Id payerId, Participant.Id beneficiaryId) {
+        if (beneficiaryId == null) {
+            throw new InvalidBeneficiaryError("A reimbursement requires a beneficiary");
+        }
+        if (participants.stream().noneMatch(p -> p.id().equals(beneficiaryId))) {
+            throw new InvalidBeneficiaryError("Beneficiary with ID '" + beneficiaryId.value() + "' not found in split");
+        }
+        if (beneficiaryId.equals(payerId)) {
+            throw new InvalidBeneficiaryError("The beneficiary of a reimbursement cannot be its payer");
+        }
     }
 
     /**
@@ -260,16 +281,35 @@ public class Split {
      */
     public Expense updateExpense(Expense.Id expenseId, java.math.BigDecimal amount, String description,
             Participant.Id payerId, SplitMode splitMode) {
+        return updateExpense(expenseId, amount, description, payerId, splitMode, null);
+    }
+
+    /**
+     * Updates an expense, which may become or stay a REIMBURSEMENT for {@code beneficiaryId} (ignored by the other
+     * modes). FREE cannot be set this way: it needs shares.
+     *
+     * @throws InvalidBeneficiaryError
+     *             if the mode is REIMBURSEMENT and the beneficiary is missing, unknown or the payer
+     * @throws UnsupportedOperationException
+     *             if the mode is FREE
+     */
+    public Expense updateExpense(Expense.Id expenseId, java.math.BigDecimal amount, String description,
+            Participant.Id payerId, SplitMode splitMode, Participant.Id beneficiaryId) {
         // Validate payer exists
         validatePayerExists(payerId);
+        if (splitMode == SplitMode.REIMBURSEMENT) {
+            validateBeneficiary(payerId, beneficiaryId);
+        }
 
         // Find and update the expense
         for (int i = 0; i < expenses.size(); i++) {
             Expense existing = expenses.get(i);
             if (existing.getId().equals(expenseId)) {
                 // Preserve original ID and createdAt, create new instance with updated values
-                Expense updated = Expense.fromJson(expenseId, amount, description, payerId, splitMode,
-                        existing.getCreatedAt());
+                Expense updated = splitMode == SplitMode.REIMBURSEMENT
+                        ? ExpenseReimbursement.fromJson(expenseId, amount, description, payerId, beneficiaryId,
+                                existing.getCreatedAt())
+                        : Expense.fromJson(expenseId, amount, description, payerId, splitMode, existing.getCreatedAt());
                 expenses.set(i, updated);
                 touch();
                 clearSettlement();

@@ -250,6 +250,87 @@ class ExpensesPageTest extends E2eTestBase {
     }
 
     @Test
+    void aReimbursementChargesTheWholeAmountToOneParticipant() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        addParticipant(splitId, "Bob", 2);
+        addParticipant(splitId, "Carol", 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+        field(modal, "Description").fill("Train ticket");
+        field(modal, "Amount (€)").fill("40");
+
+        modal.getByText("Reimbursement", new Locator.GetByTextOptions().setExact(true)).click();
+        Locator paidFor = field(modal, "Paid for");
+        assertThat(paidFor).isFocused();
+        assertThat(paidFor.locator("option")).hasText(new String[] { "Bob", "Carol" });
+        paidFor.selectOption(new SelectOption().setLabel("Carol"));
+        button(modal, "Add Expense").click();
+
+        assertThat(toast("Expense added")).isVisible();
+        assertThat(text("Train ticket · €40.00 · Paid by Alice for Carol")).isVisible();
+        assertThat(text("↔️ Reimbursement")).isVisible();
+        assertThat(text("Carol: €40.00")).isVisible();
+    }
+
+    @Test
+    void changingThePayerTakesThemOutOfPaidFor() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        addParticipant(splitId, "Bob", 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+        field(modal, "Reimbursement").check();
+        assertThat(field(modal, "Paid for").locator("option")).hasText(new String[] { "Bob" });
+
+        field(modal, "Payer").selectOption(new SelectOption().setLabel("Bob"));
+
+        assertThat(field(modal, "Paid for").locator("option")).hasText(new String[] { "Alice" });
+    }
+
+    @Test
+    void aReimbursementOpensForEditingWithItsBeneficiary() {
+        String splitId = createSplit("Trip");
+        String aliceId = addParticipant(splitId, "Alice", 2);
+        addParticipant(splitId, "Bob", 2);
+        String carolId = addParticipant(splitId, "Carol", 2);
+        given().contentType(ContentType.JSON).body("""
+                {"amount": 40.00, "description": "Train ticket", "payerId": "%s", "beneficiaryId": "%s"}
+                """.formatted(aliceId, carolId)).post("/api/splits/" + splitId + "/expenses/reimbursement").then()
+                .statusCode(201);
+        page.navigate("/splits/" + splitId + "/expenses");
+
+        button("Edit expense: Train ticket").click();
+        Locator modal = dialog("Edit Expense");
+        assertThat(field(modal, "Reimbursement")).isChecked();
+        assertThat(field(modal, "Paid for")).hasValue(carolId);
+        field(modal, "Paid for").selectOption(new SelectOption().setLabel("Bob"));
+        button(modal, "Save Changes").click();
+
+        assertThat(toast("Expense updated")).isVisible();
+        assertThat(text("Bob: €40.00")).isVisible();
+    }
+
+    @Test
+    void aReimbursementNeedsAnotherParticipant() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+        field(modal, "Description").fill("Train ticket");
+        field(modal, "Amount (€)").fill("40");
+
+        field(modal, "Reimbursement").check();
+        button(modal, "Add Expense").click();
+
+        assertThat(modal.getByText("A reimbursement needs another participant")).isVisible();
+        assertThat(modal).isVisible();
+    }
+
+    @Test
     void clickingASplitModeLabelSelectsIt() {
         String splitId = createSplit("Trip");
         addParticipant(splitId, "Alice", 2);

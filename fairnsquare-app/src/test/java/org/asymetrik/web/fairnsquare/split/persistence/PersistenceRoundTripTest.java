@@ -20,6 +20,7 @@ import org.asymetrik.web.fairnsquare.infrastructure.zipfile.ZipSerializer;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseReimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,26 @@ class PersistenceRoundTripTest {
         assertThat(loaded0.getAmount()).isEqualByComparingTo(new BigDecimal("50.00"));
         assertThat(loaded0.getSharesWithParts()).hasSize(1)
                 .allSatisfy(share -> assertThat(share.parts()).isEqualByComparingTo("1"));
+    }
+
+    @Test
+    void shouldPersistAndLoadSplitWithReimbursement() {
+        Split original = Split.create("With REIMBURSEMENT");
+        Participant alice = Participant.create("Alice", 2);
+        Participant bob = Participant.create("Bob", 2);
+        original.addParticipant(alice);
+        original.addParticipant(bob);
+        original.addExpense(ExpenseReimbursement.create(new BigDecimal("40.00"), "Train ticket", alice.id(), bob.id()));
+
+        splitRepository.save(original);
+        Split loaded = splitRepository.load(original.getId().value()).orElseThrow();
+
+        assertThat(loaded.getExpenses().getFirst()).isInstanceOfSatisfying(ExpenseReimbursement.class, loaded0 -> {
+            assertThat(loaded0.getPayerId()).isEqualTo(alice.id());
+            assertThat(loaded0.getBeneficiaryId()).isEqualTo(bob.id());
+            assertThat(loaded0.getAmount()).isEqualByComparingTo("40.00");
+        });
+        assertThat(loaded.getParticipant(bob.id()).balance()).isEqualByComparingTo("-40.00");
     }
 
     @Test

@@ -13,7 +13,7 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
  * Sealed abstract class representing a shared expense in a split. Each concrete subclass implements its own share
  * calculation strategy.
  */
-public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, ExpenseFree {
+public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, ExpenseFree, ExpenseReimbursement {
 
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 
@@ -37,6 +37,8 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
             case BY_SHARE -> new ExpenseByShare(Id.generate(), amount, description, payerId, Instant.now());
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use ExpenseFree.create(amount, description, payerId, shares)");
+            case REIMBURSEMENT -> throw new UnsupportedOperationException(
+                    "REIMBURSEMENT mode requires a beneficiary - use ExpenseReimbursement.create()");
         };
     }
 
@@ -56,6 +58,8 @@ public sealed abstract class Expense permits ExpenseByNight, ExpenseByShare, Exp
             case BY_SHARE -> new ExpenseByShare(id, amount, description, payerId, createdAt);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use ExpenseFree.fromJson(id, amount, description, payerId, shares, createdAt)");
+            case REIMBURSEMENT -> throw new UnsupportedOperationException(
+                    "REIMBURSEMENT mode requires a beneficiary - use ExpenseReimbursement.fromJson()");
         };
     }
 

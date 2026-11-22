@@ -15,6 +15,7 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseReimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.InvalidSharesError;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.domain.participant.ParticipantNotFoundError;
@@ -239,8 +240,11 @@ public class SplitUseCases {
         return repository.load(splitId).map(split -> {
             Expense.Id expId = Expense.Id.of(expenseId);
             Participant.Id payerId = Participant.Id.of(request.payerId());
+            Participant.Id beneficiaryId = request.beneficiaryId() != null && !request.beneficiaryId().isBlank()
+                    ? Participant.Id.of(request.beneficiaryId())
+                    : null;
             Expense updated = split.updateExpense(expId, request.amount(), request.description(), payerId,
-                    request.splitMode());
+                    request.splitMode(), beneficiaryId);
             repository.save(split);
             return updated;
         });
@@ -269,6 +273,8 @@ public class SplitUseCases {
                     addExpenseByShare(splitId, request.amount(), request.description(), request.payerId()).map(e -> e);
             case FREE -> throw new UnsupportedOperationException(
                     "FREE mode requires shares - use addExpenseFree() with AddFreeExpenseRequest");
+            case REIMBURSEMENT -> throw new UnsupportedOperationException(
+                    "REIMBURSEMENT mode requires a beneficiary - use addReimbursement()");
         };
     }
 
@@ -381,6 +387,28 @@ public class SplitUseCases {
             } catch (IllegalArgumentException e) {
                 throw new InvalidSharesError(e.getMessage());
             }
+        });
+    }
+
+    /**
+     * Adds a REIMBURSEMENT expense: paid by one participant for one beneficiary, who bears the whole amount.
+     *
+     * @return an Optional containing the created expense if the split exists, empty otherwise. Throws
+     *         PayerNotFoundError or InvalidBeneficiaryError if the payer or the beneficiary is invalid.
+     */
+    public Optional<ExpenseReimbursement> addReimbursement(@LogTag(value = "splitId", sensitive = true) String splitId,
+            AddReimbursementRequest request) {
+        return repository.load(splitId).map(split -> {
+            Participant.Id payer = Participant.Id.of(request.payerId());
+            split.validatePayerExists(payer);
+            Participant.Id beneficiary = Participant.Id.of(request.beneficiaryId());
+            split.validateBeneficiary(payer, beneficiary);
+
+            ExpenseReimbursement expense = ExpenseReimbursement.create(request.amount(), request.description(), payer,
+                    beneficiary);
+            split.addExpense(expense);
+            repository.save(split);
+            return expense;
         });
     }
 }
