@@ -18,6 +18,9 @@ confirm first, every participant included, and the values are a snapshot.
   - a `COPIES` table says, per button, what the warning names and how the parts are computed (`nights × share`,
     or `share`); the single warning shows the chosen one's text, and **Apply** applies it (`askCopy` / `applyCopy`
     replace `copyNights`).
+- `components/expense-dialog.js`: choosing **Manual** moves the focus to **Edit shares**. The shares block appears
+  under the split modes, often below the screen on a phone; the focus scrolls the button into view and lets the
+  keyboard go straight to it. Only on the person's choice, not when an existing Manual expense is opened.
 - `E2eTestBase.addParticipant(splitId, name, nights, share)`: an overload to create a participant of several
   persons (the existing one keeps share 1).
 
@@ -28,6 +31,8 @@ confirm first, every participant included, and the values are a snapshot.
 - `manualModeCopiesThePersonsShares`: Alice (3 nights, 2 persons) and Bob (2 nights, 1 person); the copy gives
   parts 2 and 1 (not 6 and 2), includes Bob, and the €90 expense is shared €60 / €30.
 - `cancellingACopyKeepsTheParts`: cancelling the warning hides it and leaves the parts unchanged.
+- `choosingManualBringsTheEditSharesButtonIntoView`: at 390×844, choosing Manual focuses **Edit shares** and it is
+  in the viewport (fails without the change).
 
-`ExpensesPageTest` (19) and `LayoutTest` (13) pass. Checked visually at 390×844 and 1280×800 with a long
+`ExpensesPageTest` (20) and `LayoutTest` (13) pass. Checked visually at 390×844 and 1280×800 with a long
 participant name.

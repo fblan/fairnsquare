@@ -235,6 +235,21 @@ class ExpensesPageTest extends E2eTestBase {
     }
 
     @Test
+    void choosingManualBringsTheEditSharesButtonIntoView() {
+        page.setViewportSize(390, 844);
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+
+        modal.getByText("Manual", new Locator.GetByTextOptions().setExact(true)).click();
+
+        assertThat(button(modal, "Edit shares")).isFocused();
+        assertThat(button(modal, "Edit shares")).isInViewport();
+    }
+
+    @Test
     void clickingASplitModeLabelSelectsIt() {
         String splitId = createSplit("Trip");
         addParticipant(splitId, "Alice", 2);

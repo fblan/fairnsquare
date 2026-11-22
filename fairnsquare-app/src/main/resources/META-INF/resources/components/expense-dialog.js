@@ -183,14 +183,19 @@ class ExpenseDialog extends HTMLElement {
       this.validate();
       this.refresh();
     });
-    this.form.addEventListener('change', () => this.refresh());
+    this.form.addEventListener('change', (event) => {
+      this.refresh();
+      // Picking Manual: the shares block appears below, maybe off screen; bring its button to the person.
+      if (event.target.name === 'mode' && this.mode === 'FREE') this.editSharesButton.focus();
+    });
     this.form.addEventListener('submit', (event) => {
       event.preventDefault();
       this.save();
     });
     $('.close').addEventListener('click', () => this.closeAttempt());
     $('.cancel').addEventListener('click', () => this.closeAttempt());
-    $('.edit-shares').addEventListener('click', () => this.editShares());
+    this.editSharesButton = $('.edit-shares');
+    this.editSharesButton.addEventListener('click', () => this.editShares());
     $('.delete .button').addEventListener('click', () => this.deleteExpense());
     this.dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
