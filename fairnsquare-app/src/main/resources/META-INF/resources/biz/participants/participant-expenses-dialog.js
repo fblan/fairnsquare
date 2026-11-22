@@ -1,7 +1,7 @@
 import { baseStyles } from '../../components/base-styles.js';
 import { icon } from '../../components/icons.js';
 
-const MODE_LABELS = { BY_NIGHT: 'By Night', BY_SHARE: 'By Share', EQUAL: 'Equal', FREE: 'Free' };
+const MODE_LABELS = { BY_NIGHT: 'By Night', BY_SHARE: 'By Share', EQUAL: 'Equal', FREE: 'Free', REIMBURSEMENT: 'Reimbursement' };
 const euros = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
 
 const styles = new CSSStyleSheet();

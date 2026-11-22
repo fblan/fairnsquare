@@ -19,5 +19,14 @@ public record UpdateExpenseRequest(
 
         @NotBlank(message = "Payer is required") String payerId,
 
-        @NotNull(message = "Split mode is required") SplitMode splitMode) {
+        @NotNull(message = "Split mode is required") SplitMode splitMode,
+
+        String beneficiaryId) {
+
+    /**
+     * An update to a mode without beneficiary (every mode but REIMBURSEMENT, which requires one).
+     */
+    public UpdateExpenseRequest(BigDecimal amount, String description, String payerId, SplitMode splitMode) {
+        this(amount, description, payerId, splitMode, null);
+    }
 }

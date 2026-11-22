@@ -7,11 +7,13 @@ import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByNightDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseByShareDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseFreeDTO;
+import org.asymetrik.web.fairnsquare.split.api.expense.dto.ExpenseReimbursementDTO;
 import org.asymetrik.web.fairnsquare.split.api.expense.dto.ShareDTO;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseReimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.Split;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -55,6 +57,11 @@ public class ExpenseMapper {
             case ExpenseFree free -> new ExpenseFreeDTO(free.getId().value(), free.getDescription(), free.getAmount(),
                     free.getPayerId() != null ? free.getPayerId().value() : null, "FREE", "FREE",
                     free.getCreatedAt().toString(), shares);
+            case ExpenseReimbursement reimbursement -> new ExpenseReimbursementDTO(reimbursement.getId().value(),
+                    reimbursement.getDescription(), reimbursement.getAmount(),
+                    reimbursement.getPayerId() != null ? reimbursement.getPayerId().value() : null, "REIMBURSEMENT",
+                    "REIMBURSEMENT", reimbursement.getCreatedAt().toString(), shares,
+                    reimbursement.getBeneficiaryId().value());
         };
     }
 

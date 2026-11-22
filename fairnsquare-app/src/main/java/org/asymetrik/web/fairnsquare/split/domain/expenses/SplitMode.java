@@ -18,7 +18,12 @@ public enum SplitMode {
     /**
      * Allow manual specification of each participant's share.
      */
-    FREE("FREE");
+    FREE("FREE"),
+
+    /**
+     * Paid by one participant for one beneficiary, who bears the whole amount.
+     */
+    REIMBURSEMENT("REIMBURSEMENT");
 
     private final String value;
 

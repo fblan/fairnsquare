@@ -9,7 +9,7 @@ import '../../components/expense-dialog.js';
 import '../../components/confirm-dialog.js';
 
 const LOADING_DELAY = 500;
-const MODE_LABELS = { BY_NIGHT: '🌙 By Night', EQUAL: '⊜ Equal', BY_SHARE: '👥 By Members', FREE: '✏️ Manual' };
+const MODE_LABELS = { BY_NIGHT: '🌙 By Night', EQUAL: '⊜ Equal', BY_SHARE: '👥 By Members', FREE: '✏️ Manual', REIMBURSEMENT: '↔️ Reimbursement' };
 const euros = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
 
 const styles = new CSSStyleSheet();

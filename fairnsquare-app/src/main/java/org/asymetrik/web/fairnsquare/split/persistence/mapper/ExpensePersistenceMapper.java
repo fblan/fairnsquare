@@ -8,11 +8,13 @@ import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByNight;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseByShare;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseFree;
+import org.asymetrik.web.fairnsquare.split.domain.expenses.ExpenseReimbursement;
 import org.asymetrik.web.fairnsquare.split.domain.participant.Participant;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseByNightPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseBySharePersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseEqualPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseFreePersistenceDTO;
+import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpenseReimbursementPersistenceDTO;
 import org.asymetrik.web.fairnsquare.split.persistence.dto.ExpensePersistenceDTO;
 
 /**
@@ -39,6 +41,8 @@ public class ExpensePersistenceMapper {
                 yield new ExpenseFreePersistenceDTO(id, expense.getAmount(), expense.getDescription(), payerId,
                         createdAt, sharesDTOs);
             }
+            case ExpenseReimbursement reimbursement -> new ExpenseReimbursementPersistenceDTO(id, expense.getAmount(),
+                    expense.getDescription(), payerId, createdAt, reimbursement.getBeneficiaryId().value());
         };
     }
 
@@ -68,6 +72,8 @@ public class ExpensePersistenceMapper {
                         .map(s -> Expense.Share.withParts(Participant.Id.of(s.participantId()), s.parts())).toList();
                 yield ExpenseFree.fromJson(id, dto.amount(), dto.description(), payerId, shares, createdAt);
             }
+            case ExpenseReimbursementPersistenceDTO reimbursement -> ExpenseReimbursement.fromJson(id, dto.amount(),
+                    dto.description(), payerId, Participant.Id.of(reimbursement.beneficiaryId()), createdAt);
         };
 
     }

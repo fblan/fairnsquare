@@ -14,9 +14,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = ExpenseBySharePersistenceDTO.class, name = "BY_SHARE"),
         @JsonSubTypes.Type(value = ExpenseBySharePersistenceDTO.class, name = "BY_PERSON"), // backward compat
         @JsonSubTypes.Type(value = ExpenseEqualPersistenceDTO.class, name = "EQUAL"),
-        @JsonSubTypes.Type(value = ExpenseFreePersistenceDTO.class, name = "FREE") })
+        @JsonSubTypes.Type(value = ExpenseFreePersistenceDTO.class, name = "FREE"),
+        @JsonSubTypes.Type(value = ExpenseReimbursementPersistenceDTO.class, name = "REIMBURSEMENT") })
 public sealed interface ExpensePersistenceDTO permits ExpenseByNightPersistenceDTO, ExpenseBySharePersistenceDTO,
-        ExpenseEqualPersistenceDTO, ExpenseFreePersistenceDTO {
+        ExpenseEqualPersistenceDTO, ExpenseFreePersistenceDTO, ExpenseReimbursementPersistenceDTO {
 
     String id();
 

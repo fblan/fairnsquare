@@ -13,8 +13,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({ @JsonSubTypes.Type(value = ExpenseByNightDTO.class, name = "BY_NIGHT"),
         @JsonSubTypes.Type(value = ExpenseByShareDTO.class, name = "BY_SHARE"),
-        @JsonSubTypes.Type(value = ExpenseFreeDTO.class, name = "FREE") })
-public sealed interface ExpenseDTO permits ExpenseByNightDTO, ExpenseByShareDTO, ExpenseFreeDTO {
+        @JsonSubTypes.Type(value = ExpenseFreeDTO.class, name = "FREE"),
+        @JsonSubTypes.Type(value = ExpenseReimbursementDTO.class, name = "REIMBURSEMENT") })
+public sealed interface ExpenseDTO
+        permits ExpenseByNightDTO, ExpenseByShareDTO, ExpenseFreeDTO, ExpenseReimbursementDTO {
 
     String id();
 

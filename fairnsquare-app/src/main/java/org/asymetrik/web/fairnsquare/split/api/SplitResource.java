@@ -25,6 +25,7 @@ import org.asymetrik.web.fairnsquare.split.api.mapper.SplitMapper;
 import org.asymetrik.web.fairnsquare.split.domain.expenses.Expense;
 import org.asymetrik.web.fairnsquare.split.service.AddExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddFreeExpenseRequest;
+import org.asymetrik.web.fairnsquare.split.service.AddReimbursementRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddParticipantRequest;
 import org.asymetrik.web.fairnsquare.split.service.AddTypedExpenseRequest;
 import org.asymetrik.web.fairnsquare.split.service.CreateSplitRequest;
@@ -426,6 +427,27 @@ public class SplitResource {
         }
 
         return splitService.addExpenseFree(splitId, request).flatMap(expense -> splitService.getSplit(splitId).map(
+                split -> Response.status(Response.Status.CREATED).entity(expenseMapper.toDTO(expense, split)).build()))
+                .orElseThrow(() -> new SplitNotFoundError(splitId));
+    }
+
+    /**
+     * Adds a REIMBURSEMENT expense to a split: paid by one participant for one beneficiary.
+     *
+     * @return 201 Created with the created expense, or 404 Not Found, or 400 Bad Request
+     */
+    @Operation(summary = "Add REIMBURSEMENT expense", description = "Creates an expense paid by one participant for one beneficiary, who bears the whole amount")
+    @APIResponse(responseCode = "201", description = "Expense created successfully")
+    @APIResponse(responseCode = "404", description = "Split not found")
+    @APIResponse(responseCode = "400", description = "Invalid request, payer or beneficiary")
+    @POST
+    @Path("/{splitId}/expenses/reimbursement")
+    public Response addReimbursement(@PathParam("splitId") String splitId, @Valid AddReimbursementRequest request) {
+        if (!Split.Id.isValid(splitId)) {
+            throw new InvalidSplitIdError(splitId);
+        }
+
+        return splitService.addReimbursement(splitId, request).flatMap(expense -> splitService.getSplit(splitId).map(
                 split -> Response.status(Response.Status.CREATED).entity(expenseMapper.toDTO(expense, split)).build()))
                 .orElseThrow(() -> new SplitNotFoundError(splitId));
     }

@@ -9,6 +9,7 @@ const MODES = [
   { value: 'BY_NIGHT', label: 'By Night', icon: 'moon' },
   { value: 'BY_SHARE', label: 'By Participant members', icon: 'users' },
   { value: 'FREE', label: 'Manual', icon: 'edit-3' },
+  { value: 'REIMBURSEMENT', label: 'Reimbursement', icon: 'arrow-left-right' },
 ];
 
 const MODE_INFO = {
@@ -34,6 +35,14 @@ const MODE_INFO = {
     text: [
       'You define the exact parts for each participant. You choose who is included and assign them a relative weight — the total cost is then distributed proportionally.',
       'Example: you assign Alice 1 part, Bob 2 parts, and Carol 3 parts. Total = 6 parts. Alice pays 1/6, Bob pays 2/6, Carol pays 3/6 of the expense.',
+    ],
+  },
+  REIMBURSEMENT: {
+    title: 'Reimbursement',
+    text: [
+      'The payer paid for one other participant only: that participant bears the whole amount.',
+      'Example: Alice buys Bob\'s €40 train ticket. Alice has paid €40, and Bob owes €40.',
+      'It also records money given back directly: Bob hands Alice €40 in cash, paid by Bob for Alice.',
     ],
   },
 };
@@ -115,6 +124,11 @@ template.innerHTML = `
               <button class="info" type="button" data-mode="${mode.value}" aria-label="Info about ${mode.label}">${icon('info')}</button>
             </div>`).join('')}
         </fieldset>
+        <div class="field beneficiary" hidden>
+          <label for="beneficiary">Paid for</label>
+          <select id="beneficiary" name="beneficiary" aria-describedby="beneficiary-error"></select>
+          <p id="beneficiary-error" class="error" hidden>A reimbursement needs another participant</p>
+        </div>
         <div class="shares" hidden>
           <div class="top"><span class="title">Share Parts</span><span class="total"></span></div>
           <p class="who"></p>
@@ -168,6 +182,8 @@ class ExpenseDialog extends HTMLElement {
     this.amount = $('#amount');
     this.amountError = $('#amount-error');
     this.payer = $('#payer');
+    this.beneficiaryBlock = $('.field.beneficiary');
+    this.beneficiary = $('#beneficiary');
     this.modes = [...root.querySelectorAll('input[name="mode"]')];
     this.shares = $('.shares');
     this.deleteBlock = $('.delete');
@@ -185,8 +201,9 @@ class ExpenseDialog extends HTMLElement {
     });
     this.form.addEventListener('change', (event) => {
       this.refresh();
-      // Picking Manual: the shares block appears below, maybe off screen; bring its button to the person.
+      // Picking Manual or Reimbursement: its block appears below, maybe off screen; bring it to the person.
       if (event.target.name === 'mode' && this.mode === 'FREE') this.editSharesButton.focus();
+      if (event.target.name === 'mode' && this.mode === 'REIMBURSEMENT') this.beneficiary.focus();
     });
     this.form.addEventListener('submit', (event) => {
       event.preventDefault();
@@ -236,6 +253,8 @@ class ExpenseDialog extends HTMLElement {
 
     this.heading.textContent = expense ? 'Edit Expense' : 'Add Expense';
     this.payer.replaceChildren(...participants.map((p) => new Option(p.name, p.id)));
+    this.beneficiaryId = expense?.splitMode === 'REIMBURSEMENT' ? expense.beneficiaryId : null;
+    this.beneficiary.replaceChildren();
     this.deleteBlock.hidden = !expense;
 
     // Shares (Manual mode): parts, included or not, and the parts to restore when included again.
@@ -274,6 +293,7 @@ class ExpenseDialog extends HTMLElement {
         this.parts[this.payer.value] = 1;
       }
     }
+    this.syncBeneficiaries();
     this.initial = this.snapshot();
     this.refresh();
     this.dialog.showModal();
@@ -303,6 +323,7 @@ class ExpenseDialog extends HTMLElement {
       amount: this.amountValue,
       payer: this.payer.value,
       mode: this.mode,
+      beneficiary: this.mode === 'REIMBURSEMENT' ? this.beneficiary.value : null,
       parts: this.participants.map((p) => toNumber(this.parts[p.id])),
     });
   }
@@ -324,7 +345,8 @@ class ExpenseDialog extends HTMLElement {
 
   get valid() {
     const errors = this.errors();
-    return !errors.description && !errors.amount && !!this.payer.value && (this.mode !== 'FREE' || this.totalParts > 0);
+    return !errors.description && !errors.amount && !!this.payer.value && (this.mode !== 'FREE' || this.totalParts > 0)
+      && (this.mode !== 'REIMBURSEMENT' || !!this.beneficiary.value);
   }
 
   /**
@@ -342,8 +364,26 @@ class ExpenseDialog extends HTMLElement {
       this.amount.value === '', !this.expense, errors.amount));
   }
 
-  /** Brings the window in line with the form: Manual shares block, submit button. */
+  /**
+   * Fills "Paid for" with every participant but the payer, keeping the chosen one when still possible (else the
+   * first one).
+   */
+  syncBeneficiaries() {
+    const chosen = this.beneficiary.value || this.beneficiaryId;
+    const others = this.participants.filter((p) => p.id !== this.payer.value);
+    this.beneficiary.replaceChildren(...others.map((p) => new Option(p.name, p.id)));
+    this.beneficiary.value = others.some((p) => p.id === chosen) ? chosen : (others[0]?.id ?? '');
+  }
+
+  /** Brings the window in line with the form: Manual shares block, Reimbursement beneficiary, submit button. */
   refresh() {
+    const reimbursement = this.mode === 'REIMBURSEMENT';
+    if (this.beneficiary.options.length !== Math.max(0, this.participants.length - 1)
+        || [...this.beneficiary.options].some((option) => option.value === this.payer.value)) {
+      this.syncBeneficiaries();
+    }
+    this.beneficiaryBlock.hidden = !reimbursement;
+    this.beneficiaryBlock.querySelector('.error').hidden = !(reimbursement && !this.beneficiary.value);
     const free = this.mode === 'FREE';
     this.shares.hidden = !free;
     if (free) {
@@ -409,7 +449,9 @@ class ExpenseDialog extends HTMLElement {
 
     const body = { amount: this.amountValue, description: this.description.value.trim(), payerId: this.payer.value };
     const payerName = this.participants.find((p) => p.id === body.payerId)?.name ?? 'Unknown';
-    const summary = `${body.description} · €${body.amount.toFixed(2)} · Paid by ${payerName}`;
+    const beneficiaryName = this.participants.find((p) => p.id === this.beneficiary.value)?.name;
+    const paidFor = this.mode === 'REIMBURSEMENT' && beneficiaryName ? ` for ${beneficiaryName}` : '';
+    const summary = `${body.description} · €${body.amount.toFixed(2)} · Paid by ${payerName}${paidFor}`;
     const base = `/splits/${encodeURIComponent(this.splitId)}/expenses`;
     this.loading = true;
     this.refresh();
@@ -422,8 +464,13 @@ class ExpenseDialog extends HTMLElement {
         const shares = this.participants.map((p) => ({ participantId: p.id, parts: toNumber(this.parts[p.id]) }));
         await apiRequest(`${base}/free`, { method: 'POST', body: JSON.stringify({ ...body, shares }) });
       } else if (this.expense) {
+        const beneficiaryId = this.mode === 'REIMBURSEMENT' ? this.beneficiary.value : null;
         await apiRequest(`${base}/${this.expense.id}`, {
-          method: 'PUT', body: JSON.stringify({ ...body, splitMode: this.mode }),
+          method: 'PUT', body: JSON.stringify({ ...body, splitMode: this.mode, beneficiaryId }),
+        });
+      } else if (this.mode === 'REIMBURSEMENT') {
+        await apiRequest(`${base}/reimbursement`, {
+          method: 'POST', body: JSON.stringify({ ...body, beneficiaryId: this.beneficiary.value }),
         });
       } else {
         await apiRequest(`${base}/${this.mode === 'BY_NIGHT' ? 'by-night' : 'by-share'}`, {
