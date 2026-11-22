@@ -31,5 +31,5 @@ Constraints: no change to the code itself, only the module declarations and the 
 - `mvn package`: 450 tests pass; the formatter check passes.
 - Checked by hand that a missing `requires` is caught: removing `"jnanoid"` from `captcha` compiles (the use is in a
   method body) but fails `ModularArchitectureTest` with "Module 'captcha' should add "jnanoid" to its requires".
-- A clean build is needed after the vidocq branch: its generated `_VaubanComponents` classes left in `target/`
-  showed up as violations.
+- Locally, run `mvn clean` after building another branch in the same folder: leftover classes in `target/` (from the
+  unmerged vidocq experiment, #184) showed up as violations. A fresh checkout, as in CI, is not affected.
