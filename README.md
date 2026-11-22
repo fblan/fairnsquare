@@ -47,7 +47,12 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `CAPTCHA_SECRET` | **yes** | — | HMAC-SHA256 secret used to sign CAPTCHA tokens |
-| `ADMIN_PASSWORD_HASH` | **yes** | — | SHA-256 hash of the admin password |
+| `ADMIN_PASSWORD_HASH` | **yes**, unless OIDC | — | SHA-256 hash of the admin password. Not used when `ADMIN_OIDC_ISSUER` is set |
+| `ADMIN_OIDC_ISSUER` | no | — | URL of an OIDC provider (e.g. `https://id.example.com` for Pocket ID). When set, admins sign in with the provider instead of the password; see [Admin sign-in with Pocket ID](#admin-sign-in-with-pocket-id) |
+| `ADMIN_OIDC_CLIENT_ID` | with OIDC | — | The provider's client ID for FairNSquare |
+| `ADMIN_OIDC_CLIENT_SECRET` | with OIDC | — | The provider's client secret for FairNSquare |
+| `ADMIN_OIDC_GROUP` | no | — | Only the members of this provider group are admins. Without it, everyone the provider signs in is |
+| `ADMIN_OIDC_PROVIDER_NAME` | no | `Pocket ID` | The name on the admin page's "Sign in with …" button |
 | `FAIRNSQUARE_CORS_ORIGINS` | **yes** | dev: `http://localhost:8080` | Comma-separated list of allowed CORS origins |
 | `FAIRNSQUARE_DATA_PATH` | no | `data/` | Directory where split JSON files are stored |
 | `FAIRNSQUARE_MAX_FILE_COUNT` | no | `5000` | Maximum number of split files retained |
@@ -65,6 +70,13 @@ Create a `.env` file at the project root (it is gitignored). The table below lis
 ```
 
 The password can also be passed as an argument (`./scripts/hash-password.sh <password>`), but it then ends up in your shell history.
+
+### Admin sign-in with Pocket ID
+
+1. In Pocket ID, add an OIDC client for FairNSquare with the callback URL `https://<fairnsquare host>/api/admin/session/login`. To keep the admin pages to some users, give the client allowed user groups, or set `ADMIN_OIDC_GROUP`.
+2. Set `ADMIN_OIDC_ISSUER` (the Pocket ID URL), `ADMIN_OIDC_CLIENT_ID` and `ADMIN_OIDC_CLIENT_SECRET`, and restart.
+
+`/admin` then shows "Sign in with Pocket ID". Signing out of the admin page doesn't sign out of Pocket ID. Remove `ADMIN_OIDC_ISSUER` to go back to the password.
 
 ---
 

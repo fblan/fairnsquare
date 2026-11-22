@@ -5,12 +5,16 @@ import java.lang.annotation.Annotation;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.Principal;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
+import org.asymetrik.web.fairnsquare.admin.api.internal.AdminSignIn;
 import org.asymetrik.web.fairnsquare.admin.api.internal.AdminTokenFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +42,7 @@ class AdminTokenFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new AdminTokenFilter(PASSWORD_HASH);
+        filter = new AdminTokenFilter(PASSWORD_HASH, AdminSignIn.password());
     }
 
     @Test
@@ -73,7 +77,7 @@ class AdminTokenFilterTest {
     @Test
     void uppercaseStoredHash_stillValidates() throws Exception {
         // constantTimeHashEquals lowercases stored hash before parsing — accepts both cases
-        filter = new AdminTokenFilter(PASSWORD_HASH.toUpperCase());
+        filter = new AdminTokenFilter(PASSWORD_HASH.toUpperCase(), AdminSignIn.password());
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -83,7 +87,7 @@ class AdminTokenFilterTest {
 
     @Test
     void unconfiguredHash_abortsWith503() throws Exception {
-        filter = new AdminTokenFilter("");
+        filter = new AdminTokenFilter("", AdminSignIn.password());
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -95,7 +99,7 @@ class AdminTokenFilterTest {
     @Test
     void invalidHashFormat_abortsWith401() throws Exception {
         // HexFormat.parseHex throws on garbage — constantTimeHashEquals catches and returns false → 401
-        filter = new AdminTokenFilter("not-valid-hex!!");
+        filter = new AdminTokenFilter("not-valid-hex!!", AdminSignIn.password());
         StubContext ctx = new StubContext(PASSWORD);
 
         filter.filter(ctx);
@@ -104,7 +108,72 @@ class AdminTokenFilterTest {
         assertThat(ctx.abortedResponse.getStatus()).isEqualTo(401);
     }
 
+    @Test
+    void withOidc_aSignedInUserPasses() throws Exception {
+        filter = new AdminTokenFilter(PASSWORD_HASH, AdminSignIn.oidc("Pocket ID", Optional.empty()));
+        StubContext ctx = new StubContext(null, signedIn("alice", Set.of()));
+
+        filter.filter(ctx);
+
+        assertThat(ctx.abortedResponse).isNull();
+    }
+
+    @Test
+    void withOidc_thePasswordIsRefused() throws Exception {
+        filter = new AdminTokenFilter(PASSWORD_HASH, AdminSignIn.oidc("Pocket ID", Optional.empty()));
+        StubContext ctx = new StubContext(PASSWORD, signedIn(null, Set.of()));
+
+        filter.filter(ctx);
+
+        assertThat(ctx.abortedResponse.getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void withAnOidcGroup_aUserOutsideItIsForbidden() throws Exception {
+        filter = new AdminTokenFilter(PASSWORD_HASH, AdminSignIn.oidc("Pocket ID", Optional.of("admins")));
+        StubContext ctx = new StubContext(null, signedIn("bob", Set.of("users")));
+
+        filter.filter(ctx);
+
+        assertThat(ctx.abortedResponse.getStatus()).isEqualTo(403);
+    }
+
+    @Test
+    void withAnOidcGroup_itsMembersPass() throws Exception {
+        filter = new AdminTokenFilter(PASSWORD_HASH, AdminSignIn.oidc("Pocket ID", Optional.of("admins")));
+        StubContext ctx = new StubContext(null, signedIn("alice", Set.of("users", "admins")));
+
+        filter.filter(ctx);
+
+        assertThat(ctx.abortedResponse).isNull();
+    }
+
     // --- Helpers ---
+
+    /** The security context of a user (null: anonymous) in the given groups. */
+    private static SecurityContext signedIn(String user, Set<String> groups) {
+        return new SecurityContext() {
+            @Override
+            public Principal getUserPrincipal() {
+                return user == null ? null : () -> user;
+            }
+
+            @Override
+            public boolean isUserInRole(String role) {
+                return groups.contains(role);
+            }
+
+            @Override
+            public boolean isSecure() {
+                return true;
+            }
+
+            @Override
+            public String getAuthenticationScheme() {
+                return user == null ? null : "OIDC";
+            }
+        };
+    }
 
     private static String sha256Hex(String input) {
         try {
@@ -115,14 +184,22 @@ class AdminTokenFilterTest {
         }
     }
 
-    /** Minimal ContainerRequestContext stub — only getHeaderString and abortWith are implemented. */
+    /**
+     * Minimal ContainerRequestContext stub — only getHeaderString, getSecurityContext and abortWith are implemented.
+     */
     private static class StubContext implements ContainerRequestContext {
 
         private final String token;
+        private final SecurityContext security;
         Response abortedResponse = null;
 
         StubContext(String token) {
+            this(token, null);
+        }
+
+        StubContext(String token, SecurityContext security) {
             this.token = token;
+            this.security = security;
         }
 
         @Override
@@ -242,7 +319,7 @@ class AdminTokenFilterTest {
 
         @Override
         public SecurityContext getSecurityContext() {
-            throw new UnsupportedOperationException();
+            return security;
         }
 
         @Override
