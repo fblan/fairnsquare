@@ -40,7 +40,7 @@
         <jnanoid.version>2.0.0</jnanoid.version>
 
         <!-- Modular architecture validation -->
-        <asymetrik-modular.version>0.0.2</asymetrik-modular.version>
+        <asymetrik-modular.version>0.1.5</asymetrik-modular.version>
 
         <!-- Quarkiverse Extensions -->
         <quarkus-playwright.version>2.4.0</quarkus-playwright.version>
@@ -71,10 +71,10 @@
                 <version>${jnanoid.version}</version>
             </dependency>
 
-            <!-- Modular architecture validation (optional, for architecture tests) -->
+            <!-- Modules: @Module (annotations), checked at compile time (processor) and in a test (verification) -->
             <dependency>
                 <groupId>org.asymetrik.modular</groupId>
-                <artifactId>api</artifactId>
+                <artifactId>annotations</artifactId>
                 <version>${asymetrik-modular.version}</version>
             </dependency>
             <dependency>
