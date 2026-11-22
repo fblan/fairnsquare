@@ -1,7 +1,8 @@
 /**
  * Logging utilities for the FairNSquare application. Contains annotations and interceptors for structured logging.
  */
-@Module(name = "logging", exports = { "." })
+@Module(name = "logging", exports = { "." }, requires = { "jakarta.annotation", "jakarta.interceptor",
+        "org.jboss.logging" })
 package org.asymetrik.web.fairnsquare.sharedkernel.logging;
 
-import org.asymetrik.modular.api.Module;
+import org.asymetrik.modular.annotations.Module;

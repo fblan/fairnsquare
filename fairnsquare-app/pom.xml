@@ -77,10 +77,11 @@
             <artifactId>quarkus-playwright</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Modular architecture validation -->
+        <!-- Modules: @Module is only read at compile time, by the processor. -->
         <dependency>
             <groupId>org.asymetrik.modular</groupId>
-            <artifactId>api</artifactId>
+            <artifactId>annotations</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.asymetrik.modular</groupId>
@@ -111,6 +112,20 @@
                 <configuration>
                     <parameters>true</parameters>
                     <encoding>UTF-8</encoding>
+                    <!-- Since JDK 23, javac no longer finds processors on the class path by itself. -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.asymetrik.modular</groupId>
+                            <artifactId>processor</artifactId>
+                            <version>${asymetrik-modular.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <!-- modular's scan of method bodies makes javac reject records with a compact constructor
+                             ("invalid canonical constructor"). Without it, compiling checks the signatures only;
+                             ModularArchitectureTest checks everything, method bodies included, from the bytecode. -->
+                        <arg>-Aorg.asymetrik.modular.treeScan=false</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
