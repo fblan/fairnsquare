@@ -1,3 +1,4 @@
+import { showToast } from '../../infra/toasts.js';
 import { apiRequest } from '../../infra/api.js';
 import { baseStyles } from '../../components/base-styles.js';
 
@@ -18,7 +19,7 @@ styles.replaceSync(`
     .signin h2 { margin: 0 0 1.5rem; font-size: 1rem; line-height: 1; font-weight: 600; }
     form { display: flex; flex-direction: column; gap: 1rem; }
     .stats { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; }
-    .toolbar { display: flex; justify-content: flex-end; }
+    .toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
     .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
     .summary .card { padding: 2.5rem 1.5rem; text-align: center; }
     .summary .last { grid-column: span 2; text-align: left; }
@@ -75,7 +76,10 @@ template.innerHTML = `
     </div>
 
     <div class="stats" hidden>
-      <div class="toolbar"><button class="button outline sign-out" type="button">Sign out</button></div>
+      <div class="toolbar">
+        <button class="button outline module-report" type="button">Module report ↗</button>
+        <button class="button outline sign-out" type="button">Sign out</button>
+      </div>
       <div class="summary">
         <div class="card">
           <p class="big"><span class="total"></span> <span class="of">/ <span class="limit"></span></span></p>
@@ -137,6 +141,7 @@ class AdminPage extends HTMLElement {
       if (token) this.load(token);
     });
     $('.sign-out').addEventListener('click', () => this.signOut());
+    $('.module-report').addEventListener('click', () => this.openModuleReport());
   }
 
   connectedCallback() {
@@ -173,6 +178,33 @@ class AdminPage extends HTMLElement {
       this.password.disabled = false;
       this.submit.textContent = 'Sign in';
       this.updateSubmit();
+    }
+  }
+
+  /**
+   * Opens modular's module report in a new tab. The endpoint needs the admin token header, which a link can't send:
+   * the page fetches the report, then shows it in the tab, in a sandboxed frame, so its scripts can't reach this
+   * origin and the token stored in it. The tab opens on the click, before the fetch, or browsers would block it.
+   */
+  async openModuleReport() {
+    const tab = window.open('', '_blank');
+    try {
+      const response = await fetch('/api/admin/module-report', {
+        headers: { 'X-Admin-Token': sessionStorage.getItem(SESSION_KEY) ?? '' },
+      });
+      if (!response.ok) throw new Error(`status ${response.status}`);
+      const report = await response.text();
+      const frame = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Module report · FairNSquare</title>
+        <style>html, body { margin: 0; height: 100%; } iframe { display: block; width: 100%; height: 100%; border: 0; }</style>
+        </head><body><iframe sandbox="allow-scripts" title="Module report" srcdoc="${escapeAttribute(report)}"></iframe></body></html>`;
+      const url = URL.createObjectURL(new Blob([frame], { type: 'text/html' }));
+      if (tab) tab.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      tab?.close();
+      showToast({ type: 'error', message: 'Failed to load the module report.' });
     }
   }
 
@@ -243,3 +275,8 @@ function formatBytes(bytes) {
 }
 
 customElements.define('fns-admin-page', AdminPage);
+
+/** @param {string} text */
+function escapeAttribute(text) {
+  return text.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+}

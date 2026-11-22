@@ -128,6 +128,40 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
+            <!-- modular's module report, which the admin page opens. Every build (the Docker one too) writes it into
+                 the classes, so the jar carries it, outside META-INF/resources, which is public. report is a plugin
+                 dependency only: it brings ArchUnit, JUnit and AssertJ, which must stay out of the application. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>module-report</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.asymetrik.modular.report.ModularReport</mainClass>
+                            <classpathScope>compile</classpathScope>
+                            <includePluginDependencies>true</includePluginDependencies>
+                            <cleanupDaemonThreads>false</cleanupDaemonThreads>
+                            <arguments>
+                                <argument>${project.build.outputDirectory}/admin-report</argument>
+                                <argument>org.asymetrik.web.fairnsquare</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.asymetrik.modular</groupId>
+                        <artifactId>report</artifactId>
+                        <version>${asymetrik-modular.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>

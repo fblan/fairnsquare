@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Route;
@@ -60,6 +61,41 @@ class AdminPageTest extends E2eTestBase {
         assertThat(field("Password")).isVisible();
         page.reload();
         assertThat(field("Password")).isVisible();
+    }
+
+    @Test
+    void theModuleReportOpensInANewTab() {
+        page.navigate("/admin");
+        field("Password").fill(TEST_PASSWORD);
+        button("Sign in").click();
+
+        Page report = page.context().waitForPage(() -> button("Module report ↗").click());
+
+        assertThat(report).hasTitle("Module report · FairNSquare");
+        assertThat(report.locator("iframe")).hasAttribute("sandbox", "allow-scripts");
+        assertThat(report.frameLocator("iframe").getByRole(AriaRole.HEADING,
+                new FrameLocator.GetByRoleOptions().setName("Module report").setExact(true).setLevel(1))).isVisible();
+        assertThat(report.frameLocator("iframe").getByText("No violation of the module rules",
+                new FrameLocator.GetByTextOptions())).isVisible();
+        // Sandboxed, the report has its own origin: it can't read the admin token kept in this one's storage.
+        Object storage = report.frames().get(1).evaluate(
+                "() => { try { return sessionStorage.getItem('admin_token'); } catch (e) { return e.name; } }");
+        assertThat(storage).isEqualTo("SecurityError");
+        report.close();
+    }
+
+    @Test
+    void aModuleReportThatFailsClosesItsTabAndSaysSo() {
+        page.route("**/api/admin/module-report", route -> route.fulfill(new Route.FulfillOptions().setStatus(500)));
+        page.navigate("/admin");
+        field("Password").fill(TEST_PASSWORD);
+        button("Sign in").click();
+
+        Page report = page.context().waitForPage(() -> button("Module report ↗").click());
+
+        assertThat(toast("Failed to load the module report.")).isVisible();
+        page.waitForCondition(report::isClosed);
+        assertThat(page.context().pages()).containsExactly(page);
     }
 
     @Test
