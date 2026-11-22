@@ -188,6 +188,68 @@ class ExpensesPageTest extends E2eTestBase {
     }
 
     @Test
+    void manualModeCopiesThePersonsShares() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 3, 2);
+        addParticipant(splitId, "Bob", 2, 1);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+        field(modal, "Description").fill("Restaurant");
+        field(modal, "Amount (€)").fill("90");
+        field(modal, "Manual").check();
+        button(modal, "Edit shares").click();
+        Locator shares = dialog("Edit Shares");
+
+        button(shares, "Copy persons shares").click();
+        assertThat(shares.getByText("share (number of persons)", new Locator.GetByTextOptions().setExact(true)))
+                .isVisible();
+        button(shares, "Apply").click();
+        assertThat(field(shares, "Alice parts")).hasValue("2");
+        assertThat(field(shares, "Bob parts")).hasValue("1");
+        assertThat(field(shares, "Include Bob")).isChecked();
+        button(shares, "Confirm").click();
+        assertThat(modal.getByText("Alice: 2, Bob: 1", new Locator.GetByTextOptions().setExact(true))).isVisible();
+        button(modal, "Add Expense").click();
+
+        assertThat(toast("Expense added")).isVisible();
+        assertThat(text("Alice: €60.00 · Bob: €30.00")).isVisible();
+    }
+
+    @Test
+    void cancellingACopyKeepsTheParts() {
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 3, 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+        field(modal, "Manual").check();
+        button(modal, "Edit shares").click();
+        Locator shares = dialog("Edit Shares");
+
+        button(shares, "Copy persons shares").click();
+        button(shares.getByRole(AriaRole.ALERT), "Cancel").click();
+
+        assertThat(shares.getByRole(AriaRole.ALERT)).not().isVisible();
+        assertThat(field(shares, "Alice parts")).hasValue("1");
+    }
+
+    @Test
+    void choosingManualBringsTheEditSharesButtonIntoView() {
+        page.setViewportSize(390, 844);
+        String splitId = createSplit("Trip");
+        addParticipant(splitId, "Alice", 2);
+        page.navigate("/splits/" + splitId + "/expenses");
+        button("Add Expense").click();
+        Locator modal = dialog("Add Expense");
+
+        modal.getByText("Manual", new Locator.GetByTextOptions().setExact(true)).click();
+
+        assertThat(button(modal, "Edit shares")).isFocused();
+        assertThat(button(modal, "Edit shares")).isInViewport();
+    }
+
+    @Test
     void clickingASplitModeLabelSelectsIt() {
         String splitId = createSplit("Trip");
         addParticipant(splitId, "Alice", 2);

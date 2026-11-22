@@ -1,6 +1,12 @@
 import { baseStyles } from './base-styles.js';
 import { icon } from './icons.js';
 
+/** What each copy button puts in the parts: nights × share, or the share (number of persons) alone. */
+const COPIES = {
+  nights: { copied: 'nights × share', changes: 'nights or share', parts: (p) => p.nights * p.share },
+  persons: { copied: 'share (number of persons)', changes: 'share', parts: (p) => p.share },
+};
+
 const styles = new CSSStyleSheet();
 styles.replaceSync(`
   dialog.modal { max-width: 380px; }
@@ -9,6 +15,8 @@ styles.replaceSync(`
   .hint { margin: 0; font-size: 0.75rem; color: var(--muted-foreground); }
   .total { flex: none; font-size: 0.875rem; color: #16a34a; }
   .total.invalid { color: var(--destructive); }
+  .copies { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .copies .button { flex: 1 1 10rem; }
   .warning {
     display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem;
     border: 1px solid #fcd34d; border-radius: calc(var(--radius) - 2px); background: #fffbeb;
@@ -37,13 +45,16 @@ template.innerHTML = `
         <p class="hint">Select participants and set their share parts</p>
         <span class="total"></span>
       </div>
-      <button class="button outline copy" type="button">${icon('moon')} Copy nights shares</button>
+      <div class="copies">
+        <button class="button outline copy" type="button" data-copy="nights">${icon('moon')} Copy nights shares</button>
+        <button class="button outline copy" type="button" data-copy="persons">${icon('users')} Copy persons shares</button>
+      </div>
       <div class="warning" role="alert" hidden>
         <div class="text">
           ${icon('alert-triangle')}
-          <p>This will overwrite all current values with each participant's <strong>nights × share</strong>.
-            These values are a static snapshot — future changes to nights or share will not be reflected here
-            automatically.</p>
+          <p>This will overwrite all current values with each participant's <strong class="copied"></strong>.
+            These values are a static snapshot — future changes to <span class="changes"></span> will not be
+            reflected here automatically.</p>
         </div>
         <div class="buttons">
           <button class="button primary small apply" type="button">Apply</button>
@@ -82,9 +93,11 @@ class ShareDialog extends HTMLElement {
 
     $('.close').addEventListener('click', () => this.finish(null));
     $('.cancel').addEventListener('click', () => this.finish(null));
-    $('.copy').addEventListener('click', () => { this.warning.hidden = false; });
+    for (const button of root.querySelectorAll('.copy')) {
+      button.addEventListener('click', () => this.askCopy(button.dataset.copy));
+    }
     $('.keep').addEventListener('click', () => { this.warning.hidden = true; });
-    $('.apply').addEventListener('click', () => this.copyNights());
+    $('.apply').addEventListener('click', () => this.applyCopy());
     this.confirmButton.addEventListener('click', () => this.finish({
       parts: { ...this.parts }, checked: { ...this.checked }, previous: { ...this.previous },
     }));
@@ -160,9 +173,18 @@ class ShareDialog extends HTMLElement {
     this.updateTotal();
   }
 
-  copyNights() {
+  /** Shows the warning before overwriting the parts with what `kind` (a key of COPIES) copies. */
+  askCopy(kind) {
+    this.copyKind = kind;
+    this.warning.querySelector('.copied').textContent = COPIES[kind].copied;
+    this.warning.querySelector('.changes').textContent = COPIES[kind].changes;
+    this.warning.hidden = false;
+  }
+
+  applyCopy() {
+    const { parts } = COPIES[this.copyKind];
     for (const participant of this.participants) {
-      const value = participant.nights * participant.share;
+      const value = parts(participant);
       this.parts[participant.id] = value;
       this.checked[participant.id] = true;
       this.previous[participant.id] = value;

@@ -139,8 +139,13 @@ abstract class E2eTestBase {
 
     /** Adds a participant through the API and returns its id. */
     protected static String addParticipant(String splitId, String name, int nights) {
+        return addParticipant(splitId, name, nights, 1);
+    }
+
+    /** Adds a participant of {@code share} persons through the API and returns its id. */
+    protected static String addParticipant(String splitId, String name, int nights, int share) {
         return given().contentType(ContentType.JSON)
-                .body("{\"name\": \"%s\", \"nights\": %d, \"share\": 1}".formatted(name, nights))
+                .body("{\"name\": \"%s\", \"nights\": %d, \"share\": %d}".formatted(name, nights, share))
                 .post("/api/splits/" + splitId + "/participants").then().statusCode(201).extract().path("id");
     }
 
