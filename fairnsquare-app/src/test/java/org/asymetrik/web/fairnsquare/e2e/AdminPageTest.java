@@ -99,6 +99,16 @@ class AdminPageTest extends E2eTestBase {
     }
 
     @Test
+    void saysWhenBackupsAreOff() {
+        page.navigate("/admin");
+        field("Password").fill(TEST_PASSWORD);
+        button("Sign in").click();
+
+        assertThat(text("Backups are off: no S3 bucket is configured.")).isVisible();
+        assertThat(button("Back up now")).isHidden();
+    }
+
+    @Test
     void theSignInButtonWaitsForAPassword() {
         page.navigate("/admin");
 

@@ -51,6 +51,29 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-oidc</artifactId>
         </dependency>
+        <!-- Split backups to an S3 bucket: the SDK's S3 client, on the JDK's HTTP client only -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache5-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+        </dependency>
         <!-- Container image build support via Docker -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -80,6 +103,12 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-test-oidc-server</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Containers for the tests: an S3 server (S3Mock) for the backup storage test; version from Quarkus -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- End-to-end browser tests of the frontend -->
