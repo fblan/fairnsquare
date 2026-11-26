@@ -11,15 +11,20 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
 
 import org.asymetrik.web.fairnsquare.admin.api.AdminProtected;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
- * JAX-RS request filter that enforces admin token validation on endpoints annotated with {@link AdminProtected}.
+ * JAX-RS request filter that lets only admins reach the endpoints annotated with {@link AdminProtected}.
  * <p>
- * The incoming {@code X-Admin-Token} header value is hashed with SHA-256 and compared to the configured
+ * With an OIDC provider ({@link AdminSignIn#oidc()}), the request must come from a user the provider signed in (the
+ * session cookie), else 401; when an admin group is configured, the user must be in it, else 403. The password is then
+ * ignored.
+ * <p>
+ * Otherwise, the incoming {@code X-Admin-Token} header value is hashed with SHA-256 and compared to the configured
  * {@code admin.password-hash}. Aborts with 401 if the token is missing or does not match. If
  * {@code admin.password-hash} is not configured, aborts with 503 (admin access disabled).
  */
@@ -30,14 +35,21 @@ public class AdminTokenFilter implements ContainerRequestFilter {
     public static final String ADMIN_TOKEN_HEADER = "X-Admin-Token";
 
     private final String passwordHash;
+    private final AdminSignIn signIn;
 
     @Inject
-    public AdminTokenFilter(@ConfigProperty(name = "admin.password-hash", defaultValue = "") String passwordHash) {
+    public AdminTokenFilter(@ConfigProperty(name = "admin.password-hash", defaultValue = "") String passwordHash,
+            AdminSignIn signIn) {
         this.passwordHash = passwordHash;
+        this.signIn = signIn;
     }
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
+        if (signIn.oidc()) {
+            checkSignedIn(requestContext);
+            return;
+        }
         if (passwordHash == null || passwordHash.isBlank()) {
             requestContext.abortWith(buildResponse(503, "Admin access is not configured."));
             return;
@@ -46,6 +58,15 @@ public class AdminTokenFilter implements ContainerRequestFilter {
         String token = requestContext.getHeaderString(ADMIN_TOKEN_HEADER);
         if (token == null || !constantTimeHashEquals(sha256Bytes(token), passwordHash)) {
             requestContext.abortWith(buildResponse(401, "Invalid or missing admin token."));
+        }
+    }
+
+    private void checkSignedIn(ContainerRequestContext requestContext) {
+        SecurityContext security = requestContext.getSecurityContext();
+        if (security == null || security.getUserPrincipal() == null) {
+            requestContext.abortWith(buildResponse(401, "Not signed in."));
+        } else if (signIn.group().filter(group -> !security.isUserInRole(group)).isPresent()) {
+            requestContext.abortWith(buildResponse(403, "This account is not an admin."));
         }
     }
 

@@ -2,7 +2,7 @@ import { showToast } from '../../infra/toasts.js';
 import { apiRequest } from '../../infra/api.js';
 import { baseStyles } from '../../components/base-styles.js';
 
-/** The admin token stays for the browser tab only. */
+/** The admin token stays for the browser tab only. Not used when admins sign in with the OIDC provider. */
 const SESSION_KEY = 'admin_token';
 const TABLE_ROWS = 5;
 
@@ -18,6 +18,8 @@ styles.replaceSync(`
     .signin { max-width: 400px; }
     .signin h2 { margin: 0 0 1.5rem; font-size: 1rem; line-height: 1; font-weight: 600; }
     form { display: flex; flex-direction: column; gap: 1rem; }
+    .signin .error:not([hidden]) { margin: 0 0 1rem; }
+    a.button { text-decoration: none; }
     .stats { display: flex; flex-direction: column; gap: 1.5rem; width: 100%; }
     .toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
     .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
@@ -63,16 +65,17 @@ template.innerHTML = `
       <p class="subtitle">FairNSquare administration</p>
     </header>
 
-    <div class="card signin">
+    <div class="card signin" hidden>
       <h2>Sign in</h2>
-      <form>
+      <p class="error" role="alert" hidden></p>
+      <form hidden>
         <div class="field">
           <label for="admin-password">Password</label>
           <input id="admin-password" type="password" placeholder="Admin password" autocomplete="current-password">
         </div>
-        <p class="error" role="alert" hidden></p>
         <button class="button primary wide" type="submit" disabled>Sign in</button>
       </form>
+      <a class="button primary wide provider-sign-in" href="/api/admin/session/login" hidden></a>
     </div>
 
     <div class="stats" hidden>
@@ -117,8 +120,9 @@ template.innerHTML = `
 `;
 
 /**
- * The admin page (`/admin`, not linked from the app): sign in with the admin password, then the storage
- * statistics and the splits that were created or updated the longest and the shortest time ago.
+ * The admin page (`/admin`, not linked from the app): sign in with the OIDC provider when the server has one, else
+ * with the admin password; then the storage statistics and the splits that were created or updated the longest and the
+ * shortest time ago.
  */
 class AdminPage extends HTMLElement {
   constructor() {
@@ -133,6 +137,9 @@ class AdminPage extends HTMLElement {
     this.error = $('.error');
     this.submit = $('button[type="submit"]');
     this.stats = $('.stats');
+    this.providerSignIn = $('.provider-sign-in');
+    /** 'OIDC': the provider signs admins in, with a session cookie; 'PASSWORD': the admin password, as a header. */
+    this.method = 'PASSWORD';
 
     this.password.addEventListener('input', () => this.updateSubmit());
     this.form.addEventListener('submit', (event) => {
@@ -144,16 +151,36 @@ class AdminPage extends HTMLElement {
     $('.module-report').addEventListener('click', () => this.openModuleReport());
   }
 
-  connectedCallback() {
+  async connectedCallback() {
+    try {
+      const { method, provider } = await apiRequest('/admin/session');
+      this.method = method;
+      if (method === 'OIDC') this.providerSignIn.textContent = `Sign in with ${provider}`;
+    } catch {
+      this.method = 'PASSWORD';
+    }
+    this.form.hidden = this.method !== 'PASSWORD';
+    this.providerSignIn.hidden = this.method !== 'OIDC';
+    if (this.method === 'OIDC') {
+      this.load(null);
+      return;
+    }
     const token = sessionStorage.getItem(SESSION_KEY);
     if (token) this.load(token);
+    else this.signIn.hidden = false;
+  }
+
+  /** The headers that prove the request comes from an admin. */
+  adminHeaders(token = sessionStorage.getItem(SESSION_KEY)) {
+    // With the provider, the session cookie does; the header makes an expired session answer 499, not a redirect.
+    return this.method === 'OIDC' ? { 'X-Requested-With': 'JavaScript' } : { 'X-Admin-Token': token ?? '' };
   }
 
   updateSubmit() {
     this.submit.disabled = this.loading || !this.password.value.trim();
   }
 
-  /** @param {string} token the admin password */
+  /** @param {string | null} token the admin password; null with the provider */
   async load(token) {
     this.loading = true;
     this.password.disabled = true;
@@ -161,11 +188,14 @@ class AdminPage extends HTMLElement {
     this.updateSubmit();
     this.showError(null);
     try {
-      const stats = await apiRequest('/admin/stats', { headers: { 'X-Admin-Token': token } });
-      sessionStorage.setItem(SESSION_KEY, token);
+      const stats = await apiRequest('/admin/stats', { headers: this.adminHeaders(token) });
+      if (this.method === 'PASSWORD') sessionStorage.setItem(SESSION_KEY, token);
       this.render(stats);
     } catch (error) {
-      if (error.status === 401) {
+      this.signIn.hidden = false;
+      if (this.method === 'OIDC') {
+        this.providerFailed(error);
+      } else if (error.status === 401) {
         sessionStorage.removeItem(SESSION_KEY);
         this.showError('Invalid password.');
       } else if (error.status === 503) {
@@ -182,15 +212,29 @@ class AdminPage extends HTMLElement {
   }
 
   /**
-   * Opens modular's module report in a new tab. The endpoint needs the admin token header, which a link can't send:
-   * the page fetches the report, then shows it in the tab, in a sandboxed frame, so its scripts can't reach this
-   * origin and the token stored in it. The tab opens on the click, before the fetch, or browsers would block it.
+   * With the provider, not signed in (401) or the session expired (499) just shows the sign-in button. A user who isn't
+   * an admin (403) is signed out of the admin pages, so that another account can sign in.
+   */
+  async providerFailed(error) {
+    if (error.status === 401 || error.status === 499) return;
+    if (error.status === 403) {
+      this.showError('This account is not an admin.');
+      await this.endSession();
+    } else {
+      this.showError(error.detail || 'Failed to load admin stats.');
+    }
+  }
+
+  /**
+   * Opens modular's module report in a new tab. With the password, the endpoint needs the admin token header, which a
+   * link can't send: the page fetches the report, then shows it in the tab, in a sandboxed frame, so its scripts can't
+   * reach this origin and the token stored in it. The tab opens on the click, before the fetch, or browsers would block it.
    */
   async openModuleReport() {
     const tab = window.open('', '_blank');
     try {
       const response = await fetch('/api/admin/module-report', {
-        headers: { 'X-Admin-Token': sessionStorage.getItem(SESSION_KEY) ?? '' },
+        headers: this.adminHeaders(),
       });
       if (!response.ok) throw new Error(`status ${response.status}`);
       const report = await response.text();
@@ -214,7 +258,17 @@ class AdminPage extends HTMLElement {
     this.error.hidden = !message;
   }
 
-  signOut() {
+  /** Ends the provider's session on the admin pages; the user stays signed in at the provider. */
+  async endSession() {
+    try {
+      await apiRequest('/admin/session/logout', { method: 'POST' });
+    } catch {
+      // The session cookie expires with the session anyway.
+    }
+  }
+
+  async signOut() {
+    if (this.method === 'OIDC') await this.endSession();
     sessionStorage.removeItem(SESSION_KEY);
     this.password.value = '';
     this.updateSubmit();
