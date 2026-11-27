@@ -4,11 +4,11 @@
 # Usage:
 #   ./scripts/hash-password.sh              # prompt for the admin password (hidden input)
 #   ./scripts/hash-password.sh <password>   # hash the given password (visible in shell history / ps)
-#   ./scripts/hash-password.sh --secret     # generate a random CAPTCHA_SECRET
+#   ./scripts/hash-password.sh --secret     # generate a random CAPTCHA_SECRET or BACKUP_ENCRYPTION_KEY
 #
 # The password mode prints the SHA-256 hash to set as ADMIN_PASSWORD_HASH in your
-# environment / GitHub secret / Dokploy. The --secret mode prints the value for
-# CAPTCHA_SECRET.
+# environment / GitHub secret / Dokploy. The --secret mode prints a value for
+# CAPTCHA_SECRET or BACKUP_ENCRYPTION_KEY (32 random bytes, base64).
 
 set -euo pipefail
 

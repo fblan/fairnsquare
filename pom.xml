@@ -42,6 +42,9 @@
         <!-- Modular architecture validation -->
         <asymetrik-modular.version>0.1.5</asymetrik-modular.version>
 
+        <!-- AWS SDK: the S3 client of the split backups -->
+        <awssdk.version>2.57.13</awssdk.version>
+
         <!-- Quarkiverse Extensions -->
         <quarkus-playwright.version>2.4.0</quarkus-playwright.version>
     </properties>
@@ -53,6 +56,15 @@
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
                 <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- AWS SDK - S3 client of the split backups -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

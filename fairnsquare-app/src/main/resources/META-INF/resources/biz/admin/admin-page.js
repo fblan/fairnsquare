@@ -50,6 +50,21 @@ styles.replaceSync(`
     td { padding: 0.5rem 0.75rem; color: var(--muted-foreground); }
     tr { border-bottom: 1px solid var(--border); }
     tbody tr:last-child { border-bottom: none; }
+    .backups .card { display: flex; flex-direction: column; gap: 1rem; }
+    .backups-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .backups-status { margin: 0; font-size: 0.875rem; color: var(--muted-foreground); }
+    .backups p.error { margin: 0; }
+    .backups td:last-child { text-align: right; }
+    .comparison { display: flex; flex-direction: column; gap: 0.75rem; }
+    .comparison h3 { margin: 0; font-size: 0.875rem; font-weight: 600; }
+    .comparison dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0; }
+    @media (min-width: 640px) { .comparison dl { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .comparison dl div {
+      padding: 0.75rem; text-align: center; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+    }
+    .comparison dt { font-size: 0.75rem; color: var(--muted-foreground); }
+    .comparison dd { margin: 0.25rem 0 0; font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+    .comparison .caption { margin: 0; }
     td.hash { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem; color: inherit; }
     @media (max-width: 639px) {
       section .card { padding: 0.75rem 0.5rem; }
@@ -115,14 +130,38 @@ template.innerHTML = `
           <thead><tr><th>ID hash</th><th>Last updated</th><th>Created</th></tr></thead><tbody></tbody>
         </table></div>
       </section>
+      <section class="backups" aria-labelledby="backups-title">
+        <h2 id="backups-title">Backups</h2>
+        <div class="card">
+          <div class="backups-head">
+            <p class="backups-status">Loading…</p>
+            <button class="button outline back-up" type="button" hidden>Back up now</button>
+          </div>
+          <p class="error backups-problem" role="alert" hidden></p>
+          <table class="archives" hidden>
+            <thead><tr><th>Archive</th><th>Size</th><th><span hidden>Actions</span></th></tr></thead><tbody></tbody>
+          </table>
+          <div class="comparison" role="status" hidden>
+            <h3></h3>
+            <dl>
+              <div><dt>New</dt><dd class="added"></dd></div>
+              <div><dt>Deleted</dt><dd class="deleted"></dd></div>
+              <div><dt>Changed</dt><dd class="changed"></dd></div>
+              <div><dt>Unchanged</dt><dd class="unchanged"></dd></div>
+            </dl>
+            <p class="caption"></p>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 `;
 
 /**
  * The admin page (`/admin`, not linked from the app): sign in with the OIDC provider when the server has one, else
- * with the admin password; then the storage statistics and the splits that were created or updated the longest and the
- * shortest time ago.
+ * with the admin password; then the storage statistics, the splits that were created or updated the longest and the
+ * shortest time ago, and the backups: the archives in the S3 bucket, a backup on demand, and the comparison of an
+ * archive with the current splits.
  */
 class AdminPage extends HTMLElement {
   constructor() {
@@ -149,6 +188,8 @@ class AdminPage extends HTMLElement {
     });
     $('.sign-out').addEventListener('click', () => this.signOut());
     $('.module-report').addEventListener('click', () => this.openModuleReport());
+    this.backUpButton = $('.back-up');
+    this.backUpButton.addEventListener('click', () => this.backUp());
   }
 
   async connectedCallback() {
@@ -273,6 +314,7 @@ class AdminPage extends HTMLElement {
     this.password.value = '';
     this.updateSubmit();
     this.stats.hidden = true;
+    this.shadowRoot.querySelector('.comparison').hidden = true;
     this.signIn.hidden = false;
   }
 
@@ -292,6 +334,70 @@ class AdminPage extends HTMLElement {
 
     this.signIn.hidden = true;
     this.stats.hidden = false;
+    this.loadBackups();
+  }
+
+  /** Shows whether backups are on, and the archives. */
+  async loadBackups() {
+    const $ = (selector) => this.shadowRoot.querySelector(selector);
+    const status = $('.backups-status');
+    const problem = $('.backups-problem');
+    const table = $('.archives');
+    try {
+      const backups = await apiRequest('/admin/backups', { headers: this.adminHeaders() });
+      this.backUpButton.hidden = !backups.enabled;
+      problem.textContent = backups.problem ?? '';
+      problem.hidden = !backups.problem;
+      if (!backups.enabled) {
+        status.textContent = 'Backups are off: no S3 bucket is configured.';
+      } else if (backups.problem) {
+        status.textContent = 'Backups are on, but:';
+      } else {
+        const count = backups.archives.length;
+        status.textContent = count === 0 ? 'No archive yet.' : `${count} archive${count === 1 ? '' : 's'} in the bucket.`;
+      }
+      table.hidden = backups.archives.length === 0;
+      fillArchives($('.archives tbody'), backups.archives, (archive) => this.compare(archive));
+    } catch (error) {
+      status.textContent = '';
+      problem.textContent = error.detail || 'Failed to load the backups.';
+      problem.hidden = false;
+    }
+  }
+
+  /** Makes an archive now. */
+  async backUp() {
+    this.backUpButton.disabled = true;
+    this.backUpButton.textContent = 'Backing up…';
+    try {
+      const archive = await apiRequest('/admin/backups', { method: 'POST', headers: this.adminHeaders() });
+      showToast({ type: 'success', message: 'Backup saved', description: formatDate(archive.createdAt) });
+      await this.loadBackups();
+    } catch (error) {
+      showToast({ type: 'error', message: error.detail || 'The backup failed.' });
+    } finally {
+      this.backUpButton.disabled = false;
+      this.backUpButton.textContent = 'Back up now';
+    }
+  }
+
+  /** Shows how the current splits differ from an archive's. */
+  async compare(archive) {
+    const $ = (selector) => this.shadowRoot.querySelector(selector);
+    try {
+      const comparison = await apiRequest(`/admin/backups/${encodeURIComponent(archive.name)}/comparison`, {
+        headers: this.adminHeaders(),
+      });
+      $('.comparison h3').textContent = `Since the archive of ${formatDate(archive.createdAt)}`;
+      for (const total of ['added', 'deleted', 'changed', 'unchanged']) {
+        $(`.comparison .${total}`).textContent = comparison[total];
+      }
+      $('.comparison .caption').textContent =
+        `${splits(comparison.archived)} in the archive, ${comparison.current} now.`;
+      $('.comparison').hidden = false;
+    } catch (error) {
+      showToast({ type: 'error', message: error.detail || 'Failed to compare with the archive.' });
+    }
   }
 }
 
@@ -313,6 +419,36 @@ function fillTable(tbody, splits, dates) {
     }));
     return row;
   }));
+}
+
+/**
+ * @param {HTMLTableSectionElement} tbody
+ * @param {Array<{name: string, createdAt: string, sizeBytes: number}>} archives newest first
+ * @param {(archive: object) => void} onCompare
+ */
+function fillArchives(tbody, archives, onCompare) {
+  tbody.replaceChildren(...archives.map((archive) => {
+    const row = document.createElement('tr');
+    const date = document.createElement('td');
+    date.textContent = formatDate(archive.createdAt);
+    const size = document.createElement('td');
+    size.textContent = formatBytes(archive.sizeBytes);
+    const action = document.createElement('td');
+    const compare = document.createElement('button');
+    compare.type = 'button';
+    compare.className = 'button outline small';
+    compare.textContent = 'Compare';
+    compare.setAttribute('aria-label', `Compare with the archive of ${date.textContent}`);
+    compare.addEventListener('click', () => onCompare(archive));
+    action.append(compare);
+    row.append(date, size, action);
+    return row;
+  }));
+}
+
+/** @param {number} count */
+function splits(count) {
+  return `${count} split${count === 1 ? '' : 's'}`;
 }
 
 /** @param {string | null} iso */
